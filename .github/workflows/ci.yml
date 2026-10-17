@@ -45,6 +45,7 @@ jobs:
           node test-labs.mjs
           node test-mailer.mjs
           node test-auth.mjs
+          node test-passkeys.mjs
           node test-members.mjs
           node test-medicines.mjs
           node test-push.mjs
@@ -57,7 +58,7 @@ jobs:
       - name: Server end-to-end (preview seed)
         run: node test-server.mjs
 
-      - name: Browser smoke test (Chrome, 390x844)
+      - name: Browser smoke and passkey tests (Chrome, 390x844)
         env:
           CHROME_BIN: google-chrome
-        run: node test-browser-smoke.mjs
+        run: node test-browser-smoke.mjs && node test-browser-passkeys.mjs

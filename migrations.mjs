@@ -161,5 +161,26 @@ CREATE TABLE login_tokens(
  expires_at INTEGER NOT NULL,
  used_at INTEGER
 );
+`},
+ {version:4,name:'passkeys',sql:`
+CREATE TABLE passkeys(
+ id TEXT PRIMARY KEY,
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ public_key TEXT NOT NULL,
+ alg INTEGER NOT NULL,
+ sign_count INTEGER NOT NULL DEFAULT 0,
+ transports TEXT NOT NULL DEFAULT '[]',
+ name TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ last_used_at TEXT
+);
+CREATE INDEX passkeys_user ON passkeys(user_id);
+-- Outstanding WebAuthn challenges (single use, short-lived). user_id is set while adding a passkey.
+CREATE TABLE webauthn_challenges(
+ challenge_hash TEXT PRIMARY KEY,
+ purpose TEXT NOT NULL CHECK(purpose IN ('register','login')),
+ user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+ expires_at INTEGER NOT NULL
+);
 `}
 ];

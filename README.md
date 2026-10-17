@@ -70,8 +70,10 @@ node server.mjs
 - `AUTH_MODE=builtin` (default): people sign in with a one-time link sent by email (valid 15 minutes, single use).
   The server keeps the session (30 days, extended while used) and sets an `HttpOnly`, `SameSite=Lax` cookie,
   `Secure` with the `__Host-` prefix when served through `APP_HOST` over TLS. Without `SMTP_URL`, sign-in links
-  are printed to the server log instead of emailed (development only). There is no open sign-up: create people
-  with `scripts/create-user.mjs` (invites are planned).
+  are printed to the server log instead of emailed (development only). Once signed in, anyone can add a
+  **passkey** (Face ID, Touch ID, device PIN) in Settings and sign in with it from then on; passkeys need HTTPS
+  (or `localhost`) and are tied to the host name in `APP_HOST`. There is no open sign-up: create people with
+  `scripts/create-user.mjs` (invites are planned).
 - `AUTH_MODE=trusted-proxy`: Cloudflare Access (or a proxy issuing the same signed JWT) signs people in. Set
   `CF_ACCESS_ISSUER`, `CF_ACCESS_AUD` and `CF_ACCESS_EMAIL` (allowed emails). An allowed email becomes a user on
   first visit: the first one owns the household, later ones join as `TRUSTED_PROXY_ROLE` (default `editor`).
@@ -113,12 +115,12 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py
 node test-server.mjs                 # end to end on preview data
-node test-browser-smoke.mjs          # needs Chrome (CHROME_BIN)
+node test-browser-smoke.mjs && node test-browser-passkeys.mjs   # need Chrome (CHROME_BIN)
 # or: npm test && npm run test:browser
 ```
 
@@ -126,7 +128,7 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 
 ## Roadmap
 
-- Accounts: passkeys, invites, several households per user (in progress).
+- Accounts: invites, several households per user (in progress).
 - Export and account deletion.
 - Lab results: CSV import, and lab views for children.
 - Docker image and self-hosting guide.

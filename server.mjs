@@ -38,6 +38,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(auth.MODE==='builtin')return send(res,303,'',{Location:'/login'});
   return send(res,403,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Sign-in required</title><h1>Sign-in required</h1><p><a href="/">Open your private health record</a></p></html>');
  }
+ if(await auth.account(req,res,path,user))return;
  const hh=A.activeHousehold(user);
  return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>app(req,res,reqUrl,path,user,hh));
 }catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}});
