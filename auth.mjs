@@ -82,6 +82,7 @@ export async function handle(req,res,path,url){
   A.deleteSession(sessionToken(req));
   return send(res,303,'',{Location:'/login','Set-Cookie':sessionCookie(req,'',0)}),true;
  }
+ if(path==='/invite'||path==='/invite/accept')return invite(req,res,path,url);
  if(MODE!=='builtin'){if(path==='/login'||path.startsWith('/auth/'))return send(res,303,'',{Location:'/'}),true;return false}
  if(path==='/login'&&req.method==='GET'){
   if(await authenticate(req))return send(res,303,'',{Location:'/'}),true;
@@ -89,11 +90,13 @@ export async function handle(req,res,path,url){
   return sendPage(res,loginPage(sent?'If an account exists for that address, a sign-in link is on its way. Check your inbox.':'',bad==='expired'?'That sign-in link has expired or was already used. Ask for a new one.':bad==='busy'?'Too many attempts. Wait a few minutes and try again.':'')),true;
  }
  if(path==='/auth/email'&&req.method==='POST'){
-  let email;try{email=A.cleanEmail((await readForm(req)).email)}catch{return sendPage(res,loginPage('','Enter a valid email address.')),true}
+  const f=await readForm(req).catch(()=>({}));
+  let email;try{email=A.cleanEmail(f.email)}catch{return sendPage(res,loginPage('','Enter a valid email address.')),true}
+  const inv=f.invite?A.inviteFor(String(f.invite)):null;
   if(limited('auth-email',60,9e5)||limited('auth-email:'+email,5,9e5))return send(res,303,'',{Location:'/login?e=busy'}),true;
-  const user=A.userByEmail(email);
-  if(user){
-   const link=requestOrigin(req)+'/auth/verify?token='+A.createLoginToken(email);
+  // Known people get a link; so does a new address holding an invite it may accept (sign-up by invite only).
+  if(A.userByEmail(email)||A.inviteAllows(inv,email)){
+   const link=requestOrigin(req)+'/auth/verify?token='+A.createLoginToken(email)+(inv?'&invite='+encodeURIComponent(f.invite):'');
    if(mailConfigured()){
     sendMail({to:email,subject:'Sign in to '+APP_NAME,text:`Sign in to ${APP_NAME}:\n\n${link}\n\nThe link works once and expires in ${A.LINK_MINUTES} minutes. If you did not ask for it, you can ignore this email.\n`})
      .catch(e=>console.error('sign-in email could not be sent:',e.message));
@@ -103,13 +106,21 @@ export async function handle(req,res,path,url){
  }
  // The emailed link opens a confirmation page; signing in needs a POST, so link scanners cannot use up the token.
  if(path==='/auth/verify'&&req.method==='GET'){
-  const t=String(url.searchParams.get('token')||'').slice(0,64);
-  return sendPage(res,page('Sign in',`<h1>Finish signing in</h1><form method="post" action="/auth/verify" class="auth-form"><input type="hidden" name="token" value="${esc(t)}"><button class="primary" type="submit">Sign in</button></form>`)),true;
+  const t=String(url.searchParams.get('token')||'').slice(0,64),inv=String(url.searchParams.get('invite')||'').slice(0,64);
+  return sendPage(res,page('Sign in',`<h1>Finish signing in</h1><form method="post" action="/auth/verify" class="auth-form"><input type="hidden" name="token" value="${esc(t)}">${inv?`<input type="hidden" name="invite" value="${esc(inv)}">`:''}<button class="primary" type="submit">Sign in</button></form>`)),true;
  }
  if(path==='/auth/verify'&&req.method==='POST'){
   if(limited('auth-verify',30,6e5))return send(res,303,'',{Location:'/login?e=busy'}),true;
-  const email=A.consumeLoginToken(String((await readForm(req)).token||''));
-  const user=email&&A.userByEmail(email);
+  const f=await readForm(req).catch(()=>({}));
+  const email=A.consumeLoginToken(String(f.token||''));
+  let user=email&&A.userByEmail(email);
+  if(email&&f.invite){
+   const t=String(f.invite);
+   try{transaction(system(),()=>{
+    if(!user){if(!A.inviteAllows(A.inviteFor(t),email))throw Error('invite');user=A.createUser(email)}
+    A.acceptInvite(t,user);
+   })}catch{if(!user)return sendPage(res,page('Invite',`<h1>This invite cannot be used</h1><p>It has expired or was already used. Ask for a new one.</p>`,410)),true}
+  }
   if(!user)return send(res,303,'',{Location:'/login?e=expired'}),true;
   return send(res,303,'',{Location:'/',...startSession(req,user.id)}),true;
  }
@@ -134,6 +145,30 @@ export async function handle(req,res,path,url){
  }
  if(path.startsWith('/auth/'))return json(res,404,{error:'Not found'}),true;
  return false;
+}
+
+// Invite links: /invite?token=... shows the invite; signed-in people accept it, others first sign in by email.
+async function invite(req,res,path,url){
+ const signOut='<form method="post" action="/logout"><button class="ghost" type="submit">Sign out</button></form>';
+ const gone=()=>sendPage(res,page('Invite',`<h1>This invite cannot be used</h1><p>It has expired or was already used. Ask for a new one.</p><p><a href="/">Open ${esc(APP_NAME)}</a></p>`,410));
+ if(path==='/invite'&&req.method==='GET'){
+  const t=String(url.searchParams.get('token')||'').slice(0,64),inv=A.inviteFor(t);
+  if(!inv)return gone(),true;
+  const user=await authenticate(req);
+  const intro=`<h1>Join ${esc(inv.household.name)}</h1><p>You are invited as <strong>${esc(inv.role)}</strong>${inv.email?` (for ${esc(inv.email)})`:''}. ${esc({owner:'Owners can change everything, including who has access.',editor:'Editors can add and change records.',viewer:'Viewers can look at records but not change them.'}[inv.role])}</p>`;
+  if(user)return sendPage(res,page('Invite',intro+(A.inviteAllows(inv,user.email)
+   ?`<form method="post" action="/invite/accept" class="auth-form"><input type="hidden" name="token" value="${esc(t)}"><button class="primary" type="submit">Join as ${esc(user.email)}</button></form>`
+   :`<p class="auth-error" role="alert">This invite is for a different email address. You are signed in as ${esc(user.email)}.</p>`)+signOut)),true;
+  if(MODE!=='builtin')return send(res,403,'Sign-in required'),true;
+  return sendPage(res,page('Invite',intro+`<form method="post" action="/auth/email" class="auth-form"><input type="hidden" name="invite" value="${esc(t)}"><label class="field">Your email<input type="email" name="email" autocomplete="username email" required maxlength="254" value="${esc(inv.email||'')}"${inv.email?' readonly':''}></label><button class="primary" type="submit">Email me a link to join</button></form>`)),true;
+ }
+ if(path==='/invite/accept'&&req.method==='POST'){
+  if(limited('invite-accept',60,6e5))return send(res,429,'Too many attempts'),true;
+  const user=await authenticate(req);if(!user)return send(res,303,'',{Location:'/login'}),true;
+  try{A.acceptInvite(String((await readForm(req)).token||''),user)}catch(e){return /different email/.test(e.message)?sendPage(res,page('Invite',`<p class="auth-error" role="alert">${esc(e.message)}</p>`+signOut,403)):gone(),true}
+  return send(res,303,'',{Location:'/'}),true;
+ }
+ return send(res,405,'Method not allowed'),true;
 }
 
 // Account routes for a signed-in user that do not depend on a household (passkeys). True when answered.

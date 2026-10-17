@@ -67,6 +67,7 @@ export function purgeExpired(now=Date.now()){
  d.prepare('DELETE FROM sessions WHERE expires_at<=?').run(now);
  d.prepare('DELETE FROM login_tokens WHERE expires_at<=? OR used_at IS NOT NULL').run(now-DAY);
  d.prepare('DELETE FROM webauthn_challenges WHERE expires_at<=?').run(now);
+ d.prepare('DELETE FROM invites WHERE expires_at<=? OR used_at<=?').run(now-30*DAY,now-30*DAY);
 }
 
 // ---- one-time sign-in links ----
@@ -126,3 +127,59 @@ export function consumeChallenge(c,purpose,userId=null,now=Date.now()){
   return r.purpose===purpose&&(r.user_id||null)===(userId||null)&&r.expires_at>now;
  });
 }
+
+// ---- people in a household ----
+export const people=householdId=>db().prepare('SELECT u.id,u.email,u.name,m.role,m.created_at AS since FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.household_id=? ORDER BY m.created_at').all(householdId).map(r=>({...r}));
+const owners=(d,householdId)=>d.prepare("SELECT COUNT(*) n FROM memberships WHERE household_id=? AND role='owner'").get(householdId).n;
+// Change someone's role; a household always keeps at least one owner.
+export function changeRole(householdId,userId,role){
+ if(!ROLES.includes(role))throw Error('Unknown role');
+ const d=db();
+ return transaction(d,()=>{
+  const cur=membership(householdId,userId);if(!cur)throw Error('Not a member of this household');
+  if(cur==='owner'&&role!=='owner'&&owners(d,householdId)<=1)throw Error('A household needs at least one owner');
+  d.prepare('UPDATE memberships SET role=? WHERE household_id=? AND user_id=?').run(role,householdId,userId);
+ });
+}
+// Remove someone (or leave). Their records stay: records belong to members (profiles), not to logins.
+export function removeMembership(householdId,userId){
+ const d=db();
+ return transaction(d,()=>{
+  const cur=membership(householdId,userId);if(!cur)throw Error('Not a member of this household');
+  if(cur==='owner'&&owners(d,householdId)<=1)throw Error('A household needs at least one owner');
+  d.prepare('DELETE FROM memberships WHERE household_id=? AND user_id=?').run(householdId,userId);
+  d.prepare('UPDATE users SET active_household_id=NULL WHERE id=? AND active_household_id=?').run(userId,householdId);
+ });
+}
+
+// ---- invites ----
+export const INVITE_DAYS=7;
+export function createInvite(householdId,role,{email=null,createdBy=null}={},now=Date.now()){
+ if(!ROLES.includes(role))throw Error('Unknown role');
+ const e=email?cleanEmail(email):null,t=token();
+ db().prepare('INSERT INTO invites(token_hash,household_id,role,email,created_by,created_at,expires_at) VALUES(?,?,?,?,?,?,?)').run(hash(t),householdId,role,e,createdBy,now,now+INVITE_DAYS*DAY);
+ return t;
+}
+// A usable invite (not expired or used), or null.
+export function inviteFor(t,now=Date.now()){
+ if(typeof t!=='string'||!TOKEN_RE.test(t))return null;
+ const r=db().prepare('SELECT i.*,h.name AS household_name FROM invites i JOIN households h ON h.id=i.household_id WHERE token_hash=?').get(hash(t));
+ if(!r||r.used_at||r.expires_at<=now)return null;
+ return {id:r.token_hash,household:{id:r.household_id,name:r.household_name},role:r.role,email:r.email||null};
+}
+export const inviteAllows=(inv,email)=>!!inv&&(!inv.email||inv.email===String(email).toLowerCase());
+// Joins the user to the invite's household (once). An existing member keeps their role.
+export function acceptInvite(t,user,now=Date.now()){
+ const d=db();
+ return transaction(d,()=>{
+  const inv=inviteFor(t,now);
+  if(!inv)throw Error('This invite has expired or was already used');
+  if(!inviteAllows(inv,user.email))throw Error('This invite is for a different email address');
+  if(!membership(inv.household.id,user.id))setMembership(inv.household.id,user.id,inv.role);
+  d.prepare('UPDATE invites SET used_at=?,used_by=? WHERE token_hash=?').run(now,user.id,inv.id);
+  d.prepare('UPDATE users SET active_household_id=? WHERE id=?').run(inv.household.id,user.id);
+  return inv.household;
+ });
+}
+export const pendingInvites=(householdId,now=Date.now())=>db().prepare('SELECT token_hash AS id,role,email,created_at,expires_at FROM invites WHERE household_id=? AND used_at IS NULL AND expires_at>? ORDER BY created_at').all(householdId,now).map(r=>({...r}));
+export const revokeInvite=(householdId,id)=>db().prepare('DELETE FROM invites WHERE household_id=? AND token_hash=? AND used_at IS NULL').run(householdId,String(id)).changes>0;

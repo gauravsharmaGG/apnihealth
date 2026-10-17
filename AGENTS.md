@@ -35,7 +35,7 @@ every instance keeps its health data in git-ignored folders on its own server. S
   (instance name, time zone and members for the client), `/members.css` (member colours) and the push loop.
 - `env.mjs`: instance settings from the environment. `members.mjs`: the member list.
 - `auth.mjs`: who is asking (`AUTH_MODE` builtin sessions or trusted-proxy), sign-in routes and pages.
-  `accounts.mjs`: users, memberships, sessions, sign-in links. `mailer.mjs`: SMTP. `webauthn.mjs`: passkey verification (CBOR/COSE, no deps). `http.mjs`: shared HTTP helpers.
+  `accounts.mjs`: users, memberships, sessions, sign-in links. `mailer.mjs`: SMTP. `webauthn.mjs`: passkey verification (CBOR/COSE, no deps). `household.mjs`: households, people, invites, profiles API. `http.mjs`: shared HTTP helpers.
   `access.mjs`: verifies the Cloudflare Access JWT for trusted-proxy mode. `/api/ingest` uses its own bearer token.
 - Every request runs with an actor (`store.runAs`): the user and their active household, a sync token, or
   `SYSTEM` (scripts, scheduler). `forMember` refuses access without one; never use `enterAs(SYSTEM)` in request code.
