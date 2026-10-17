@@ -1,5 +1,5 @@
 // Who is making a request. Two modes (AUTH_MODE):
-//   builtin (default)  users sign in with a one-time email link (passkeys follow); a server-side session is kept
+//   builtin (default)  users sign in with a one-time email link or a passkey; a server-side session is kept
 //                      in an HttpOnly, SameSite=Lax cookie (Secure and __Host- prefixed behind TLS).
 //   trusted-proxy      Cloudflare Access or a compatible proxy authenticates; access.mjs verifies its signed JWT and
 //                      the allowed email is mapped to a user (created on first sight, see provision()).
@@ -11,6 +11,7 @@ import {households,system,transaction} from './store.mjs';
 import {sendMail,mailConfigured} from './mailer.mjs';
 import {APP_NAME} from './env.mjs';
 import {send,json,readForm,limited,esc,secureRequest,requestOrigin} from './http.mjs';
+import * as W from './webauthn.mjs';
 
 export function authMode(env=process.env){
  const m=env.AUTH_MODE;
@@ -55,17 +56,23 @@ export async function authenticate(req){
 }
 
 // Paths a signed-out browser may load in builtin mode (the sign-in page and what it needs).
-export const PUBLIC_PATHS=new Set(['/login','/style.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/manifest.webmanifest']);
+export const PUBLIC_PATHS=new Set(['/login','/login.js','/style.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/manifest.webmanifest']);
 
 // ---- pages ----
 export function page(title,body,status=200){
  return [status,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} · ${esc(APP_NAME)}</title><link rel="stylesheet" href="/style.css"><link rel="icon" href="/icon-192.png"></head><body class="auth-page"><main class="auth-card"><p class="eyebrow">${esc(APP_NAME)}</p>${body}</main></body></html>`];
 }
 const sendPage=(res,[status,html],extra)=>send(res,status,html,extra);
+const jsonWith=(res,status,obj,extra)=>send(res,status,JSON.stringify(obj),{'Content-Type':'application/json; charset=utf-8',...extra});
+const startSession=(req,userId)=>({'Set-Cookie':sessionCookie(req,A.createSession(userId),A.SESSION_DAYS*86400)});
+// WebAuthn relying party: this request's own origin and host name (APP_HOST behind TLS, or localhost in development).
+const relyingParty=req=>{const origin=requestOrigin(req);return {origin,rpId:new URL(origin).hostname}};
+async function readJson(req){try{const b=await readForm(req,65536);return b&&typeof b==='object'?b:{}}catch{return {}}}
 function loginPage(msg='',error=''){
  return page('Sign in',`<h1>Sign in</h1>${msg?`<p class="auth-msg" role="status">${esc(msg)}</p>`:''}${error?`<p class="auth-error" role="alert">${esc(error)}</p>`:''}
 <form method="post" action="/auth/email" class="auth-form"><label class="field">Email<input type="email" name="email" autocomplete="username email" required maxlength="254"></label><button class="primary" type="submit">Email me a sign-in link</button></form>
-<p class="muted">The link works once and expires in ${A.LINK_MINUTES} minutes. No account? Ask the person who runs this app for an invite.</p>`);
+<div class="auth-passkey" id="passkey-area" hidden><p class="auth-or"><span>or</span></p><button class="ghost" type="button" id="passkey-login">Sign in with a passkey</button><p class="auth-error" id="passkey-msg" role="alert" hidden></p></div>
+<p class="muted">The link works once and expires in ${A.LINK_MINUTES} minutes. No account? Ask the person who runs this app for an invite.</p><script src="/login.js" defer></script>`);
 }
 
 // Handles the sign-in routes; returns true when it answered the request.
@@ -104,8 +111,59 @@ export async function handle(req,res,path,url){
   const email=A.consumeLoginToken(String((await readForm(req)).token||''));
   const user=email&&A.userByEmail(email);
   if(!user)return send(res,303,'',{Location:'/login?e=expired'}),true;
-  return send(res,303,'',{Location:'/','Set-Cookie':sessionCookie(req,A.createSession(user.id),A.SESSION_DAYS*86400)}),true;
+  return send(res,303,'',{Location:'/',...startSession(req,user.id)}),true;
+ }
+ // Passkey sign-in (discoverable credentials, so no email is asked for first).
+ if(path==='/auth/passkey/options'&&req.method==='POST'){
+  if(limited('auth-passkey',60,6e5))return json(res,429,{error:'Too many attempts. Wait a few minutes and try again.'}),true;
+  return json(res,200,{challenge:A.createChallenge('login'),rpId:relyingParty(req).rpId,timeout:A.CHALLENGE_MINUTES*6e4,userVerification:'preferred'}),true;
+ }
+ if(path==='/auth/passkey'&&req.method==='POST'){
+  if(limited('auth-verify',30,6e5))return json(res,429,{error:'Too many attempts. Wait a few minutes and try again.'}),true;
+  const {credential}=await readJson(req);
+  try{
+   const c=W.claimedChallenge(credential);
+   if(!c||!A.consumeChallenge(c,'login'))throw Error('Unknown or expired challenge');
+   const pk=A.passkeyById(credential?.id);if(!pk)throw Error('Unknown passkey');
+   const uh=credential.response?.userHandle;
+   if(uh&&uh!==Buffer.from(pk.userId).toString('base64url'))throw Error('Passkey belongs to someone else');
+   const count=W.verifyAssertion(credential,pk,{challenge:c,...relyingParty(req)});
+   A.touchPasskey(pk.id,count);
+   return jsonWith(res,200,{ok:true},startSession(req,pk.userId)),true;
+  }catch{return json(res,400,{error:'That passkey could not be used to sign in. Try again, or use an email link.'}),true}
  }
  if(path.startsWith('/auth/'))return json(res,404,{error:'Not found'}),true;
  return false;
+}
+
+// Account routes for a signed-in user that do not depend on a household (passkeys). True when answered.
+export async function account(req,res,path,user){
+ if(!path.startsWith('/api/passkeys'))return false;
+ if(MODE!=='builtin')return json(res,404,{error:'Passkeys are managed by your sign-in proxy'}),true;
+ const view=p=>({id:p.id,name:p.name,createdAt:p.createdAt,lastUsedAt:p.lastUsedAt});
+ if(path==='/api/passkeys'&&req.method==='GET')return json(res,200,{passkeys:A.passkeysOf(user.id).map(view)}),true;
+ if(req.method!=='POST')return json(res,405,{error:'Method not allowed'}),true;
+ if(limited('passkeys:'+user.id,30,6e5))return json(res,429,{error:'Too many requests'}),true;
+ const body=await readJson(req);
+ try{
+  if(path==='/api/passkeys/options'){
+   const {rpId}=relyingParty(req);
+   return json(res,200,{
+    challenge:A.createChallenge('register',user.id),rp:{id:rpId,name:APP_NAME},
+    user:{id:Buffer.from(user.id).toString('base64url'),name:user.email,displayName:user.name||user.email},
+    pubKeyCredParams:W.ALGS.map(alg=>({type:'public-key',alg})),timeout:A.CHALLENGE_MINUTES*6e4,attestation:'none',
+    authenticatorSelection:{residentKey:'required',requireResidentKey:true,userVerification:'preferred'},
+    excludeCredentials:A.passkeysOf(user.id).map(p=>({type:'public-key',id:p.id,transports:p.transports}))
+   }),true;
+  }
+  if(path==='/api/passkeys'){
+   const c=W.claimedChallenge(body.credential);
+   if(!c||!A.consumeChallenge(c,'register',user.id))throw Error('This request expired. Try again.');
+   const p=W.verifyRegistration(body.credential,{challenge:c,...relyingParty(req)});
+   return json(res,200,{passkey:view(A.addPasskey(user.id,p,body.name))}),true;
+  }
+  if(path==='/api/passkeys/rename')return A.renamePasskey(user.id,body.id,body.name)?json(res,200,{ok:true}):json(res,404,{error:'Not found'}),true;
+  if(path==='/api/passkeys/delete')return A.deletePasskey(user.id,body.id)?json(res,200,{ok:true}):json(res,404,{error:'Not found'}),true;
+ }catch(e){return json(res,400,{error:e.message}),true}
+ return json(res,404,{error:'Not found'}),true;
 }

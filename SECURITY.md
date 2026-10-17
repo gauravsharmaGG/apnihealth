@@ -22,6 +22,9 @@ The project is in an early stage; only the latest commit on `main` is supported.
 - Sessions and sign-in links are random 256-bit tokens; the database stores only their SHA-256 hashes. Session
   cookies are `HttpOnly` and `SameSite=Lax` (`Secure`, `__Host-` behind TLS). Sign-in links are single use and
   expire after 15 minutes; the endpoints are rate limited and do not reveal whether an address has an account.
+- Passkeys (WebAuthn) are verified in `webauthn.mjs` without third-party code: origin, RP ID hash, user presence,
+  single-use server-side challenges (5 minutes), signature (ES256, Ed25519, RS256 >= 2048 bits) and the signature
+  counter. Attestation is not requested or checked ("none"), so the server makes no claims about the device model.
 - Access to member data is decided in one place (`store.mjs` `forMember`) from the signed-in user's role in the
   member's household (owner/editor: read and write, viewer: read only). Members of other households look unknown.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Every state-changing request must be same-origin.

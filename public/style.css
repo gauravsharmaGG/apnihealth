@@ -408,3 +408,11 @@ body.docpage{margin:0;height:100dvh;display:flex;flex-direction:column;backgroun
 .auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--paper)}
 .auth-card{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px}.auth-card h1{margin:4px 0 12px;font-size:28px}
 .auth-form .field input{width:100%}.auth-msg{background:var(--tint);border-radius:10px;padding:12px 14px}.auth-error{background:#fdf1e4;color:var(--amber);border-radius:10px;padding:12px 14px}
+.auth-or{display:flex;align-items:center;gap:.6rem;color:var(--muted,#667);font-size:.85rem;margin:1rem 0 .6rem}
+.auth-or::before,.auth-or::after{content:"";flex:1;border-top:1px solid currentColor;opacity:.3}
+.auth-passkey .ghost{width:100%}
+#account-body{margin-top:1rem}
+.pk-list{list-style:none;padding:0;margin:.5rem 0}
+.pk-list li{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.55rem 0;border-top:1px solid rgba(0,0,0,.08)}
+.pk-list .nm{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.pk-list small{color:var(--muted,#667)}

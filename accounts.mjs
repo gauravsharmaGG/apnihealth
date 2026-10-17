@@ -66,6 +66,7 @@ export function purgeExpired(now=Date.now()){
  const d=db();
  d.prepare('DELETE FROM sessions WHERE expires_at<=?').run(now);
  d.prepare('DELETE FROM login_tokens WHERE expires_at<=? OR used_at IS NOT NULL').run(now-DAY);
+ d.prepare('DELETE FROM webauthn_challenges WHERE expires_at<=?').run(now);
 }
 
 // ---- one-time sign-in links ----
@@ -83,5 +84,45 @@ export function consumeLoginToken(t,now=Date.now()){
   if(!r||r.used_at||r.expires_at<=now)return null;
   d.prepare('UPDATE login_tokens SET used_at=? WHERE token_hash=?').run(now,r.token_hash);
   return r.email;
+ });
+}
+
+// ---- passkeys ----
+export const CHALLENGE_MINUTES=5,MAX_PASSKEYS=20;
+const rowToPasskey=r=>r&&{id:r.id,userId:r.user_id,publicKey:r.public_key,alg:r.alg,signCount:r.sign_count,transports:JSON.parse(r.transports),name:r.name,createdAt:r.created_at,lastUsedAt:r.last_used_at||null};
+export const passkeyById=id=>rowToPasskey(db().prepare('SELECT * FROM passkeys WHERE id=?').get(String(id)));
+export const passkeysOf=userId=>db().prepare('SELECT * FROM passkeys WHERE user_id=? ORDER BY created_at').all(userId).map(rowToPasskey);
+export function addPasskey(userId,p,name){
+ const d=db();
+ return transaction(d,()=>{
+  if(d.prepare('SELECT COUNT(*) n FROM passkeys WHERE user_id=?').get(userId).n>=MAX_PASSKEYS)throw Error('Too many passkeys; remove one first');
+  if(passkeyById(p.id))throw Error('This passkey is already registered');
+  const label=typeof name==='string'&&name.trim()?name.trim().slice(0,60):'Passkey';
+  d.prepare('INSERT INTO passkeys(id,user_id,public_key,alg,sign_count,transports,name,created_at) VALUES(?,?,?,?,?,?,?,?)')
+   .run(p.id,userId,p.publicKey,p.alg,p.signCount,JSON.stringify(p.transports||[]),label,new Date().toISOString());
+  return passkeyById(p.id);
+ });
+}
+export const touchPasskey=(id,signCount)=>db().prepare('UPDATE passkeys SET sign_count=?,last_used_at=? WHERE id=?').run(signCount,new Date().toISOString(),id);
+export const renamePasskey=(userId,id,name)=>{
+ const label=typeof name==='string'?name.trim().slice(0,60):'';if(!label)throw Error('Give the passkey a name');
+ return db().prepare('UPDATE passkeys SET name=? WHERE id=? AND user_id=?').run(label,String(id),userId).changes>0;
+};
+export const deletePasskey=(userId,id)=>db().prepare('DELETE FROM passkeys WHERE id=? AND user_id=?').run(String(id),userId).changes>0;
+// Challenges: random, stored hashed, single use, expire after CHALLENGE_MINUTES.
+export function createChallenge(purpose,userId=null,now=Date.now()){
+ const c=token();
+ db().prepare('INSERT INTO webauthn_challenges(challenge_hash,purpose,user_id,expires_at) VALUES(?,?,?,?)').run(hash(c),purpose,userId,now+CHALLENGE_MINUTES*6e4);
+ return c;
+}
+// Uses up a challenge: true once if it exists, has this purpose (and user), and has not expired.
+export function consumeChallenge(c,purpose,userId=null,now=Date.now()){
+ if(typeof c!=='string'||!TOKEN_RE.test(c))return false;
+ const d=db();
+ return transaction(d,()=>{
+  const r=d.prepare('SELECT * FROM webauthn_challenges WHERE challenge_hash=?').get(hash(c));
+  if(!r)return false;
+  d.prepare('DELETE FROM webauthn_challenges WHERE challenge_hash=?').run(r.challenge_hash);
+  return r.purpose===purpose&&(r.user_id||null)===(userId||null)&&r.expires_at>now;
  });
 }

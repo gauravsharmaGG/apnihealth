@@ -10,8 +10,8 @@
   "scripts": {
     "start": "node server.mjs",
     "import-json": "node scripts/import-json.mjs",
-    "test": "NO_PUSH=1 sh -c 'for t in test-db test-import test-labs test-mailer test-auth test-members test-medicines test-push test-appointments test-access test-ahparse test-preview; do node $t.mjs || exit 1; done' && python3 test-build-index.py && node test-server.mjs",
-    "test:browser": "node test-browser-smoke.mjs"
+    "test": "NO_PUSH=1 sh -c 'for t in test-db test-import test-labs test-mailer test-auth test-passkeys test-members test-medicines test-push test-appointments test-access test-ahparse test-preview; do node $t.mjs || exit 1; done' && python3 test-build-index.py && node test-server.mjs",
+    "test:browser": "node test-browser-smoke.mjs && node test-browser-passkeys.mjs"
   },
   "dependencies": {}
 }
