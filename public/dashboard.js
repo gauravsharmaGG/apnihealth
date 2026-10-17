@@ -58,7 +58,7 @@ async function load(){
  const job=loading=api('/api/log?profile='+encodeURIComponent(pid)).then(j=>{if(loading===job){entries=j.entries||[];render()}}).catch(()=>{if(loading===job){entries=[];render()}});
 }
 document.addEventListener('logchange',e=>{if(e.detail?.profile===window.PROFILE&&Array.isArray(e.detail.entries)){entries=e.detail.entries;render()}});
-document.addEventListener('profilechange',()=>{if(document.querySelector('#home'))load()});
+addEventListener('profilechange',()=>{if(document.querySelector('#home'))load()});
 window.addEventListener('hashchange',()=>{if(location.hash==='#home'||!location.hash)render()});
 window.AH.homeEntries=()=>entries;
 load();
