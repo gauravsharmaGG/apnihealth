@@ -301,6 +301,9 @@ and copied the test passkey authenticator from `testlib.mjs`. Nothing deployed, 
 | `node:fs` | In-memory virtual fs: `/tmp` read/write works but is not persistent; repo files (`config/markers.default.json`) are not there. Bundle config as module imports (PR 3), blobs to R2 (PR 2 + 6). |
 | `node:net` | Module loads (`connect` exists); a real SMTP connection was not tried. Resend over `fetch` is the Workers path (PR 1); `mailer.mjs` now imports `node:net`/`node:tls` lazily, only when SMTP is used. |
 | `fetch` | Available (outbound requests not exercised). |
+| `import.meta.url` in the bundle | **`undefined`.** Every module that builds a path at import time with `new URL(..., import.meta.url)` fails to load with "Invalid URL string": `store.mjs` (profiles root) and, through it, `members`, `events`, `medicines`, `settings`, `appointments`, `push`; also `labs.mjs`, `ingest.mjs`, `server.mjs`. `env.mjs`, `consent.mjs` and `db.mjs` (lazy) load fine. Fix: compute file paths lazily (Node-only code paths) in a follow-up PR before PR 6. |
+| JSON module import (`with {type:'json'}`) | Works (the marker catalog bundles; PR 3 uses it). |
+| Re-run with PR 3's code | ES256 passkeys pass; `createECDH().setPrivateKey` works (used to validate `VAPID_PRIVATE_JWK`). |
 | DO SQLite: the 9 existing migrations | **All apply unchanged** inside `ctx.storage.transactionSync` (25 tables, 252 KB). |
 | DO SQLite: foreign keys | On by default (`PRAGMA foreign_keys` = 1); `ON DELETE CASCADE` works; violations rejected. |
 | DO SQLite: `CHECK(json_valid(data))` | Enforced. |
@@ -313,4 +316,20 @@ Not tested in the spike: CPU time against real limits, deployed behaviour, R2, C
 a real SMTP connection over `node:net`, and the full `server.mjs` (it needs the storage adapter first).
 
 Effect on the plan: no blocker for option B. PR 3 gains the crypto option fix; PR 5a must include the `$name`
-translation; PR 6 can use approach (a), `httpServerHandler` around the existing handler.
+translation; a new small PR (4b) makes module-level file paths lazy (`import.meta.url` is undefined on Workers);
+PR 6 can use approach (a), `httpServerHandler` around the existing handler.
+
+## 9. Progress (Oct 18, 2026)
+
+| PR | Branch | State |
+|---|---|---|
+| 1 mail adapter (+ this plan) | `feat/mail-resend` | open (#22) |
+| 2 blob interface, fs backend | `feat/blob-storage` | open (#23) |
+| 3 VAPID from env, push via fetch, Workers-safe crypto, bundled catalog | `feat/workers-config-push` | open (#24) |
+| 4 scheduler entry point | `feat/scheduler` | open (#25) |
+
+PRs 1-4 are independent and were checked to merge cleanly together in that order, with the full test suite green
+on the combination. After they merge, one small follow-up: add `test-blobs`/`test-scheduler` to the `npm test`
+list in `package.json` and update the AGENTS.md structure notes (mailer, scheduler). These were held back to avoid
+same-line merge conflicts between the PRs; CI already runs both tests from `ci.yml`.
+Next: 4b (lazy file paths), 5a (storage adapter with `$name` -> `?N`), then 6 (Workers entry, DO, R2).
