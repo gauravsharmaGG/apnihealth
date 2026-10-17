@@ -78,7 +78,10 @@ node server.mjs
   (or `localhost`) and are tied to the host name in `APP_HOST`. Sign-up is controlled by `SIGNUP_MODE`:
   `open` (default) lets anyone with a verified email create an account (they start their own household);
   `invite` limits new accounts to people holding an invite. After the first email sign-in, people are offered a
-  passkey once. `scripts/create-user.mjs` can still create users from the command line.
+  passkey once. `scripts/create-user.mjs` can still create users from the command line. With open sign-up the
+  server also starts on an empty database (no `members.json` import needed): each new person creates their own household.
+- **Demo instances:** set `DEMO_NOTICE` (for example "Demo: data may be wiped. Do not enter real health data.") to show
+  a banner on the sign-in pages and at the top of the app.
 - **First-run setup:** someone without a household (for example right after signing up) goes to `/welcome`:
   household name and their own adult profile, other profiles (adults or children, optional), which daily
   measurements to track (weight, body fat, sleep, steps, resting heart rate, blood pressure, blood oxygen, heart

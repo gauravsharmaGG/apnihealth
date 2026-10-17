@@ -9,7 +9,7 @@ import * as access from './access.mjs';
 import * as A from './accounts.mjs';
 import {households,system,transaction} from './store.mjs';
 import {sendMail,mailConfigured} from './mailer.mjs';
-import {APP_NAME} from './env.mjs';
+import {APP_NAME,DEMO_NOTICE} from './env.mjs';
 import {send,json,readForm,limited,esc,secureRequest,requestOrigin} from './http.mjs';
 import * as W from './webauthn.mjs';
 
@@ -68,7 +68,7 @@ export const PUBLIC_PATHS=new Set(['/login','/login.js','/passkey-prompt.js','/s
 
 // ---- pages ----
 export function page(title,body,status=200){
- return [status,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} · ${esc(APP_NAME)}</title><link rel="stylesheet" href="/style.css"><link rel="icon" href="/icon-192.png"></head><body class="auth-page"><main class="auth-card"><p class="eyebrow">${esc(APP_NAME)}</p>${body}</main></body></html>`];
+ return [status,`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)} · ${esc(APP_NAME)}</title><link rel="stylesheet" href="/style.css"><link rel="icon" href="/icon-192.png"></head><body class="auth-page">${DEMO_NOTICE?`<p class="demo-notice" role="note">${esc(DEMO_NOTICE)}</p>`:''}<main class="auth-card"><p class="eyebrow">${esc(APP_NAME)}</p>${body}</main></body></html>`];
 }
 const sendPage=(res,[status,html],extra)=>send(res,status,html,extra);
 const jsonWith=(res,status,obj,extra)=>send(res,status,JSON.stringify(obj),{'Content-Type':'application/json; charset=utf-8',...extra});
