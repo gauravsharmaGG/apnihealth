@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {db,transaction} from './db.mjs';
 import {createHousehold,addMember,docs,households,system} from './store.mjs';
 import {validate} from './members.mjs';
+import {addReport} from './labs.mjs';
 
 const FILES={episodes:'episodes.json',episode_entries:'events.json',inbox_items:'inbox.json',medicine_plans:'medicines.json',appointments:'appointments.json'};
 class Rollback extends Error{}
@@ -23,7 +24,7 @@ export function importJson({privateDir,householdName='Household',dryRun=false}){
  if(!Array.isArray(raw)||!raw.length)throw Error('members.json is missing or empty');
  const list=validate(raw);
  const known=new Set(list.map(m=>m.id)),def=list[0].id;
- const counts={members:list.length,log_entries:0,episodes:0,episode_entries:0,inbox_items:0,medicine_plans:0,appointments:0,push_subscriptions:0,push_topics:0,push_sent:0,skipped:0,missing_upload_files:0,unknown_profile_dirs:0};
+ const counts={members:list.length,log_entries:0,episodes:0,episode_entries:0,inbox_items:0,medicine_plans:0,appointments:0,push_subscriptions:0,push_topics:0,push_sent:0,lab_reports:0,lab_values:0,skipped:0,missing_upload_files:0,unknown_profile_dirs:0};
  try{
   transaction(d,()=>{
    const h=createHousehold(householdName);
@@ -66,6 +67,17 @@ export function importJson({privateDir,householdName='Household',dryRun=false}){
    const state=readJson(join(privateDir,'push-state.json'),{});
    const pIns=system().prepare('INSERT INTO push_sent(key,ts) VALUES(?,?)');
    for(const [k,ts] of Object.entries(state&&typeof state==='object'?state:{}))if(Number.isFinite(ts)){pIns.run(k,ts);counts.push_sent++}
+   // lab results (private/lab-values.json, the old build input) go to the lab-results member, else the first adult
+   const labs=readJson(join(privateDir,'lab-values.json'),[]);
+   if(!Array.isArray(labs))throw Error('lab-values.json must be a list of reports');
+   if(labs.length){
+    const owner=(list.find(m=>m.labs)||list.find(m=>m.kind==='adult')||list[0]).id;
+    labs.forEach((r,i)=>{
+     let rep;try{rep=addReport(owner,{date:r?.iso,reported:r?.reported,source:r?.file,screening:r?.screening===true,preliminary:r?.preliminary===true,values:r?.values,pending:r?.pending},{privateDir})}
+     catch(e){throw Error('lab-values.json entry '+i+': '+e.message)}
+     counts.lab_reports++;counts.lab_values+=rep.values.length;
+    });
+   }
    if(dryRun)throw new Rollback();
   });
  }catch(e){if(!(e instanceof Rollback))throw e}

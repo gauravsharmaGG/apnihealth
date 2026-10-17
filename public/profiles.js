@@ -7,7 +7,7 @@ const I={
 };
 const TABS={
  labs:[['overview','Overview','home'],['trends','Trends','trend'],['measurements','Results','list'],['log','Log','plus'],['episodes','Episodes','therm'],['records','Reports','doc']],
- starter:[['s-overview','Overview','home'],['log','Log','plus'],['episodes','Episodes','therm'],['s-reports','Reports','doc']],
+ starter:[['s-overview','Overview','home'],['trends','Trends','trend'],['measurements','Results','list'],['log','Log','plus'],['episodes','Episodes','therm'],['s-reports','Reports','doc']],
  child:[['c-overview','Overview','home'],['c-growth','Growth','grow'],['episodes','Episodes','therm'],['c-vaccines','Vaccines','shield'],['c-records','Records','doc']]
 };
 const CFG=window.APP_CONFIG||{members:[]},DEFAULT_COLOR='#157667';

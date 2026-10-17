@@ -19,17 +19,20 @@ const J=(f,v)=>writeFileSync(P(f),JSON.stringify(v,null,2)+'\n');
 copyFileSync(P('config/overview.example.json'),P('private/overview.json'));
 J('private/reports.json',[['example-labs-c.pdf','Example follow-up labs','recent','2 pages'],['example-labs-b.pdf','Example blood tests','recent','2 pages'],['example-labs-a.pdf','Example general labs','spring','3 pages'],['example-checkup.pdf','Example health check','winter','10 pages']]);
 const labs=[['Hemoglobin','g/dL','14.1','13.6','13-17'],['Platelets','/nL','240','255','150-400'],['CRP','mg/L','1.2','6.8 ↑','<5'],['Creatinine','mg/dL','0.9','0.95','0.7-1.2'],['Fasting glucose','mg/dL','92','101 ↑','70-99'],['HbA1c','%','5.3','5.4','<5.7'],['ALT','U/L','28','35','<50'],['AST','U/L','24','26','<50'],['LDL','mg/dL','128 ↑','118','<116'],['HDL','mg/dL','52','55','>40'],['Vitamin B12','pg/mL','310','290','200-900'],['25-OH vitamin D','ng/mL','18 ↓','27 ↓','30-100'],['TSH','mU/L','1.8','2.1','0.4-4.0'],['Iron','µg/dL','95','80','60-160']];
-const report=(file,iso,col,page=1)=>({file,iso,values:labs.map(([name,unit,a,b,ref])=>({name,value:col?b:a,unit,reference:ref,page}))});
-J('private/lab-values.json',[
- {file:'example-checkup.pdf',iso:day(-270),screening:true,values:[{name:'Resting heart rate',value:'62 bpm',page:2},{name:'Weight',value:'71 kg',page:2},{name:'Air blown out: % of expected (FVC)',value:'98 %',page:3}]},
- report('example-labs-a.pdf',day(-190),0),report('example-labs-b.pdf',day(-30),1),
- {file:'example-labs-c.pdf',iso:day(-5),reported:day(-3),preliminary:true,values:[{name:'Ferritin',value:'45 ng/mL',unit:'ng/mL',reference:'30-300',page:1},{name:'Potassium',value:'4.1 mmol/L',unit:'mmol/L',reference:'3.5-5.1',page:1},{name:'Sodium',value:'131 mmol/L ↓',unit:'mmol/L',reference:'135-145',page:2}],pending:[{name:'Soluble transferrin receptor (sTfR)',note:'Fictional pending result for previews.'}]}]);
 mkdirSync(P('private/profiles/'+CHILD),{recursive:true,mode:0o700});copyFileSync(P('config/child-record.example.json'),P('private/profiles/'+CHILD+'/child-record.json'));
 writeFileSync(P('private/ingest-token.txt'),'preview-not-a-real-token-000000000000\n',{mode:0o600});
 // app data through the app's own modules (validation stays in sync with the code)
 const imp=f=>import(pathToFileURL(P(f)).href);
 const store=await imp('store.mjs'),house=store.createHousehold('Example household');
 for(const m of JSON.parse(readFileSync(P('config/members.example.json'),'utf8')))store.addMember(house.id,m);
+// lab results through the app's own module (same validation and catalog as the form)
+const lab=await imp('labs.mjs'),SAM='sam';
+const report=(source,date,col,page=1)=>({source,date,values:labs.map(([name,unit,a,b,ref])=>({name,value:col?b:a,unit,reference:ref,page}))});
+lab.addReport(ADULT,{source:'example-checkup.pdf',date:day(-270),screening:true,values:[{name:'Resting heart rate',value:'62 bpm',page:2},{name:'Weight',value:'71 kg',page:2},{name:'Air blown out: % of expected (FVC)',value:'98 %',page:3}]});
+lab.addReport(ADULT,report('example-labs-a.pdf',day(-190),0));lab.addReport(ADULT,report('example-labs-b.pdf',day(-30),1));
+lab.addReport(ADULT,{source:'example-labs-c.pdf',date:day(-5),reported:day(-3),preliminary:true,values:[{name:'Ferritin',value:'45',unit:'ng/mL',reference:'30-300',page:1},{name:'Potassium',value:'4.1',unit:'mmol/L',reference:'3.5-5.1',page:1},{name:'Sodium',value:'131',unit:'mmol/L',reference:'135-145',flag:'low',page:2}],pending:[{name:'Soluble transferrin receptor (sTfR)',note:'Fictional pending result for previews.'}]});
+lab.addReport(SAM,{title:'Example blood tests',date:day(-60),values:[{name:'Hemoglobin',value:'12.9',unit:'g/dL',reference:'12-16'},{name:'TSH',value:'2.4',unit:'mU/L',reference:'0.4-4.0'}]});
+lab.addReport(SAM,{title:'Example follow-up',date:day(-10),values:[{name:'Hemoglobin',value:'13.4',unit:'g/dL',reference:'12-16'}]});
 const ev=await imp('events.mjs'),meds=await imp('medicines.mjs'),appts=await imp('appointments.mjs'),hlog=await imp('log.mjs');
 const ep=ev.addEpisode(ADULT,{title:'Example cold',category:'Illness',startDate:day(-3),summary:'Fictional episode for previews.'});
 ev.addEpisode(ADULT,{title:'Example sprained ankle',category:'Injury',startDate:day(-60),status:'resolved',endDate:day(-45)});

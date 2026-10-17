@@ -1,4 +1,5 @@
-"""Generate the git-ignored public/data.js, public/reports-data.js, public/data-child.js and public/index.html.
+"""Generate the git-ignored public/reports-data.js, public/data-child.js and public/index.html.
+Lab results are not built any more: they are entered in the app and served by /api/labs (labs.mjs).
 
 Outputs are written to a temp file and moved into place atomically, so the running server never
 serves a half-written file. Set BUILD_OUT_DIR to build into a staging directory instead of public/.
@@ -10,7 +11,6 @@ the git-ignored files in private/:
   reports.json       report library of the lab-results member (optional; config/reports.example.json)
   overview.json      overview page text: takeaway cards, records summary, urgent-help and "About dates"
                      notes (optional; generic defaults are used when missing; config/overview.example.json)
-  lab-values.json    lab results (optional; see plain_data.py)
   profiles/<id>/child-record.json   growth/check-up/vaccination record of a child member (optional;
                      config/child-record.example.json; shown only in child members' views)
 Household members live in the database (see README.md), not here.
@@ -105,13 +105,9 @@ def main():
  if tracked(OUT):raise SystemExit('Refusing to write public/index.html: it is tracked by git. It must stay untracked (see AGENTS.md).')
  preflight()
  out=Path(os.environ.get('BUILD_OUT_DIR') or R/'public');out.mkdir(parents=True,exist_ok=True)
- from plain_data import make,data_js
  reports=[tuple(r) for r in load_private('reports.json',[])]  # [[file,name,date,pages],...]
  overview=load_private('overview.json',{})
- try:data=make(R)
- except ValueError as e:build_error(str(e))
  outputs={ # everything is computed and validated before anything is published
-  'data.js':data_js(data),
   'data-child.js':'window.CHILD_RECORDS='+json.dumps(child_records(),ensure_ascii=False).replace('<','\\u003c')+';',
   'reports-data.js':'window.REPORTS='+json.dumps([{'file':f,'name':n,'date':d,'pages':pg} for f,n,d,pg in reports])+';',
   'index.html':render_index(reports,overview)}
@@ -119,6 +115,6 @@ def main():
  notes=R/'public/notes.js'
  if out==R/'public' and not notes.exists():
   atomic_write(notes,NOTES_STUB);print('NOTE: created an empty public/notes.js. Put personal result notes there (template: config/notes.example.js).')
- print(f'Built {len(data)} measurements, {len(reports)} reports, {len(outputs)} files.')
+ print(f'Built {len(reports)} reports, {len(outputs)} files.')
 
 if __name__=='__main__':main()

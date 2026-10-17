@@ -23,6 +23,7 @@ mkdirSync(join(priv,'profiles/mia/uploads'),{recursive:true});writeFileSync(join
 J('profiles/ghost/episodes.json',[{id:'x'}]);                                                    // folder of an unknown member
 J('push-subs.json',[{endpoint:'https://push.example/one',keys:{p256dh:'k',auth:'a'},createdAt:5,profiles:{alex:{since:10},nobody:{since:1}},appt:{mia:{since:11}},muted:['p1']},{endpoint:'bad'}]);
 J('push-state.json',{'one|p1|0:0|due':1234,'bad':'x'});
+J('lab-values.json',JSON.parse(readFileSync(new URL('config/lab-values.example.json',import.meta.url))));
 const hashAll=()=>createHash('sha256').update(readdirSync(priv,{recursive:true}).sort().map(f=>{const p=join(priv,f);return statSync(p).isFile()?f+readFileSync(p):f}).join('|')).digest('hex');
 const before=hashAll();
 const {importJson}=await import('./importer.mjs'),D=await import('./db.mjs'),S=await import('./store.mjs'),{docs}=S;
@@ -32,7 +33,7 @@ try{
  assert.equal(dry.dryRun,true);assert.equal(S.households().length,0,'dry run writes nothing');
  const r=importJson({privateDir:priv,householdName:'Example household'});
  assert.deepEqual(r.counts,dry.counts,'dry run reports the same counts');
- assert.deepEqual(r.counts,{members:3,log_entries:3,episodes:1,episode_entries:1,inbox_items:2,medicine_plans:1,appointments:1,push_subscriptions:1,push_topics:2,push_sent:1,skipped:6,missing_upload_files:1,unknown_profile_dirs:1});
+ assert.deepEqual(r.counts,{members:3,log_entries:3,episodes:1,episode_entries:1,inbox_items:2,medicine_plans:1,appointments:1,push_subscriptions:1,push_topics:2,push_sent:1,lab_reports:2,lab_values:4,skipped:6,missing_upload_files:1,unknown_profile_dirs:1});
  assert.deepEqual(S.listMembers().map(m=>[m.id,m.kind,m.labs]),[['alex','adult',true],['sam','adult',false],['mia','child',false]]);
  const a=S.forMember('alex');
  assert.deepEqual(a.all('SELECT id FROM log_entries WHERE member_id=$member ORDER BY id').map(x=>x.id),['l1','l2'],'entries without a profile belong to the first member');
@@ -41,6 +42,10 @@ try{
  assert.equal(docs('inbox_items').list('mia').length,2);assert.equal(docs('episodes').list('sam').length,0);
  const sub=D.db().prepare('SELECT * FROM push_subscriptions').get();assert.equal(sub.muted,'["p1"]');
  assert.deepEqual(D.db().prepare('SELECT member_id,topic,since FROM push_topics ORDER BY topic').all().map(x=>({...x})),[{member_id:'mia',topic:'appointments',since:11},{member_id:'alex',topic:'medicine',since:10}]);
+ // lab results go to the lab-results member, flags read from the old arrows
+ const {series}=await import('./labs.mjs'),ls=series('alex',{privateDir:priv});
+ assert.equal(ls.measurements.length,4);assert.equal(ls.pending.length,1);assert.equal(ls.measurements.find(m=>/sodium/i.test(m.name)).latest.status,'low');
+ assert.equal(series('sam',{privateDir:priv}).measurements.length,0);
  // never twice, JSON untouched
  assert.throws(()=>importJson({privateDir:priv}),/already has a household/);
  assert.equal(hashAll(),before,'JSON files and uploads are unchanged');
@@ -51,6 +56,10 @@ try{
  rmSync(process.env.DB_FILE);rmSync(process.env.DB_FILE+'-wal',{force:true});rmSync(process.env.DB_FILE+'-shm',{force:true});
  const ok=spawnSync(process.execPath,['scripts/import-json.mjs','--private',priv,'--dry-run'],{env:{...process.env},encoding:'utf8'});
  assert.equal(ok.status,0,ok.stderr);assert.match(ok.stdout,/DRY RUN/);assert(!/Example|Medicine A|push\.example/.test(ok.stdout),'CLI prints counts, never values');
+ // an unknown marker name in lab-values.json fails the whole import (nothing written)
+ rmSync(process.env.DB_FILE);rmSync(process.env.DB_FILE+'-wal',{force:true});rmSync(process.env.DB_FILE+'-shm',{force:true});D.close();
+ J('lab-values.json',[{iso:'2000-01-01',values:[{name:'Not a real marker',value:'1'}]}]);
+ assert.throws(()=>importJson({privateDir:priv}),/lab-values.json entry 0: Unknown marker name/);assert.equal(S.households().length,0,'a failed import writes nothing');
  // invalid input fails cleanly
  J('members.json',[{id:'Bad Id',name:'X'}]);assert.throws(()=>importJson({privateDir:priv}),/members.json entry 0/);
  J('members.json',[]);assert.throws(()=>importJson({privateDir:priv}),/missing or empty/);

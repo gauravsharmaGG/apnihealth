@@ -32,7 +32,7 @@ try{
  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:2,mobile:true});
  const base=`http://127.0.0.1:${port}/`;
  await send('Page.navigate',{url:base});await sleep(1500);
- for(const [member,expectTabs] of [['alex',6],['sam',4],['mia',5]]){
+ for(const [member,expectTabs] of [['alex',6],['sam',6],['mia',5]]){
   await ev(`localStorage.setItem('profile','${member}')`);
   await send('Page.navigate',{url:base+'?p='+member});await sleep(1500);
   const tabs=await ev(`[...document.querySelectorAll('.topbar nav a')].map(a=>a.hash)`);
@@ -45,6 +45,18 @@ try{
    if(shots){const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,member+'-'+h.slice(1)+'.png'),Buffer.from(s.result.data,'base64'))}
   }
  }
+ // lab results: the second adult sees their own results and can add a report with the form
+ await ev(`localStorage.setItem('profile','sam')`);await send('Page.navigate',{url:base+'?p=sam#measurements'});await sleep(1500);
+ const before=await ev(`document.querySelectorAll('#measurement-grid .measurement').length`);assert.equal(before,2,'sam has two lab series');
+ await ev(`document.querySelector('#lab-add').click()`);await sleep(300);assert(await ev(`document.querySelector('#lab-dialog').open`));
+ assert(!(await ev('document.querySelector("#lab-dialog").scrollWidth>document.querySelector("#lab-dialog").clientWidth+1')),'lab form fits 390px');
+ if(shots){const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'sam-lab-form.png'),Buffer.from(s.result.data,'base64'))}
+ await ev(`(()=>{const f=document.querySelector('.lab-row');f.querySelector('.lab-name').value='Ferritin';f.querySelector('.lab-value').value='50';f.querySelector('.lab-unit').value='ng/mL';document.querySelector('#lab-date').value='2000-01-01';document.querySelector('#lab-form').requestSubmit()})()`);
+ await sleep(800);assert(!(await ev(`document.querySelector('#lab-dialog').open`)),await ev(`document.querySelector('#lab-msg').textContent`));
+ assert.equal(await ev(`document.querySelectorAll('#measurement-grid .measurement').length`),3,'the new result appears');
+ assert.equal(await ev(`document.querySelectorAll('#lab-report-list [data-lab-del]').length`),3);
+ await ev(`localStorage.setItem('profile','alex')`);await send('Page.navigate',{url:base+'?p=alex#measurements'});await sleep(1500);
+ assert((await ev(`document.querySelectorAll('#measurement-grid .measurement').length`))>10,'alex keeps their own results');
  assert.deepEqual(errors,[],'no script errors');
- console.log('PASS browser smoke: every member\'s tabs render at 390x844, no horizontal scroll, no script errors.');
+ console.log('PASS browser smoke: every member\'s tabs render at 390x844, no horizontal scroll, no script errors; the lab form adds a report for a second adult.');
 }finally{br?.kill();srv?.kill();await sleep(200);rmSync(dir,{recursive:true,force:true})}
