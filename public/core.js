@@ -26,6 +26,8 @@ function spark(vals,{w=120,h=36,cls='spark'}={}){
  const pts=v.map((x,i)=>(i*step).toFixed(1)+','+(h-3-(x-min)/r*(h-6)).toFixed(1)).join(' ');
  return `<svg class="${cls}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true" focusable="false"><polyline points="${pts}"/></svg>`;
 }
+// Status of one medicine dose slot: taken / skipped from the log, otherwise due, missed (2 h after the slot) or upcoming.
+function doseStatus(plan,slot,now=Date.now()){const l=plan.logs?.[slot.key];if(l?.status==='taken')return ['taken','Taken'+(l.at?' '+hm(l.at):'')];if(l?.status==='skipped')return ['skipped','Skipped'];const ms=slotMs(slot);return ms+2*36e5<now?['missed','Not marked']:ms<=now?['due','Due']:['upcoming','Upcoming']}
 async function api(path){const r=await fetch(path,{credentials:'same-origin'});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(Error(j.error||'Request failed'),{status:r.status});return j}
-window.AH={CFG,TZ,esc,day,hm,addDays,inst,slotMs,longDate,nf,disp,unitOf,GROUPS,tracked,spark,api};
+window.AH={CFG,TZ,esc,day,hm,addDays,inst,slotMs,longDate,nf,disp,unitOf,GROUPS,tracked,spark,api,doseStatus};
 })();

@@ -3,7 +3,7 @@
 (()=>{
 const A=window.AH,$=s=>document.querySelector(s);let serial=0;
 const every=p=>p.mode==='interval'?'every '+p.interval+' h':p.frequency===1?'once a day':p.frequency+'× a day';
-function status(p,s,now){const l=p.logs?.[s.key];if(l?.status==='taken')return ['taken','Taken'+(l.at?' '+A.hm(l.at):'')];if(l?.status==='skipped')return ['skipped','Skipped'];const ms=A.slotMs(s);return ms+2*36e5<now?['missed','Not marked']:ms<=now?['due','Due']:['upcoming','Upcoming']}
+const status=(p,s,now)=>A.doseStatus(p,s,now);
 async function render(){
  const el=$('#meds-list');if(!el||$('#medicines').hidden)return;const p=window.PROFILE,n=++serial;
  el.innerHTML='<p class="muted">Loading…</p>';
