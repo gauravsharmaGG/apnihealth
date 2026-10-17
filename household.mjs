@@ -92,7 +92,7 @@ export async function handle(req,res,path,user,hh){
    case '/api/household/members/remove':{
     const m=listMembers(hh.id).find(x=>x.id===b.id);
     if(m&&b.confirm!==m.name)throw Error('Type the profile name to confirm');
-    removeMember(String(b.id||''));return json(res,200,{ok:true}),true;
+    await removeMember(String(b.id||''));return json(res,200,{ok:true}),true;
    }
   }
  }catch(e){

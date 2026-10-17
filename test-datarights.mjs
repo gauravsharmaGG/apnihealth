@@ -19,7 +19,7 @@ for(const m of ['ann','kid','sal','bob']){
  const e=ev.addEpisode(m,{title:'Example cold',category:'Illness',startDate:'2000-01-03'});ev.addEvent(m,{episodeId:e.id,kind:'note',date:'2000-01-03',time:'08:00',note:'Example note'});
  labs.addReport(m,{date:'2000-01-04',values:[{name:'Ferritin',value:'45',unit:'ng/mL',reference:'30-300'}]});
  ap.mutate(m,{action:'save',appointment:{title:'Checkup',category:'checkup',date:'2000-02-01',time:'09:00'}});
- ev.addInbox(m,{category:'other',date:'2000-01-05',title:'Scan',fileName:'scan.png',mimeType:'image/png',dataBase64:png});
+ await ev.addInbox(m,{category:'other',date:'2000-01-05',title:'Scan',fileName:'scan.png',mimeType:'image/png',dataBase64:png});
 }
 const out={};
 for(const [e,roles,c] of [['owner-a@example.com',[[a,'owner'],[sh,'owner']],1],['editor-a@example.com',[[a,'editor']],1],['viewer-a@example.com',[[a,'viewer']],1],['owner-s@example.com',[[sh,'owner']],1],['owner-b@example.com',[[b,'owner']],1],['undecided@example.com',[],0]]){
