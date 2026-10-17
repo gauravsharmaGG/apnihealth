@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync,statSync} from 'node:fs';import {tmpdir} from 'node:o
 const dir=mkdtempSync(tmpdir()+'/apni-db-');process.env.DB_FILE=dir+'/test.db';
 const D=await import('./db.mjs'),S=await import('./store.mjs');
 const {MIGRATIONS}=await import('./migrations.mjs');
+S.enterAs(S.SYSTEM);
 try{
  const d=D.db();
  assert.equal(D.version(d),MIGRATIONS.at(-1).version,'migrated to the latest version on open');
@@ -23,8 +24,24 @@ try{
  assert.throws(()=>d.prepare("INSERT INTO log_entries VALUES('e1','nobody','steps','2000-01-01',1,'manual',0)").run(),/FOREIGN KEY/);
  // the access check
  assert.throws(()=>S.forMember('nobody'),S.AccessError);assert.throws(()=>S.forMember(''),S.AccessError);assert.throws(()=>S.forMember(undefined),S.AccessError);
- assert.throws(()=>S.forMember('sam',h.id),S.AccessError,'a member of another household is refused');
- const a=S.forMember('alex',h.id),m=S.forMember('mia');
+ // actors: a user sees only households they belong to, with their role; no actor means no access
+ const Acc=await import('./accounts.mjs');
+ const owner=Acc.createUser('owner@example.com'),viewer=Acc.createUser('viewer@example.com'),other=Acc.createUser('other@example.com');
+ Acc.setMembership(h.id,owner.id,'owner');Acc.setMembership(h.id,viewer.id,'viewer');Acc.setMembership(h2.id,other.id,'editor');
+ const asUser=(u,hh,fn)=>S.runAs({type:'user',userId:u.id,household:hh},fn);
+ assert.equal(asUser(owner,h.id,()=>S.forMember('alex').role),'owner');
+ assert.throws(()=>asUser(owner,h.id,()=>S.forMember('sam')),/Unknown profile/,'a member of another household looks unknown');
+ assert.throws(()=>asUser(other,h2.id,()=>S.forMember('alex')),/Unknown profile/);
+ assert.throws(()=>asUser(other,h.id,()=>S.forMember('alex')),/Unknown profile/,'claiming another household does not help');
+ assert.equal(asUser(other,h2.id,()=>S.forMember('sam').role),'editor');
+ const ins0="INSERT INTO log_entries(id,member_id,metric,date,value,source,ts) VALUES($id,$member,'steps','2000-01-01',1,'manual',1)";
+ assert.throws(()=>asUser(viewer,h.id,()=>S.forMember('alex').run(ins0,{id:'v1'})),/Read-only/,'viewers cannot write');
+ assert.deepEqual(asUser(viewer,h.id,()=>S.forMember('alex').all('SELECT id FROM log_entries WHERE member_id=$member')),[],'viewers can read');
+ assert.equal(S.runAs({type:'ingest',household:h.id,memberId:'alex'},()=>S.forMember('alex').role),'editor');
+ assert.throws(()=>S.runAs({type:'ingest',household:h.id,memberId:'alex'},()=>S.forMember('mia')),/Unknown profile/,'a member token reaches one member');
+ assert.throws(()=>S.runAs({type:'ingest',household:h.id},()=>S.forMember('sam')),/Unknown profile/,'a household token stays in its household');
+ assert.equal(await new Promise(ok=>setImmediate(()=>ok(S.runAs(undefined,()=>{try{S.forMember('alex');return 'allowed'}catch(e){return e.message}})))),'No access context','no actor, no access');
+ const a=S.forMember('alex'),m=S.forMember('mia');
  assert.throws(()=>a.all('SELECT * FROM log_entries'),/not scoped/);
  assert.throws(()=>a.all('SELECT * FROM log_entries WHERE member_id=?',['mia']),/not scoped/);
  assert.throws(()=>a.all('SELECT * FROM log_entries WHERE member_id=$member',{member:'mia'}),/bound by the store/);
@@ -47,5 +64,5 @@ try{
  assert.equal(a.get("SELECT COUNT(*) n FROM log_entries WHERE member_id=$member").n,1);
  // deleting a member removes its data
  d.prepare("DELETE FROM members WHERE id='mia'").run();assert.equal(d.prepare('SELECT COUNT(*) n FROM episodes').get().n,2);assert.equal(d.prepare("SELECT COUNT(*) n FROM log_entries WHERE member_id='mia'").get().n,0);
- console.log('PASS db: migrations, owner-only file, constraints, member access check, scoped queries, documents, transactions, cascade.');
+ console.log('PASS db: migrations, owner-only file, constraints, member access check, scoped queries, documents, transactions, cascade, actors and roles.');
 }finally{D.close();rmSync(dir,{recursive:true,force:true})}

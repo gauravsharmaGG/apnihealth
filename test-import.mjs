@@ -27,6 +27,7 @@ J('lab-values.json',JSON.parse(readFileSync(new URL('config/lab-values.example.j
 const hashAll=()=>createHash('sha256').update(readdirSync(priv,{recursive:true}).sort().map(f=>{const p=join(priv,f);return statSync(p).isFile()?f+readFileSync(p):f}).join('|')).digest('hex');
 const before=hashAll();
 const {importJson}=await import('./importer.mjs'),D=await import('./db.mjs'),S=await import('./store.mjs'),{docs}=S;
+S.enterAs(S.SYSTEM);
 try{
  // dry run: full validation, nothing written
  const dry=importJson({privateDir:priv,dryRun:true});

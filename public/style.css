@@ -403,3 +403,8 @@ body.docpage{margin:0;height:100dvh;display:flex;flex-direction:column;backgroun
 .lab-check{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px}.lab-check input{min-height:0;width:18px;height:18px}
 .lab-row{border:1px solid var(--line);border-radius:12px;padding:4px 14px 10px;margin:14px 0 0;min-width:0}.lab-row legend{font-size:12px;font-weight:600;color:var(--muted);padding:0 4px}
 .lab-row .field input,.lab-row .field select{width:100%}
+
+/* Sign-in pages */
+.auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--paper)}
+.auth-card{width:min(420px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px}.auth-card h1{margin:4px 0 12px;font-size:28px}
+.auth-form .field input{width:100%}.auth-msg{background:var(--tint);border-radius:10px;padding:12px 14px}.auth-error{background:#fdf1e4;color:var(--amber);border-radius:10px;padding:12px 14px}

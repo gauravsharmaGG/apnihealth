@@ -7,7 +7,7 @@ import {listEpisodes} from './events.mjs';
 import * as meds from './medicines.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
-import {system,transaction} from './store.mjs';
+import {system,transaction,listMembers,runAs,SYSTEM} from './store.mjs';
 import {TIME_ZONE,publicOrigin} from './env.mjs';
 const dir=new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('base64url'),unb64=s=>Buffer.from(s,'base64url');
 const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
@@ -52,7 +52,7 @@ export function subs(){
  return [...out.values()];
 }
 function saveSubs(a){
- const d=system(),known=new Set(members.ids());
+ const d=system(),known=new Set(listMembers().map(m=>m.id)); // all households: this rewrites every device's topics
  transaction(d,()=>{
   d.exec('DELETE FROM push_subscriptions'); // topics cascade
   const s=d.prepare('INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at,muted) VALUES(?,?,?,?,?)'),t=d.prepare('INSERT INTO push_topics(endpoint,member_id,topic,since) VALUES(?,?,?,?)');
@@ -148,4 +148,5 @@ export async function tick(now=Date.now(),send=deliver){
  if(changed)saveState(state);
  return list.length+alist.length;
 }
-export function start(){setInterval(()=>tick().catch(e=>console.error('push tick',e.message)),30000).unref?.()}
+// The scheduler reads every member's plans and appointments, so it runs as the system actor.
+export function start(){setInterval(()=>runAs(SYSTEM,()=>tick()).catch(e=>console.error('push tick',e.message)),30000).unref?.()}

@@ -8,4 +8,7 @@ if(t.length<16)throw Error('preview auth shim: PREVIEW_AUTH_TOKEN missing or too
 export const issuer='',audience='',allowedEmails=new Set(['preview']);
 export async function loadKeys(){return []}
 export function verifyToken(){return false}
+export function verifiedClaim(){return null}
+export const PREVIEW_EMAIL='preview@example.com'; // the preview user seeded by seed.mjs (owner of the example household)
 export async function authorized(req){const h=Buffer.from(String(req.headers['x-preview-auth']||''));return h.length===t.length&&timingSafeEqual(h,t)}
+export async function verifiedEmail(req){return await authorized(req)?PREVIEW_EMAIL:null}

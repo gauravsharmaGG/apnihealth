@@ -127,5 +127,39 @@ CREATE TABLE lab_pending(
  PRIMARY KEY(member_id,report_id,pos),
  FOREIGN KEY(member_id,report_id) REFERENCES lab_reports(member_id,id) ON DELETE CASCADE
 );
+`},
+ {version:3,name:'users, sessions, sign-in links and household memberships',sql:`
+CREATE TABLE users(
+ id TEXT PRIMARY KEY,
+ email TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK(length(email) BETWEEN 3 AND 254 AND email NOT GLOB '*[ <>,;]*' AND email LIKE '%_@_%'),
+ name TEXT,
+ active_household_id TEXT REFERENCES households(id) ON DELETE SET NULL,
+ created_at TEXT NOT NULL,
+ last_login_at TEXT
+);
+CREATE TABLE memberships(
+ household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ role TEXT NOT NULL CHECK(role IN ('owner','editor','viewer')),
+ created_at TEXT NOT NULL,
+ PRIMARY KEY(household_id,user_id)
+);
+CREATE INDEX memberships_user ON memberships(user_id);
+-- Only SHA-256 hashes of session and sign-in tokens are stored; the tokens themselves live in the cookie or email.
+CREATE TABLE sessions(
+ token_hash TEXT PRIMARY KEY,
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ last_seen_at INTEGER NOT NULL
+);
+CREATE INDEX sessions_user ON sessions(user_id);
+CREATE TABLE login_tokens(
+ token_hash TEXT PRIMARY KEY,
+ email TEXT NOT NULL COLLATE NOCASE,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ used_at INTEGER
+);
 `}
 ];

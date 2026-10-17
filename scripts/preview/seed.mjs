@@ -23,7 +23,9 @@ mkdirSync(P('private/profiles/'+CHILD),{recursive:true,mode:0o700});copyFileSync
 writeFileSync(P('private/ingest-token.txt'),'preview-not-a-real-token-000000000000\n',{mode:0o600});
 // app data through the app's own modules (validation stays in sync with the code)
 const imp=f=>import(pathToFileURL(P(f)).href);
-const store=await imp('store.mjs'),house=store.createHousehold('Example household');
+const store=await imp('store.mjs');store.enterAs(store.SYSTEM);const house=store.createHousehold('Example household');
+// the preview user (signed in through the preview auth shim) owns the example household
+{const acc=await imp('accounts.mjs');acc.setMembership(house.id,acc.createUser('preview@example.com',{name:'Preview'}).id,'owner')}
 for(const m of JSON.parse(readFileSync(P('config/members.example.json'),'utf8')))store.addMember(house.id,m);
 // lab results through the app's own module (same validation and catalog as the form)
 const lab=await imp('labs.mjs'),SAM='sam';

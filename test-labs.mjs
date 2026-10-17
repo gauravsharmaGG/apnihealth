@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';
 const dir=mkdtempSync(tmpdir()+'/apni-labs-');process.env.DB_FILE=dir+'/l.db';
 const L=await import('./labs.mjs'),S=await import('./store.mjs'),D=await import('./db.mjs');
+S.enterAs(S.SYSTEM);
 const priv=dir+'/private';mkdirSync(priv);
 try{
  // catalog: default markers, case-insensitive names and aliases, private additions merged in
