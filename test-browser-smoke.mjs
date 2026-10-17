@@ -30,7 +30,7 @@ try{
  await send('Runtime.enable');await send('Log.enable');await send('Network.enable');await send('Page.enable');
  await send('Network.setBypassServiceWorker',{bypass:true});await send('Network.setExtraHTTPHeaders',{headers:{'X-Preview-Auth':token}});
  const base=`http://127.0.0.1:${port}/`;
- const nav={alex:9,sam:9,mia:8},extra={alex:['#records'],sam:['#s-reports'],mia:[]};
+ const nav={alex:9,sam:9,mia:8},extra={alex:['#records','#overview'],sam:['#s-reports','#s-overview'],mia:[]};
  for(const [vw,vh,mobile] of [[1280,800,false],[390,844,true]]){
  await send('Emulation.setDeviceMetricsOverride',{width:vw,height:vh,deviceScaleFactor:mobile?2:1,mobile});
  await send('Page.navigate',{url:base});await sleep(1500);
@@ -60,6 +60,15 @@ try{
    if(shots){const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,member+'-'+h.slice(1)+'-'+vw+'.png'),Buffer.from(s.result.data,'base64'))}
   }
  }
+ }
+ // home dashboard: a card per tracked measurement for alex (fictional data), a welcome state for a new profile
+ for(const [m,vw] of [['alex',1280],['alex',390],['sam',390]]){
+  await send('Emulation.setDeviceMetricsOverride',{width:vw,height:vw>500?800:844,deviceScaleFactor:vw>500?1:2,mobile:vw<500});
+  await ev(`localStorage.setItem('profile','${m}')`);await send('Page.navigate',{url:base+'?p='+m+'#home'});await sleep(1500);
+  assert.equal(await ev(`document.querySelector('#home-greet').textContent`),m==='alex'?'Hello, Alex.':'Hello, Sam.');
+  if(m==='alex'){assert.equal(await ev(`document.querySelectorAll('#home-cards .metric-card').length`),7,'one card per tracked measurement');assert(await ev(`document.querySelectorAll('#home-cards .mc-spark').length>=5`),'sparklines')}
+  else assert(await ev(`!!document.querySelector('#home-cards .home-empty')`),'empty state for a new profile');
+  assert(!(await ev('document.documentElement.scrollWidth>innerWidth+1')),m+' home scrolls horizontally at '+vw);
  }
  // lab results: the second adult sees their own results and can add a report with the form
  await ev(`localStorage.setItem('profile','sam')`);await send('Page.navigate',{url:base+'?p=sam#measurements'});await sleep(1500);

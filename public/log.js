@@ -29,7 +29,7 @@ async function syncKeys(){
  $('#sync-url').value=j.endpoint;
  $('#sync-keys').innerHTML=j.keys.length?j.keys.map(k=>`<li><span class="nm">${esc(k.label)}<small>${k.shared?'Shared by the whole household · ':''}added ${esc(day(k.createdAt))} · last used ${esc(day(k.lastUsedAt))}</small></span><button type="button" class="ghost" data-revoke-key="${esc(k.id)}">Revoke</button></li>`).join(''):'<li class="muted">No keys yet. Create one for each phone that sends data.</li>';
 }
-async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(hasLabResults())window.mergeLog?.(E,M);renderAll()}
+async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(hasLabResults())window.mergeLog?.(E,M);renderAll();document.dispatchEvent(new CustomEvent('logchange',{detail:{profile:P(),entries:E}}))}
 
 // Newest value per day for a metric (later entries on the same day win).
 function series(metric){const byDay=new Map();for(const e of E)if(e.metric===metric)byDay.set(e.date,{...e,value:disp(metric,e.value)});return [...byDay.values()].sort((a,b)=>a.date<b.date?-1:1)}
