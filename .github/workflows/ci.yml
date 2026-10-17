@@ -40,6 +40,7 @@ jobs:
         env:
           NO_PUSH: "1"
         run: |
+          node test-theme.mjs
           node test-db.mjs
           node test-import.mjs
           node test-labs.mjs

@@ -22,3 +22,10 @@ PREVIEW_MODE=1 PREVIEW_AUTH_TOKEN=$(openssl rand -hex 16) NO_PUSH=1 PORT=4180 \
 ```
 
 Send the token as the `X-Preview-Auth` header (for example with a browser extension or a local proxy).
+
+## Screenshots
+
+`node scripts/preview/screenshots.mjs <out dir> [name=profile#view@WIDTHxHEIGHT ...]` seeds the same fictional data
+in a temporary copy of the repo, starts the preview server and saves PNGs with headless Chrome (`CHROME_BIN`).
+Without job arguments it writes `desktop.png` (Home, 1280x800) and `phone.png` (Home, 390x844). Add `full` after
+the size for a full-page capture, e.g. `home-long=alex#home@390x844full`.
