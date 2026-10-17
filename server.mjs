@@ -19,11 +19,13 @@ import * as settings from './settings.mjs';
 import * as rights from './datarights.mjs';
 import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
-import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
+import {PORT,APP_HOST,APP_NAME,TIME_ZONE,DEMO_NOTICE,publicOrigin} from './env.mjs';
 import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const pub=resolve(root,'public'),port=PORT;
-runAs(SYSTEM,()=>members.load()); // fail fast at startup when the database has no members (the error says how to add them)
+// Fail fast at startup when the database has no members (the error says how to add them), except with open
+// built-in sign-up, where an empty instance is normal: the first person to sign up creates their own household.
+if(!(auth.MODE==='builtin'&&auth.SIGNUP==='open'))runAs(SYSTEM,()=>members.load());
 if(runAs(SYSTEM,()=>ingest.migrateLegacy()))console.log('Registered the existing Apple Health key from private/ingest-token.txt as a shared household key. Create per-profile keys in the app and revoke it when ready.');
 if(auth.MODE==='builtin'&&!A.userCount())console.log('No users yet. Create the first one: node scripts/create-user.mjs --email you@example.com --role owner --link');
 setInterval(()=>A.purgeExpired(),36e5).unref();
@@ -84,10 +86,15 @@ const server=http.createServer(async(req,res)=>{try{
  return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>inZone(hs?.timeZone,()=>app(req,res,reqUrl,path,user,hh,hs)));
 }catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}});
 
+const escHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 function serveStatic(req,res,path){
  const file=resolve(pub,'.'+(path==='/'?'/index.html':path));
  if(!file.startsWith(pub+'/') || path.includes('\0'))return send(res,404,'Not found');
  let stat;try{stat=statSync(file)}catch{return send(res,404,'Not found')};if(!stat.isFile()||!mime[extname(file)])return send(res,404,'Not found');
+ if(DEMO_NOTICE&&extname(file)==='.html'){ // demo instances: the notice on top of the app shell too
+  const html=readFileSync(file,'utf8').replace(/<body[^>]*>/,m=>m+`<p class="demo-notice" role="note">${escHtml(DEMO_NOTICE)}</p>`);
+  res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime['.html'],'Content-Length':Buffer.byteLength(html)});return res.end(req.method==='HEAD'?undefined:html);
+ }
  res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime[extname(file)],'Content-Length':stat.size});if(req.method==='HEAD')res.end();else createReadStream(file).on('error',()=>res.destroy()).pipe(res);
 }
 

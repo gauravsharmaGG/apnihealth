@@ -60,6 +60,7 @@ jobs:
           node test-access.mjs
           node test-ahparse.mjs
           node test-preview.mjs
+          node test-demo.mjs
           python3 test-build-index.py
 
       - name: Server end-to-end (preview seed)
