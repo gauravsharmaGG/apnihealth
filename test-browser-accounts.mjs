@@ -100,6 +100,11 @@ try{
  const vl=await until(()=>(log.match(/sign-in link for new-viewer@example\.com: (\S+)/)||[])[1],5000,'viewer sign-in link');
  await go2(vl.replace(/^https?:\/\/[^/]+/,base));await ev2("document.querySelector('form.auth-form').requestSubmit()");
  await until(()=>ev2("location.pathname==='/welcome/passkey'"),8000,'viewer passkey prompt');await ev2("document.getElementById('pk-prompt-skip').click()");
+ // the health data notice comes before anything else
+ await until(()=>ev2("location.pathname==='/consent'&&!!document.querySelector('input[name=consent]')"),8000,'consent page');
+ assert(await ev2('document.documentElement.scrollWidth<=innerWidth'),'consent page: no horizontal scroll');
+ assert.match(await ev2('document.body.textContent'),/not a medical device/);
+ await ev2("document.querySelector('input[name=disclaimer]').click();document.querySelector('input[name=consent]').click();document.querySelector('form[action=\"/consent\"]').requestSubmit()");
  await until(async()=>await ev2("location.pathname==='/'&&!!window.APP_CONFIG"),8000,'viewer signed in');
  assert.equal(await ev2('APP_CONFIG.user.role'),'viewer');
  for(const sel of ['#add-event','#new-episode','#lab-add','#log-form'])assert.equal(await ev2(`getComputedStyle(document.querySelector('${sel}')).display`),'none',sel+' hidden for viewers');

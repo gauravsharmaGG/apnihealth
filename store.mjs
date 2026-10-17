@@ -9,6 +9,7 @@
 // Without an actor every access is refused (fail closed). Instance-wide tables (households, members, users,
 // push subscriptions) go through the named helpers below and accounts.mjs.
 import {randomUUID} from 'node:crypto';
+import {hasConsent} from './consent.mjs';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {db,transaction} from './db.mjs';
 
@@ -33,6 +34,12 @@ export function roleIn(householdId,a=actor()){
  return null;
 }
 
+// Writes need a writing role and, for people, the current health-data consent (consent.mjs).
+function assertWrite(a,role){
+ if(!canWrite(role))throw new AccessError('Read-only access',403);
+ if(a.type==='user'&&!hasConsent(a.userId))throw new AccessError('Accept the health data notice first',403);
+}
+export const canWriteMember=memberId=>{const m=forMember(memberId);assertWrite(actor(),m.role);return m};
 export function forMember(memberId){
  const a=actor();if(!a)throw new AccessError('No access context',403);
  if(typeof memberId!=='string'||!memberId)throw new AccessError('Unknown profile');
@@ -51,7 +58,7 @@ export function forMember(memberId){
   id:memberId,household:m.household_id,role,
   all:(sql,params)=>{const [s,p]=bind(sql,params);return s.all(p)},
   get:(sql,params)=>{const [s,p]=bind(sql,params);return s.get(p)},
-  run:(sql,params)=>{if(!canWrite(role))throw new AccessError('Read-only access',403);const [s,p]=bind(sql,params);return s.run(p)},
+  run:(sql,params)=>{assertWrite(a,role);const [s,p]=bind(sql,params);return s.run(p)},
   tx:fn=>transaction(d,fn),
  };
 }

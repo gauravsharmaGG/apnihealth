@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {resolve,sep} from 'node:path';
 import * as members from './members.mjs';
-import {docs,forMember,canWrite,AccessError} from './store.mjs';
+import {docs,forMember,canWrite,AccessError,canWriteMember} from './store.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const base=p=>{if(!members.has(p))throw Error('Unknown profile');return resolve(root,'private/profiles',p)};
 const kinds=new Set(['temperature','medication','care','status','note','symptom','visit','test']);
@@ -82,7 +82,7 @@ export function addInbox(p,v){
  if(typeof v.mimeType!=='string'||!mimes.has(v.mimeType))throw Error('Use a JPG, PNG, WebP, HEIC or PDF file');
  if(typeof v.dataBase64!=='string'||!v.dataBase64)throw Error('File data is required');
  const buf=Buffer.from(v.dataBase64,'base64');if(!buf.length||buf.length>MAX_FILE)throw Error('File must be smaller than 8 MB');
- if(!canWrite(forMember(p).role))throw new AccessError('Read-only access',403); // before any file is written
+ canWriteMember(p); // role and consent are checked before any file is written
  const id=randomUUID(),stored=id+mimes.get(v.mimeType);mkdirSync(upDir(p),{recursive:true,mode:0o700});writeFileSync(resolve(upDir(p),stored),buf,{mode:0o600,flag:'wx'});
  const epId=typeof v.episodeId==='string'&&listEpisodes(p).some(x=>x.id===v.episodeId)?v.episodeId:undefined;
  const item={id,category:v.category,episodeId:epId,date:v.date,title,note,fileName,storedFileName:stored,mimeType:v.mimeType,size:buf.length,createdAt:new Date().toISOString(),status:'needs-review'};

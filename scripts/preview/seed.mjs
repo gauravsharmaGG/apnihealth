@@ -25,7 +25,7 @@ writeFileSync(P('private/ingest-token.txt'),'preview-not-a-real-token-0000000000
 const imp=f=>import(pathToFileURL(P(f)).href);
 const store=await imp('store.mjs');store.enterAs(store.SYSTEM);const house=store.createHousehold('Example household');
 // the preview user (signed in through the preview auth shim) owns the example household
-{const acc=await imp('accounts.mjs');acc.setMembership(house.id,acc.createUser('preview@example.com',{name:'Preview'}).id,'owner')}
+{const acc=await imp('accounts.mjs'),u=acc.createUser('preview@example.com',{name:'Preview'});acc.setMembership(house.id,u.id,'owner');(await imp('consent.mjs')).recordConsent(u.id)}
 for(const m of JSON.parse(readFileSync(P('config/members.example.json'),'utf8')))store.addMember(house.id,m);
 // lab results through the app's own module (same validation and catalog as the form)
 const lab=await imp('labs.mjs'),SAM='sam';
