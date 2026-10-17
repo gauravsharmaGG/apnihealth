@@ -1,14 +1,18 @@
-// Minimal SMTP client (node:net/node:tls only) for sign-in and invite emails.
-// SMTP_URL: smtps://user:pass@host:465 (implicit TLS) or smtp://user:pass@host:587 (STARTTLS is required).
-// Plain, unencrypted SMTP is accepted only to a loopback address (a local relay or a test server).
-// SMTP_FROM: the sender, e.g. "ApniHealth <health@example.com>". Without SMTP_URL, nothing is sent and
-// mailConfigured() is false (the server then prints sign-in links to its log, for development).
-import net from 'node:net';
-import tls from 'node:tls';
+// Outgoing email for sign-in links and invites, with two transports:
+// - Resend HTTP API (RESEND_API_KEY): one HTTPS POST with fetch, so it also works where raw sockets are not
+//   available (Cloudflare Workers). RESEND_API_URL overrides the endpoint (tests; plain http only to loopback).
+// - SMTP (SMTP_URL), a minimal client on node:net/node:tls:
+//   smtps://user:pass@host:465 (implicit TLS) or smtp://user:pass@host:587 (STARTTLS is required).
+//   Plain, unencrypted SMTP is accepted only to a loopback address (a local relay or a test server).
+// RESEND_API_KEY wins when both are set. MAIL_FROM (or SMTP_FROM) is the sender, e.g. "ApniHealth <health@example.com>".
+// With neither transport, nothing is sent and mailConfigured() is false (the server then prints sign-in links to
+// its log, for development).
 import {randomBytes} from 'node:crypto';
 import {readFileSync,existsSync} from 'node:fs';
 const caFile=process.env.CA_BUNDLE||['/etc/ssl/cert.pem','/etc/ssl/certs/ca-certificates.crt'].find(f=>existsSync(f));
-export const mailConfigured=()=>!!process.env.SMTP_URL;
+export const mailTransport=()=>process.env.RESEND_API_KEY?'resend':process.env.SMTP_URL?'smtp':null;
+export const mailConfigured=()=>!!mailTransport();
+const defaultFrom=()=>process.env.MAIL_FROM||process.env.SMTP_FROM||('no-reply@'+(process.env.APP_HOST||'localhost'));
 const noCrlf=(v,label)=>{if(/[\r\n]/.test(String(v)))throw Error(label+' contains a line break');return String(v)};
 const loopback=h=>h==='localhost'||h==='127.0.0.1'||h==='::1'||h==='[::1]';
 const encodeHeader=v=>/^[\x20-\x7e]*$/.test(v)?v:'=?UTF-8?B?'+Buffer.from(v).toString('base64')+'?=';
@@ -27,12 +31,38 @@ function client(socket){
  };
 }
 
-export async function sendMail({to,subject,text},{url=process.env.SMTP_URL,from=process.env.SMTP_FROM,timeout=20000}={}){
- if(!url)throw Error('SMTP is not configured');
+// Sends one plain-text email. Options override the environment: {apiKey} (Resend) or {url} (SMTP), {from}, {timeout}.
+export async function sendMail(msg,opts={}){
+ const apiKey=opts.apiKey??(opts.url?null:process.env.RESEND_API_KEY);
+ if(apiKey)return sendResend(msg,{...opts,apiKey});
+ const url=opts.url??process.env.SMTP_URL;
+ if(!url)throw Error('Email is not configured (set RESEND_API_KEY or SMTP_URL)');
+ return sendSmtp(msg,{...opts,url});
+}
+
+const RESEND_URL='https://api.resend.com/emails';
+async function sendResend({to,subject,text},{apiKey,from=defaultFrom(),timeout=20000,endpoint=process.env.RESEND_API_URL||RESEND_URL}){
+ const u=new URL(endpoint);
+ if(u.protocol!=='https:'&&!(u.protocol==='http:'&&loopback(u.hostname)))throw Error('RESEND_API_URL must use https://');
+ noCrlf(from,'MAIL_FROM');noCrlf(to,'Recipient');noCrlf(subject,'Subject');noCrlf(apiKey,'RESEND_API_KEY');
+ let res;
+ try{
+  res=await fetch(u,{method:'POST',redirect:'error',signal:AbortSignal.timeout(timeout),
+   headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json','User-Agent':'ApniHealth'},
+   body:JSON.stringify({from,to:[to],subject,text:String(text),headers:{'Auto-Submitted':'auto-generated'}})});
+ }catch(e){throw Error('Resend request failed: '+(e?.name==='TimeoutError'?'timeout':'network error'))}
+ // The error text names the status and Resend's own error name/message only; never the key or the request.
+ const body=await res.text().catch(()=>'');
+ if(!res.ok){let why='';try{const j=JSON.parse(body);why=[j.name,j.message].filter(v=>typeof v==='string').join(': ').slice(0,200)}catch{}throw Error('Resend refused: '+res.status+(why?' '+why:''))}
+ try{return {id:JSON.parse(body).id}}catch{return {}}
+}
+
+async function sendSmtp({to,subject,text},{url,from=defaultFrom(),timeout=20000}){
+ const [{default:net},{default:tls}]=await Promise.all([import('node:net'),import('node:tls')]);
  const u=new URL(url),host=u.hostname,implicit=u.protocol==='smtps:';
  if(!implicit&&u.protocol!=='smtp:')throw Error('SMTP_URL must start with smtp:// or smtps://');
  const port=Number(u.port||(implicit?465:587));
- const sender=noCrlf(from||('no-reply@'+(process.env.APP_HOST||'localhost')),'SMTP_FROM');
+ const sender=noCrlf(from,'SMTP_FROM');
  noCrlf(to,'Recipient');noCrlf(subject,'Subject');
  const tlsOpts={servername:host,...(caFile?{ca:readFileSync(caFile)}:{}),minVersion:'TLSv1.2'};
  const socket=implicit?tls.connect({host,port,...tlsOpts}):net.connect({host,port});

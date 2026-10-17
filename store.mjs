@@ -9,7 +9,7 @@
 // Without an actor every access is refused (fail closed). Instance-wide tables (households, members, users,
 // push subscriptions) go through the named helpers below and accounts.mjs.
 import {randomUUID} from 'node:crypto';
-import {rmSync} from 'node:fs';
+import {blobs,profilePrefix} from './blobs.mjs';
 import {fileURLToPath} from 'node:url';
 import {resolve,sep} from 'node:path';
 import {hasConsent} from './consent.mjs';
@@ -141,21 +141,23 @@ export function addProfile(householdId,m){
  if(roleIn(householdId)!=='owner')throw new AccessError('Only an owner can add profiles',403);
  return addMember(householdId,{...m,id:newMemberId(m?.name)});
 }
-// Where a profile's uploaded files live: private/profiles/<id>/ next to the code.
+// Where a profile's uploaded files live on disk with the fs blob backend: private/profiles/<id>/ next to the code
+// (blob keys under profilePrefix(id) in blobs.mjs).
 const profilesRoot=resolve(fileURLToPath(new URL('.',import.meta.url)),'private/profiles');
 export function profileDir(memberId){
  const p=resolve(profilesRoot,String(memberId));
  if(!p.startsWith(profilesRoot+sep)||p.slice(profilesRoot.length+1).includes(sep))throw Error('Bad profile id');
  return p;
 }
-// Deletes a profile and, through ON DELETE CASCADE, all of its records, then its uploaded files.
-export function removeMember(memberId){
+// Deletes a profile and, through ON DELETE CASCADE, all of its records, then its uploaded files (after the
+// transaction commits; the fs backend removes them before the returned Promise settles).
+export async function removeMember(memberId){
  const m=ownerOf(memberId),d=db();
  transaction(d,()=>{
   if(d.prepare('SELECT COUNT(*) n FROM members WHERE household_id=?').get(m.household).n<=1)throw Error('A household needs at least one profile');
   d.prepare('DELETE FROM members WHERE id=?').run(memberId);
  });
- rmSync(profileDir(memberId),{recursive:true,force:true});
+ await blobs().deletePrefix(profilePrefix(memberId));
 }
 const rowToMember=r=>({id:r.id,name:r.name,initial:r.initial,kind:r.kind,labs:!!r.labs,color:r.color,household:r.household_id});
 export function listMembers(householdId){

@@ -35,8 +35,8 @@ Per household member (adults and children; set up from a `members.json` file, se
 
 - Node.js 22.13 or newer (uses the built-in `node:sqlite`; no npm dependencies) and Python 3 for the build script.
 - A TLS reverse proxy or tunnel in front of the server (it listens on `127.0.0.1` only).
-- For built-in sign-in by email: an SMTP account (optional during setup; links are printed to the server log
-  until SMTP is configured).
+- For built-in sign-in by email: a [Resend](https://resend.com) API key or an SMTP account (optional during
+  setup; links are printed to the server log until email is configured).
 
 ## Set up
 
@@ -68,11 +68,15 @@ SMTP_URL=smtps://user:password@smtp.example.com:465 SMTP_FROM="ApniHealth <healt
 node server.mjs
 ```
 
+Email goes out over SMTP (`SMTP_URL`) or, with `RESEND_API_KEY` set, through the Resend HTTP API (one HTTPS
+request, no SMTP connection; it wins when both are set). `MAIL_FROM` (or `SMTP_FROM`) is the sender and must be on
+a domain verified with your provider. Use a send-only API key.
+
 ### Sign-in (AUTH_MODE)
 
 - `AUTH_MODE=builtin` (default): people sign in with a one-time link sent by email (valid 15 minutes, single use).
   The server keeps the session (30 days, extended while used) and sets an `HttpOnly`, `SameSite=Lax` cookie,
-  `Secure` with the `__Host-` prefix when served through `APP_HOST` over TLS. Without `SMTP_URL`, sign-in links
+  `Secure` with the `__Host-` prefix when served through `APP_HOST` over TLS. Without `RESEND_API_KEY` or `SMTP_URL`, sign-in links
   are printed to the server log instead of emailed (development only). Once signed in, anyone can add a
   **passkey** (Face ID, Touch ID, device PIN) in Settings and sign in with it from then on; passkeys need HTTPS
   (or `localhost`) and are tied to the host name in `APP_HOST`. Sign-up is controlled by `SIGNUP_MODE`:
@@ -108,7 +112,7 @@ node server.mjs
   access), **editor** (add and change records of every profile) or **viewer** (read only). A household always keeps
   at least one owner. One login can belong to several households and switch between them in Settings.
 - Owners invite from Settings → Household: an invite link (anyone holding it can join once) or an invite for one
-  email address (emailed when SMTP is set up). Invites expire after 7 days. With `SIGNUP_MODE=invite` an invite is
+  email address (emailed when email is set up). Invites expire after 7 days. With `SIGNUP_MODE=invite` an invite is
   the only way for a new address to get an account.
 - **Apple Health sync** uses one key per profile (Integrations → Sync from Apple Health), so a phone can only add numbers to
   its own profile. An existing `private/ingest-token.txt` key keeps working as a shared household key until you

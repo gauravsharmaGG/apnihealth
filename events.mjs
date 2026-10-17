@@ -1,13 +1,11 @@
 // Per-profile episodes, care log (fever, medicine, notes) and record inbox (photo/PDF uploads awaiting review).
-// Records live in the database (document tables via store.docs); uploaded files stay in private/profiles/<id>/uploads.
-import {writeFileSync,mkdirSync,statSync,unlinkSync,createReadStream} from 'node:fs';
+// Records live in the database (document tables via store.docs); uploaded files go through blobs.mjs
+// (key profiles/<id>/uploads/<file>; on Node that is still private/profiles/<id>/uploads/).
 import {randomUUID} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
-import {resolve,sep} from 'node:path';
 import * as members from './members.mjs';
+import {blobs,uploadKey} from './blobs.mjs';
 import {docs,forMember,canWrite,AccessError,canWriteMember} from './store.mjs';
-const root=fileURLToPath(new URL('.',import.meta.url));
-const base=p=>{if(!members.has(p))throw Error('Unknown profile');return resolve(root,'private/profiles',p)};
+const known=p=>{if(!members.has(p))throw Error('Unknown profile')};
 const kinds=new Set(['temperature','medication','care','status','note','symptom','visit','test']);
 const epCats=new Set(['Illness','Infection','Injury','Procedure','Chronic condition','Other']);
 const cats=new Set(['u-examination','vaccination','growth-chart','medical-document','lab-report','other']);
@@ -43,7 +41,6 @@ export function validateEvent(v){
  if(['care','status','note','symptom','visit','test'].includes(v.kind)&&!e.note)throw Error('Notes are required');
  return e;
 }
-const upDir=p=>resolve(base(p),'uploads');
 export const listEvents=p=>EV.list(p);
 export const listEpisodes=p=>EP.list(p);
 const dateOk=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -73,7 +70,7 @@ export function updateEvent(p,id,v){const all=listEvents(p),i=all.findIndex(e=>e
 export function deleteEvent(p,id){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);EV.replace(p,all);return true}
 const pub=({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status})=>({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status});
 export const listInbox=p=>IN.list(p).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(pub);
-export function addInbox(p,v){
+export async function addInbox(p,v){
  if(!v||typeof v!=='object')throw Error('Upload must be an object');
  if(!cats.has(v.category))throw Error('Record type is invalid');
  if(typeof v.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v.date))throw Error('Date is invalid');
@@ -83,19 +80,20 @@ export function addInbox(p,v){
  if(typeof v.dataBase64!=='string'||!v.dataBase64)throw Error('File data is required');
  const buf=Buffer.from(v.dataBase64,'base64');if(!buf.length||buf.length>MAX_FILE)throw Error('File must be smaller than 8 MB');
  canWriteMember(p); // role and consent are checked before any file is written
- const id=randomUUID(),stored=id+mimes.get(v.mimeType);mkdirSync(upDir(p),{recursive:true,mode:0o700});writeFileSync(resolve(upDir(p),stored),buf,{mode:0o600,flag:'wx'});
+ known(p); // unknown profiles are refused before anything is stored
+ const id=randomUUID(),stored=id+mimes.get(v.mimeType),key=uploadKey(p,stored);await blobs().put(key,buf,{contentType:v.mimeType});
  const epId=typeof v.episodeId==='string'&&listEpisodes(p).some(x=>x.id===v.episodeId)?v.episodeId:undefined;
  const item={id,category:v.category,episodeId:epId,date:v.date,title,note,fileName,storedFileName:stored,mimeType:v.mimeType,size:buf.length,createdAt:new Date().toISOString(),status:'needs-review'};
- const all=IN.list(p);all.push(item);try{IN.replace(p,all)}catch(e){unlinkSync(resolve(upDir(p),stored));throw e}
+ try{const all=IN.list(p);all.push(item);IN.replace(p,all)}catch(e){await blobs().delete(key).catch(()=>{});throw e}
  return pub(item);
 }
-export function inboxFile(p,id){
+// The stored file of one inbox item: {key,size,mime,name} or null; stream it with blobs().stream(key).
+export async function inboxFile(p,id){
  const it=IN.list(p).find(x=>x.id===id);if(!it)return null;
- const f=resolve(upDir(p),it.storedFileName);if(!f.startsWith(upDir(p)+sep))return null;
- try{const st=statSync(f);return {path:f,size:st.size,mime:it.mimeType,name:it.fileName}}catch{return null}
+ let key;try{key=uploadKey(p,it.storedFileName)}catch{return null}
+ const st=await blobs().stat(key);return st?{key,size:st.size,mime:it.mimeType,name:it.fileName}:null;
 }
-export function deleteInbox(p,id){
+export async function deleteInbox(p,id){
  const all=IN.list(p),i=all.findIndex(x=>x.id===id);if(i<0)return false;const [it]=all.splice(i,1);IN.replace(p,all);
- try{unlinkSync(resolve(upDir(p),it.storedFileName))}catch{}return true;
+ try{await blobs().delete(uploadKey(p,it.storedFileName))}catch{}return true;
 }
-export {createReadStream};
