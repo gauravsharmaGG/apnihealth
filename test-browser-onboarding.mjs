@@ -22,7 +22,7 @@ try{
  // base is set once the server has a port
  let log='';
  // a free port (retries if taken) and wait until the server listens
- const {p:proc,port}=await startServer({cwd:dir,env:{PATH:env.PATH,NO_PUSH:'1',AUTH_MODE:'builtin',APP_TIME_ZONE:'UTC'},onData:d=>log+=d});srv=proc;const base=`http://localhost:${port}`;
+ const {p:proc,port}=await startServer({cwd:dir,env:{PATH:env.PATH,NO_PUSH:'1',AUTH_MODE:'builtin',APP_TIME_ZONE:'UTC',DEMO_NOTICE:'Demo instance: data may be wiped at any time. Do not enter real health data. Not medical advice.'},onData:d=>log+=d});srv=proc;const base=`http://localhost:${port}`;
  // waits for DevTools and a page target (clear error with Chrome's output if it never gets there)
  const chromeRun=await launchChrome({chrome});br=chromeRun.proc;const t=chromeRun.target,dbg=chromeRun.port;
  const ws=new WebSocket(t.webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);
@@ -39,17 +39,22 @@ try{
  const shot=async name=>{if(process.env.SHOTS)(await import('node:fs')).writeFileSync(join(process.env.SHOTS,name+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))};
  const step=n=>until(()=>ev(`document.getElementById('ob-progress')?.textContent.startsWith('Step ${n} of 5')`),8000,'onboarding step '+n);
  // sign up
- await go(base+'/');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);await shot('login');
+ await go(base+'/');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);
+ // demo notice (DEMO_NOTICE): a full-width strip above the card, never squeezed in beside it
+ const demoLayout=async what=>{const g=await ev(`(()=>{const n=document.querySelector('.demo-notice'),c=document.querySelector('.auth-card'),r=n.getBoundingClientRect(),k=c.getBoundingClientRect(),m=getComputedStyle(c.querySelector('.eyebrow'),'::before');return {nb:r.bottom,nw:r.width,ct:k.top,cw:k.width,mh:parseFloat(m.height),mw:parseFloat(m.width)}})()`);
+  assert(g.nb<=g.ct,what+': demo notice above the card ('+g.nb+' > '+g.ct+')');assert(g.nw>=389,what+': notice spans the width');assert(g.cw>=300,what+': card keeps its width ('+g.cw+')');
+  assert(Math.abs(g.mh-g.mw)<1&&g.mw>=30,what+': logo mark stays square');await noScroll(what+' with demo notice')};
+ await demoLayout('sign-in');await shot('login');
  await ev("document.querySelector('input[name=email]').value='first-time@example.com';document.querySelector('form.auth-form').requestSubmit()");
  const link=await until(()=>(log.match(/sign-in link for first-time@example\.com: (\S+)/)||[])[1],5000,'sign-up link');
  await go(link.replace(/^https?:\/\/[^/]+/,base));await ev("document.querySelector('form.auth-form').requestSubmit()");
  await until(()=>ev("location.pathname==='/welcome/passkey'"),8000,'passkey offer');await noScroll('passkey offer');await shot('passkey-offer');
  await ev("document.getElementById('pk-prompt-skip').click()");
  // notice and consent
- await until(()=>ev("location.pathname==='/consent'&&!!document.querySelector('input[name=consent]')"),8000,'consent page');await noScroll('consent');await shot('consent');
+ await until(()=>ev("location.pathname==='/consent'&&!!document.querySelector('input[name=consent]')"),8000,'consent page');await noScroll('consent');await shot('consent');{const g=await ev(`document.querySelector('.demo-notice').getBoundingClientRect().bottom<=document.querySelector('.auth-card').getBoundingClientRect().top&&document.querySelector('.auth-card').getBoundingClientRect().width>=300`);assert(g,'consent: demo notice above a full-width card')}
  await ev("document.querySelector('input[name=disclaimer]').click();document.querySelector('input[name=consent]').click();document.querySelector('form[action=\"/consent\"]').requestSubmit()");
  // onboarding
- await until(()=>ev("location.pathname==='/welcome'"),8000,'welcome');await step(1);await noScroll('step 1');await shot('ob1');
+ await until(()=>ev("location.pathname==='/welcome'"),8000,'welcome');await step(1);await noScroll('step 1');await shot('ob1');assert(await ev(`document.querySelector('.demo-notice').getBoundingClientRect().bottom<=document.querySelector('.auth-card').getBoundingClientRect().top&&document.querySelector('.auth-card').getBoundingClientRect().width>=300`),'onboarding: demo notice above a full-width card');
  await ev("(()=>{const f=document.getElementById('ob-household');f.name.value='Example Family';f.memberName.value='Alex Example';f.requestSubmit()})()");
  await step(2);await noScroll('step 2');assert.match(await ev("document.getElementById('ob-member-list').textContent"),/Alex Example/);
  await ev("(()=>{const f=document.getElementById('ob-member');f.name.value='Sam Example';f.kind.value='child';f.requestSubmit()})()");
@@ -67,6 +72,7 @@ try{
  await until(()=>ev("/^Bearer [A-Za-z0-9_-]{43}$/.test(document.getElementById('ob-key').value)"),5000,'Apple Health key');await noScroll('key shown');await shot('ob5');
  await ev("document.getElementById('ob-next').click()");
  await until(async()=>await ev("location.pathname==='/'&&!!window.APP_CONFIG"),8000,'app opens');
+ assert(await ev(`(()=>{const n=document.querySelector('.demo-notice');return !!n&&n.getBoundingClientRect().bottom<=document.querySelector('.appbar').getBoundingClientRect().top+1&&n.getBoundingClientRect().width>=389})()`),'app shell: demo notice is a full-width strip above the app bar');await noScroll('app shell with demo notice');
  assert.equal(await ev('APP_CONFIG.timeZone'),'America/Chicago');assert.equal(await ev("fetch('/api/household').then(r=>r.json()).then(j=>j.household.name)"),'Example Family');assert.equal(await ev('APP_CONFIG.members.length'),2);
  // first log entry, in pounds; only the chosen measurements are offered
  await go(base+'/#log');await until(()=>ev("!document.getElementById('log').hidden&&!!document.getElementById('f-weight')"),8000,'log view');await noScroll('log');
@@ -92,5 +98,5 @@ try{
  await until(()=>ev("location.pathname==='/login'"),8000,'signed out after deletion');
  assert.equal((await fetch(base+'/api/me',{headers:{Host:`localhost:${port}`}})).status,401);
  assert.deepEqual(errors,[],'no script errors');
- console.log('PASS browser onboarding: sign up, passkey offer skipped, health data notice accepted, household + child + measurements + time zone + lb/°F + Apple Health key, first weight logged in lb (stored in kg), export download, account deletion from Settings; 390x844, no horizontal scroll.');
+ console.log('PASS browser onboarding: sign up, passkey offer skipped, health data notice accepted, household + child + measurements + time zone + lb/°F + Apple Health key, first weight logged in lb (stored in kg), export download, account deletion from Settings; 390x844 with a demo notice above the card, no horizontal scroll.');
 }finally{try{br?.kill()}catch{};try{srv?.kill()}catch{};rmSync(dir,{recursive:true,force:true})}

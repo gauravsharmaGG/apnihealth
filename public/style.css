@@ -641,3 +641,9 @@ button.text-button.danger:hover{background:var(--bad-soft)}
 
 /* demo instances (DEMO_NOTICE) */
 .demo-notice{margin:0;padding:8px 16px;background:#fbf0dd;color:#6b4210;border-bottom:1px solid #eedfca;font-size:13px;font-weight:600;text-align:center}
+/* demo notice on the sign-in, consent and onboarding pages: a full-width strip above the card, never a flex item
+   beside it (body.auth-page is a flex container that centres the card) */
+.auth-page{flex-direction:column}
+.auth-page>.auth-card{flex:none;margin-block:auto}
+.auth-page>.demo-notice{flex:none;align-self:stretch;margin:-20px -20px 20px}
+.auth-card>.eyebrow:first-child:not(#ob-progress)::before{flex:none;white-space:nowrap}
