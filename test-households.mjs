@@ -23,6 +23,14 @@ let log='';const {p,port}=await startServer({cwd:dir,env,onData:d=>log+=d}),O=`h
 const req=({method='GET',path,token,body,form})=>new Promise((ok,no)=>{const q=http.request({host:'127.0.0.1',port,method,path,headers:{Host:`localhost:${port}`,...(token?{Cookie:'apni_session='+token}:{}),...(method!=='GET'?{'Content-Type':form?'application/x-www-form-urlencoded':'application/json',Origin:O}:{})}},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{let j;try{j=JSON.parse(b)}catch{}ok({status:res.statusCode,headers:res.headers,body:b,json:j})})});q.on('error',no);q.end(form?new URLSearchParams(form).toString():body?JSON.stringify(body):undefined)});
 const T=e=>U[e].token,post=(e,path,body)=>req({method:'POST',path,token:T(e),body});
 const cookieOf=res=>res.headers['set-cookie'][0].split(';')[0].split('=')[1];
+// Server output reaches this process on a pipe, separately from the HTTP socket, so a line the server logged before
+// answering can still be in transit when the response is read. Lines on one pipe keep their order, though:
+// logged(text) waits for a line; flushLog() makes the server log a known line and waits for it, after which
+// everything logged earlier has arrived (that is what makes the "was NOT logged" checks meaningful).
+const logged=(text,what=text)=>until(()=>log.includes(text),5000,what);
+const flushLog=async()=>{const mark='sign-in link for lonely@example.com: ',n=log.split(mark).length;
+ assert.equal((await req({method:'POST',path:'/auth/email',form:{email:'lonely@example.com'}})).headers.location,'/login?sent=1');
+ await until(()=>log.split(mark).length>n,5000,'log flush')};
 const linkFor=async email=>{const l=await until(()=>log.split('\n').filter(x=>x.includes('sign-in link for '+email+': ')).at(-1),5000,'link for '+email);return new URL(l.split(': ').pop().trim())};
 try{
  // overview
@@ -48,7 +56,7 @@ try{
  const il=new URL(inv.json.link);assert.equal(il.pathname,'/invite');assert.equal(inv.json.emailed,false);
  const page=await req({path:il.pathname+il.search});assert.equal(page.status,200);assert.match(page.body,/Join Household A/);assert.match(page.body,/name="invite"/);
  assert.equal((await req({method:'POST',path:'/auth/email',form:{email:'newbie@example.com'}})).headers.location,'/login?sent=1');
- assert(!log.includes('link for newbie@example.com'),'no invite, no sign-up');
+ await flushLog();assert(!log.includes('link for newbie@example.com'),'no invite, no sign-up');
  await req({method:'POST',path:'/auth/email',form:{email:'newbie@example.com',invite:il.searchParams.get('token')}});
  const nl=await linkFor('newbie@example.com');assert.equal(nl.searchParams.get('invite'),il.searchParams.get('token'));
  const conf=await req({path:nl.pathname+nl.search});assert.match(conf.body,/name="invite" value="/);
@@ -62,11 +70,11 @@ try{
  assert.equal((await req({path:il.pathname+il.search})).status,410,'an invite works once');
  // email-bound invite: only that address may use it
  const ei=new URL((await post('owner-a@example.com','/api/household/invites',{role:'editor',email:'owner-b@example.com'})).json.link);
- assert(log.includes('invite link for owner-b@example.com: '),'without SMTP the invite link is logged');
+ await logged('invite link for owner-b@example.com: ','without SMTP the invite link is logged');
  const wrong=await req({path:ei.pathname+ei.search,token:T('lonely@example.com')});assert.match(wrong.body,/different email address/);
  assert.equal((await req({method:'POST',path:'/invite/accept',token:T('lonely@example.com'),form:{token:ei.searchParams.get('token')}})).status,403);
  const n1=log.length;await req({method:'POST',path:'/auth/email',form:{email:'stranger@example.com',invite:ei.searchParams.get('token')}});
- await new Promise(r=>setTimeout(r,200));assert(!log.slice(n1).includes('stranger@example.com'),'bound invite gives no link to other addresses');
+ await flushLog();assert(!log.slice(n1).includes('stranger@example.com'),'bound invite gives no link to other addresses');
  const acc=await req({method:'POST',path:'/invite/accept',token:T('owner-b@example.com'),form:{token:ei.searchParams.get('token')}});assert.equal(acc.status,303);
  const hb=(await req({path:'/api/household',token:T('owner-b@example.com')})).json;
  assert.equal(hb.household.name,'Household A','accepting switches to the new household');assert.equal(hb.household.role,'editor');assert.equal(hb.households.length,2);
