@@ -227,5 +227,12 @@ CREATE TABLE consents(
  accepted_at TEXT NOT NULL,
  PRIMARY KEY(user_id,version)
 );
+`},
+ {version:9,name:'household settings and onboarding',sql:`
+-- settings: JSON {metrics:[...], timeZone, units:{weight,temperature}} (see settings.mjs). onboarded_at: when the
+-- owner finished the first-run setup; households that already exist count as set up.
+ALTER TABLE households ADD COLUMN settings TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE households ADD COLUMN onboarded_at TEXT;
+UPDATE households SET onboarded_at=created_at;
 `}
 ];

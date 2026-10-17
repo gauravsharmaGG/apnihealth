@@ -4,13 +4,14 @@
 const HK={
  HKQuantityTypeIdentifierStepCount:'steps',HKQuantityTypeIdentifierBodyMass:'weight',HKQuantityTypeIdentifierRestingHeartRate:'resting_hr',
  HKQuantityTypeIdentifierBodyFatPercentage:'body_fat',HKQuantityTypeIdentifierBloodPressureSystolic:'bp_sys',HKQuantityTypeIdentifierBloodPressureDiastolic:'bp_dia',
- HKCategoryTypeIdentifierSleepAnalysis:'sleep'};
+ HKCategoryTypeIdentifierSleepAnalysis:'sleep',HKQuantityTypeIdentifierOxygenSaturation:'spo2',
+ HKQuantityTypeIdentifierHeartRateVariabilitySDNN:'hrv',HKQuantityTypeIdentifierBodyTemperature:'temperature'};
 const attr=(s,n)=>{const i=s.indexOf(' '+n+'="');if(i<0)return '';const a=i+n.length+3,b=s.indexOf('"',a);return b<0?'':s.slice(a,b)};
 const toMs=s=>s.length>=25?Date.parse(s.slice(0,10)+'T'+s.slice(11,19)+s.slice(20,23)+':'+s.slice(23,25)):Date.parse(s.slice(0,10)+'T'+s.slice(11,19));
 const r1=v=>Math.round(v*10)/10;
 // ---- aggregation ----
 function aggregator({since=''}={}){
- const steps=new Map(),weight=new Map(),rhr=new Map(),fat=new Map(),sys=new Map(),dia=new Map(),sleep=new Map();let seen=0;
+ const steps=new Map(),weight=new Map(),rhr=new Map(),fat=new Map(),sys=new Map(),dia=new Map(),sleep=new Map(),spo2=new Map(),hrv=new Map(),temp=new Map();let seen=0;
  const avg=(m,d,v)=>{const a=m.get(d);if(a){a.s+=v;a.n++}else m.set(d,{s:v,n:1})};
  const latest=(m,d,t,v)=>{const a=m.get(d);if(!a||t>a.t)m.set(d,{t,v})};
  return {
@@ -26,6 +27,8 @@ function aggregator({since=''}={}){
    else if(m==='resting_hr')avg(rhr,day,q);
    else if(m==='body_fat')latest(fat,day,start,q<=1?q*100:q);
    else if(m==='bp_sys')avg(sys,day,q);else if(m==='bp_dia')avg(dia,day,q);
+   else if(m==='spo2')avg(spo2,day,q<=1?q*100:q);else if(m==='hrv')avg(hrv,day,q);
+   else if(m==='temperature')latest(temp,day,start,attr(tag,'unit')==='degF'?(q-32)*5/9:q);
   },
   finish(){
    const out=[],push=(date,metric,value)=>{if(Number.isFinite(value))out.push({date,metric,value})};
@@ -36,6 +39,9 @@ function aggregator({since=''}={}){
    for(const [d,a] of fat)push(d,'body_fat',r1(a.v));
    for(const [d,a] of sys)push(d,'bp_sys',Math.round(a.s/a.n));
    for(const [d,a] of dia)push(d,'bp_dia',Math.round(a.s/a.n));
+   for(const [d,a] of spo2)push(d,'spo2',Math.round(a.s/a.n));
+   for(const [d,a] of hrv)push(d,'hrv',Math.round(a.s/a.n));
+   for(const [d,a] of temp)push(d,'temperature',r1(a.v));
    // Sleep: union of all "asleep" intervals for the night (several sources overlap), dated by the morning you woke.
    for(const [d,iv] of sleep){iv.sort((x,y)=>x[0]-y[0]);let tot=0,cs=iv[0][0],ce=iv[0][1];for(let i=1;i<iv.length;i++){if(iv[i][0]<=ce){if(iv[i][1]>ce)ce=iv[i][1]}else{tot+=ce-cs;cs=iv[i][0];ce=iv[i][1]}}tot+=ce-cs;const h=tot/36e5;if(h>=0.5&&h<=24)push(d,'sleep',r1(h))}
    out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.metric<b.metric?-1:1);

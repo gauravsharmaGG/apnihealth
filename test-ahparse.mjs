@@ -29,6 +29,12 @@ const rec=[
  R('HKCategoryTypeIdentifierSleepAnalysis',`2026-10-01 02:00:00 ${T}`,`2026-10-01 03:00:00 ${T}`,'HKCategoryValueSleepAnalysisAsleepDeep','Watch'),
  R('HKCategoryTypeIdentifierSleepAnalysis',`2026-10-01 03:00:00 ${T}`,`2026-10-01 06:00:00 ${T}`,'HKCategoryValueSleepAnalysisAsleepREM','Watch'),
  R('HKCategoryTypeIdentifierSleepAnalysis',`2026-09-30 23:10:00 ${T}`,`2026-10-01 06:10:00 ${T}`,'HKCategoryValueSleepAnalysisAsleepUnspecified'),
+ // blood oxygen as a fraction (averaged), HRV averaged, body temperature in °F (latest)
+ R('HKQuantityTypeIdentifierOxygenSaturation',`2026-09-30 03:00:00 ${T}`,`2026-09-30 03:00:00 ${T}`,0.96,'%'),
+ R('HKQuantityTypeIdentifierOxygenSaturation',`2026-09-30 04:00:00 ${T}`,`2026-09-30 04:00:00 ${T}`,0.98,'%'),
+ R('HKQuantityTypeIdentifierHeartRateVariabilitySDNN',`2026-09-30 05:00:00 ${T}`,`2026-09-30 05:00:00 ${T}`,40,'ms'),
+ R('HKQuantityTypeIdentifierHeartRateVariabilitySDNN',`2026-09-30 06:00:00 ${T}`,`2026-09-30 06:00:00 ${T}`,50,'ms'),
+ R('HKQuantityTypeIdentifierBodyTemperature',`2026-09-30 07:00:00 ${T}`,`2026-09-30 07:00:00 ${T}`,98.6,'degF'),
  R('HKQuantityTypeIdentifierHeartRate',`2026-09-30 08:00:00 ${T}`,`2026-09-30 08:00:00 ${T}`,70,'count/min'), // ignored type
  '<Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="30"/></HealthData>'].join('\n');
 writeFileSync(dir+'/export.xml',rec);
@@ -48,6 +54,7 @@ const expect=e=>{const g=(d,m)=>e.entries.find(x=>x.date===d&&x.metric===m)?.val
  assert.equal(g('2026-09-30','steps'),170,'steps dedupe (max source per hour)');assert.equal(g('2026-10-01','steps'),4000);
  assert.equal(g('2026-09-30','weight'),79.8,'latest weight of the day');assert.equal(g('2026-10-02','weight'),80);
  assert.equal(g('2026-09-30','resting_hr'),61);assert.equal(g('2026-09-30','body_fat'),20.5);
+ assert.equal(g('2026-09-30','spo2'),97);assert.equal(g('2026-09-30','hrv'),45);assert.equal(g('2026-09-30','temperature'),37);
  assert.equal(g('2026-09-30','bp_sys'),122);assert.equal(g('2026-09-30','bp_dia'),81);
  assert.equal(g('2026-10-01','sleep'),7.2,'sleep = union of asleep intervals, dated by wake-up day');assert.equal(g('2026-09-30','sleep'),undefined);
  assert.equal(e.entries.some(x=>x.metric==='heart_rate'),false);

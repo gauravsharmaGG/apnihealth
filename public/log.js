@@ -6,8 +6,19 @@ const todayStr=()=>new Date().toLocaleDateString('en-CA');
 const fmtDay=s=>new Date(s+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const fmtDayY=s=>new Date(s+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
 const nf=(v,dp)=>Number(v).toLocaleString('en-GB',{minimumFractionDigits:dp,maximumFractionDigits:dp});
-const TABS=[['weight','Weight'],['steps','Steps'],['resting_hr','Heart rate'],['bp','Blood pressure'],['sleep','Sleep']];
-let M={},E=[],tab='weight',days=30;
+const ALL_TABS=[['weight','Weight'],['steps','Steps'],['resting_hr','Heart rate'],['bp','Blood pressure'],['sleep','Sleep'],['body_fat','Body fat'],['spo2','Blood oxygen'],['hrv','HRV'],['temperature','Temperature']];
+// Household settings (chosen during onboarding): which measurements are tracked and the display units.
+// Values are stored in kg and °C; only what people see and type is converted.
+const GROUPS={weight:['weight'],body_fat:['body_fat'],sleep:['sleep'],steps:['steps'],heart_rate:['resting_hr'],blood_pressure:['bp_sys','bp_dia'],spo2:['spo2'],hrv:['hrv'],temperature:['temperature']};
+const SET=()=>window.APP_CONFIG?.settings||{};
+const enabled=metric=>{const on=SET().metrics;return !Array.isArray(on)||on.some(g=>(GROUPS[g]||[]).includes(metric==='bp'?'bp_sys':metric))};
+const LB=0.45359237,lb=()=>SET().units?.weight==='lb',fahr=()=>SET().units?.temperature==='F';
+const disp=(metric,v)=>metric==='weight'&&lb()?v/LB:metric==='temperature'&&fahr()?v*9/5+32:v;
+const toStore=(metric,v)=>metric==='weight'&&lb()?v*LB:metric==='temperature'&&fahr()?(v-32)*5/9:v;
+const unitOf=metric=>metric==='weight'&&lb()?'lb':metric==='temperature'&&fahr()?'°F':(M[metric]?.unit||{weight:'kg',temperature:'°C'}[metric]||'');
+const TABS=ALL_TABS.filter(([k])=>enabled(k));
+const FORM_METRICS=['weight','steps','resting_hr','sleep','bp_sys','bp_dia','body_fat','spo2','hrv','temperature'];
+let M={},E=[],tab=(TABS[0]||ALL_TABS[0])[0],days=30;
 
 const P=()=>window.PROFILE;
 const MEM=()=>window.PROFILES?.[P()]||{},isLabs=()=>!!MEM().labs,isStarter=()=>MEM().kind==='adult'&&!MEM().labs,hasLabResults=()=>MEM().kind==='adult';
@@ -21,7 +32,7 @@ async function syncKeys(){
 async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(hasLabResults())window.mergeLog?.(E,M);renderAll()}
 
 // Newest value per day for a metric (later entries on the same day win).
-function series(metric){const byDay=new Map();for(const e of E)if(e.metric===metric)byDay.set(e.date,e);return [...byDay.values()].sort((a,b)=>a.date<b.date?-1:1)}
+function series(metric){const byDay=new Map();for(const e of E)if(e.metric===metric)byDay.set(e.date,{...e,value:disp(metric,e.value)});return [...byDay.values()].sort((a,b)=>a.date<b.date?-1:1)}
 function countUp(el,to,dp){
   if(reduce||!isFinite(to)){el.textContent=nf(to,dp);return}
   const t0=performance.now(),d=700;const step=t=>{const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);el.textContent=nf(to*e,dp);if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step);
@@ -30,12 +41,13 @@ function tileData(){
   const w=series('weight'),st=series('steps'),hr=series('resting_hr'),sl=series('sleep'),sy=series('bp_sys'),di=series('bp_dia');
   const last=a=>a.at(-1);
   const out=[];
-  if(w.length){const l=last(w),p=w.at(-2);out.push({k:'weight',label:'Weight',v:l.value,dp:1,unit:'kg',sub:p?`${l.value-p.value>=0?'+':'−'}${nf(Math.abs(l.value-p.value),1)} kg since ${fmtDay(p.date)}`:fmtDayY(l.date),tab:'weight'})}
+  if(w.length){const l=last(w),p=w.at(-2),u=unitOf('weight');out.push({k:'weight',label:'Weight',v:l.value,dp:1,unit:u,sub:p?`${l.value-p.value>=0?'+':'−'}${nf(Math.abs(l.value-p.value),1)} ${u} since ${fmtDay(p.date)}`:fmtDayY(l.date),tab:'weight'})}
   if(st.length){const l=last(st),w7=st.filter(x=>Date.parse(x.date)>Date.parse(l.date)-6*864e5),avg=w7.reduce((a,b)=>a+b.value,0)/w7.length;out.push({k:'steps',label:l.date===todayStr()?'Steps today':'Steps, latest',v:l.value,dp:0,unit:'steps',sub:`7-day average ${nf(avg,0)}`,tab:'steps'})}
   if(hr.length){const l=last(hr);out.push({k:'hr',label:'Resting heart rate',v:l.value,dp:0,unit:'bpm',sub:fmtDayY(l.date),tab:'resting_hr'})}
   if(sy.length&&di.length){const a=last(sy),b=di.find(x=>x.date===a.date)||last(di);out.push({k:'bp',label:'Blood pressure',text:`${nf(a.value,0)}/${nf(b.value,0)}`,unit:'mmHg',sub:fmtDayY(a.date),tab:'bp'})}
   if(sl.length){const l=last(sl);out.push({k:'sleep',label:'Sleep',v:l.value,dp:1,unit:'h',sub:fmtDayY(l.date),tab:'sleep'})}
-  return out;
+  for(const [k,label,dp] of [['spo2','Blood oxygen',0],['hrv','Heart rate variability',0],['temperature','Body temperature',1]]){const s=series(k);if(s.length){const l=last(s);out.push({k,label,v:l.value,dp,unit:unitOf(k),sub:fmtDayY(l.date),tab:k})}}
+  return out.filter(t=>enabled(t.tab));
 }
 function tilesHtml(items,cls){return items.map(t=>`<a class="tile ${cls||''}" href="#log" data-tab="${t.tab}"><span class="tile-label">${esc(t.label)}</span><span class="tile-value"><b data-to="${t.v??''}" data-dp="${t.dp??0}">${esc(t.text??nf(t.v,t.dp))}</b><small>${esc(t.unit)}</small></span><span class="tile-sub">${esc(t.sub)}</span></a>`).join('')}
 function animateTiles(root){root.querySelectorAll('b[data-to]').forEach(b=>{if(b.dataset.to!=='')countUp(b,Number(b.dataset.to),Number(b.dataset.dp))});root.querySelectorAll('.tile').forEach((t,i)=>t.style.setProperty('--i',i))}
@@ -52,7 +64,7 @@ function renderTiles(){
 function renderTabs(){$('#log-tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${k===tab}" data-tab="${k}" class="${k===tab?'selected':''}">${l}</button>`).join('')}
 
 const LABMAP={weight:'Weight',resting_hr:'Resting heart rate',body_fat:'Estimated body fat: percentage'};
-function labPts(metric){if(!hasLabResults())return [];const m=(window.HEALTH_DATA||[]).find(x=>x.name===LABMAP[metric]);return m?m.points.filter(p=>!p.logged&&Number.isFinite(p.n)).map(p=>({date:p.date,value:p.n,lab:true})):[]}
+function labPts(metric){if(!hasLabResults())return [];const m=(window.HEALTH_DATA||[]).find(x=>x.name===LABMAP[metric]);return m?m.points.filter(p=>!p.logged&&Number.isFinite(p.n)).map(p=>({date:p.date,value:disp(metric,p.n),lab:true})):[]}
 function lineChart(sets,{bars=false,unit=''}){
   const narrow=innerWidth<700,W=narrow?360:640,H=narrow?250:300,L=narrow?44:52,R=18,T=24,B=40;
   const cutoff=Date.now()-days*864e5;
@@ -77,14 +89,14 @@ function lineChart(sets,{bars=false,unit=''}){
 function renderChart(){
   const box=$('#log-chart');
   if(tab==='bp'){box.innerHTML=lineChart([{metric:'bp_sys',name:'Top number',pts:series('bp_sys')},{metric:'bp_dia',name:'Bottom number',pts:series('bp_dia')}],{unit:'mmHg'})}
-  else{const m=M[tab]||{};box.innerHTML=lineChart([{metric:tab,name:m.label||tab,pts:series(tab),lab:labPts(tab)}],{bars:tab==='steps',unit:m.unit||''})}
+  else{const m=M[tab]||{};box.innerHTML=lineChart([{metric:tab,name:m.label||tab,pts:series(tab),lab:labPts(tab)}],{bars:tab==='steps',unit:unitOf(tab)})}
   box.querySelectorAll('circle.point').forEach((c,i)=>c.style.setProperty('--i',Math.min(i,30)));
   box.querySelectorAll('rect.bar').forEach((r,i)=>r.style.setProperty('--i',Math.min(i,40)));
 }
 function renderEntries(){
   const rows=E.slice().sort((a,b)=>a.date===b.date?b.ts-a.ts:a.date<b.date?1:-1).slice(0,40);
   $('#entry-count').textContent=E.length?`${E.length} saved · showing latest ${rows.length}`:'';
-  $('#log-entries').innerHTML=rows.length?`<ul class="entry-list">${rows.map(e=>`<li><span class="e-main"><strong>${esc(M[e.metric]?.label||e.metric)}</strong><span>${nf(e.value,M[e.metric]?.dp??0)} ${esc(M[e.metric]?.unit||'')}</span></span><span class="e-meta">${fmtDayY(e.date)} · ${e.source==='apple-health'?'Apple Health':'Added by hand'}</span><button class="text-button danger" data-del="${esc(e.id)}" aria-label="Delete ${esc(M[e.metric]?.label||e.metric)} entry from ${fmtDayY(e.date)}">Delete</button></li>`).join('')}</ul>`:'<p class="muted">Nothing here yet. Your first entry will appear here.</p>';
+  $('#log-entries').innerHTML=rows.length?`<ul class="entry-list">${rows.map(e=>`<li><span class="e-main"><strong>${esc(M[e.metric]?.label||e.metric)}</strong><span>${nf(disp(e.metric,e.value),M[e.metric]?.dp??0)} ${esc(unitOf(e.metric))}</span></span><span class="e-meta">${fmtDayY(e.date)} · ${e.source==='apple-health'?'Apple Health':'Added by hand'}</span><button class="text-button danger" data-del="${esc(e.id)}" aria-label="Delete ${esc(M[e.metric]?.label||e.metric)} entry from ${fmtDayY(e.date)}">Delete</button></li>`).join('')}</ul>`:'<p class="muted">Nothing here yet. Your first entry will appear here.</p>';
 }
 function renderSyncStatus(){
   const a=E.filter(e=>e.source==='apple-health');
@@ -95,9 +107,11 @@ function renderSyncStatus(){
 function renderAll(){renderTiles();renderTabs();renderChart();renderEntries();renderSyncStatus()}
 
 $('#f-date').value=todayStr();$('#f-date').max=todayStr();
+for(const k of FORM_METRICS){const f=$('#f-'+k);if(f)f.closest('label').hidden=!enabled(k)}
+$('#u-weight').textContent=unitOf('weight');$('#u-temperature').textContent=unitOf('temperature');
 $('#log-form').addEventListener('submit',async ev=>{
   ev.preventDefault();const msg=$('#log-msg'),btn=ev.target.querySelector('button.primary'),date=$('#f-date').value;
-  const entries=[];for(const k of ['weight','steps','resting_hr','sleep','bp_sys','bp_dia','body_fat']){const raw=$('#f-'+k).value.trim().replace(',','.');if(raw==='')continue;const v=Number(raw);if(!isFinite(v)){msg.className='form-msg bad';msg.textContent=`“${raw}” is not a number.`;return}entries.push({metric:k,date,value:v})}
+  const entries=[];for(const k of FORM_METRICS){const raw=$('#f-'+k).value.trim().replace(',','.');if(raw==='')continue;const v=Number(raw);if(!isFinite(v)){msg.className='form-msg bad';msg.textContent=`“${raw}” is not a number.`;return}entries.push({metric:k,date,value:toStore(k,v)})}
   if(!date){msg.className='form-msg bad';msg.textContent='Choose a date.';return}
   if(!entries.length){msg.className='form-msg bad';msg.textContent='Enter at least one measurement.';return}
   if(entries.some(e=>e.metric==='bp_sys')!==entries.some(e=>e.metric==='bp_dia')){msg.className='form-msg bad';msg.textContent='Enter both blood pressure numbers.';return}

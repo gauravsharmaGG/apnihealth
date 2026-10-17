@@ -10,7 +10,10 @@ export const METRICS={
  bp_sys:{label:'Blood pressure (top)',unit:'mmHg',min:60,max:260,dp:0},
  bp_dia:{label:'Blood pressure (bottom)',unit:'mmHg',min:30,max:160,dp:0},
  sleep:{label:'Sleep',unit:'h',min:0,max:24,dp:1},
- body_fat:{label:'Body fat',unit:'%',min:2,max:70,dp:1}
+ body_fat:{label:'Body fat',unit:'%',min:2,max:70,dp:1},
+ spo2:{label:'Blood oxygen',unit:'%',min:50,max:100,dp:0},
+ hrv:{label:'Heart rate variability',unit:'ms',min:1,max:500,dp:0},
+ temperature:{label:'Body temperature',unit:'°C',min:30,max:45,dp:1}
 };
 const dayRe=/^\d{4}-\d{2}-\d{2}$/;
 function validDay(d){if(!dayRe.test(d))return false;const t=Date.parse(d+'T12:00:00Z');return Number.isFinite(t)&&t<=Date.now()+36e5*30&&t>=Date.parse('1990-01-01')}
@@ -49,6 +52,9 @@ export function parseIngest(body){
    else if(name==='resting_heart_rate')put('resting_hr',date,Number(p.qty),'last');
    else if(name==='body_fat_percentage')put('body_fat',date,Number(p.qty),'last');
    else if(name==='sleep_analysis'){const h=Number(p.asleep??p.totalSleep??p.qty);put('sleep',date,h,'last')}
+   else if(name==='oxygen_saturation'||name==='blood_oxygen_saturation'){const q=Number(p.qty??p.Avg);put('spo2',date,q>0&&q<=1?q*100:q,'last')} // a fraction or a percentage
+   else if(name==='heart_rate_variability'||name==='heart_rate_variability_sdnn')put('hrv',date,Number(p.qty??p.Avg),'last');
+   else if(name==='body_temperature'){const q=Number(p.qty);put('temperature',date,/f/i.test(m.units||'')?(q-32)*5/9:q,'last')}
    else if(name==='blood_pressure'){put('bp_sys',date,Number(p.systolic),'last');put('bp_dia',date,Number(p.diastolic),'last')}
   }}
  return Object.values(sums);

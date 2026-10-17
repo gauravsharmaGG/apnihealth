@@ -428,3 +428,11 @@ html[data-role=viewer] :is(#add-event,#new-episode,#lab-add,#log-form,#sync,.mt-
 .notice-list li{margin:.3rem 0}
 .check{display:flex;gap:.6rem;align-items:flex-start;margin:.5rem 0;line-height:1.35}
 .check input{margin-top:.2rem;flex:none;width:1.1rem;height:1.1rem}
+.ob-card h1{font-size:1.45rem}
+.ob-list{list-style:none;padding:0;margin:.6rem 0}.ob-list li{display:flex;justify-content:space-between;gap:.5rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.ob-list small,.ob-core{color:var(--muted)}.ob-core{margin:.2rem 0 0;padding-left:1.1rem}
+.ob-checks,.ob-units{border:0;padding:0;margin:.6rem 0}.ob-units legend{font-size:12px;font-weight:550;color:var(--muted);margin-top:.8rem}
+.ob-card select{display:block;width:100%;margin-top:6px;min-height:46px;font-size:16px}
+.ob-card .ghost{width:100%;min-height:46px;margin-top:14px}
+.ob-signout{margin-top:1rem;text-align:center}
+.fields .field[hidden]{display:none}

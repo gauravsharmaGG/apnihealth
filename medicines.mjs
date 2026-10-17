@@ -2,7 +2,7 @@
 import {randomUUID} from 'node:crypto';
 import {listEpisodes} from './events.mjs';
 import {docs} from './store.mjs';
-import {TIME_ZONE} from './env.mjs';
+import {zone} from './env.mjs';
 const PLANS=docs('medicine_plans');
 const dateOK=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00Z').toISOString().slice(0,10)===s;
 const timeOK=s=>typeof s==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
@@ -22,7 +22,7 @@ export function validate(v){
  if(anchor&&v.startDate&&zoneDate(anchor)!==v.startDate)throw Error('First scheduled dose must be on course start date');
  return {name,strength,days,frequency,startDate:v.startDate||null,mode,interval,times:times.sort(),anchor:anchor?new Date(anchor).toISOString():null,confirmed:v.confirmed===true,shift:mode==='interval'&&v.shift===true};
 }
-export const zoneDate=t=>new Intl.DateTimeFormat('en-CA',{timeZone:TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
+export const zoneDate=t=>new Intl.DateTimeFormat('en-CA',{timeZone:zone(),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(t));
 export function slots(p){
  if(!p.confirmed||!p.startDate)return [];
  if(p.mode==='interval')return p.anchor?Array.from({length:p.days*p.frequency},(_,i)=>({key:String(i),at:new Date(Date.parse(p.anchor)+i*p.interval*36e5).toISOString()})):[];
@@ -53,7 +53,7 @@ export function mutate(p,b){
  }
  save(p,a);return a;
 }
-export function instant(date,t){const g=Date.parse(date+'T'+t+':00Z');const off=x=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:TIME_ZONE,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(x)).map(z=>[z.type,z.value]));return Date.UTC(p.year,p.month-1,p.day,p.hour%24,p.minute,p.second)-x};return g-off(g-off(g))}
+export function instant(date,t){const g=Date.parse(date+'T'+t+':00Z');const off=x=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:zone(),hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date(x)).map(z=>[z.type,z.value]));return Date.UTC(p.year,p.month-1,p.day,p.hour%24,p.minute,p.second)-x};return g-off(g-off(g))}
 export const slotMs=s=>s.at?Date.parse(s.at):instant(s.date,s.time);
 
 // Optional "shift" for every-N-hours plans: after a late dose the following doses keep the full gap (never earlier than planned).

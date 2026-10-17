@@ -15,6 +15,8 @@ import * as labs from './labs.mjs';
 import * as household from './household.mjs';
 import * as ingest from './ingest.mjs';
 import * as consentPage from './consent-page.mjs';
+import * as settings from './settings.mjs';
+import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
 import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
@@ -60,7 +62,8 @@ const server=http.createServer(async(req,res)=>{try{
  }
  if(await household.handleAnywhere(req,res,path,user))return;
  const hh=A.activeHousehold(user);
- return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>app(req,res,reqUrl,path,user,hh));
+ const hs=hh?settings.get(hh.id):null;
+ return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>inZone(hs?.timeZone,()=>app(req,res,reqUrl,path,user,hh,hs)));
 }catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}});
 
 function serveStatic(req,res,path){
@@ -71,7 +74,7 @@ function serveStatic(req,res,path){
 }
 
 // The app itself, running inside the request's access context (store.actor()).
-async function app(req,res,reqUrl,path,user,hh){
+async function app(req,res,reqUrl,path,user,hh,hs){
  const qProfile=reqUrl.searchParams.get('profile')||members.defaultId();
  // Write-only Apple Health / Shortcuts endpoint with its own bearer token (Cloudflare Access must bypass this one path).
  if(path==='/api/ingest'){
@@ -81,11 +84,14 @@ async function app(req,res,reqUrl,path,user,hh){
   if(!key&&asked!==undefined&&!hlog.profileOk(asked))return json(res,400,{error:'Unknown profile'}); // never fall back to someone else
   const prof=key||(asked!==undefined?asked:members.defaultId());const entries=hlog.parseIngest(body);return json(res,200,{received:entries.length,saved:hlog.add(entries,'apple-health',prof)});
  }
+ // First-run setup: people without a household, and owners who have not finished setting one up.
+ if(path==='/welcome'&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,'/welcome.html');
  if(!hh){ // signed in, but not in any household yet
   if(path.startsWith('/api/'))return json(res,403,{error:'You are not a member of a household yet'});
-  const [st,html]=auth.page('No household yet','<h1>You are signed in</h1><p>You are not part of a household yet. Open an invite link from its owner, or start your own.</p><form method="post" action="/api/households" class="auth-form"><label class="field">Household name<input name="name" maxlength="80" required value="My household"></label><button class="primary" type="submit">Start a household</button></form><form method="post" action="/logout"><button class="ghost">Sign out</button></form>');
-  return send(res,path==='/'?st:404,html);
+  if(path==='/onboarding.js')return serveStatic(req,res,path);
+  return path==='/'||path==='/index.html'?send(res,303,'',{Location:'/welcome'}):send(res,404,'Not found');
  }
+ if(hh.role==='owner'&&!hs.onboarded&&(path==='/'||path==='/index.html'))return send(res,303,'',{Location:'/welcome'});
  if(await household.handle(req,res,path,user,hh))return;
  if(path==='/api/me'&&req.method==='GET')return json(res,200,{email:user.email,name:user.name,mode:auth.MODE,household:hh,households:A.householdsOf(user.id),consent:{version:CONSENT_VERSION,accepted:consentsOf(user.id)}});
  if(path.startsWith('/api/')&&!hlog.profileOk(qProfile))return json(res,400,{error:'Unknown profile'});
@@ -230,7 +236,7 @@ async function app(req,res,reqUrl,path,user,hh){
  // Instance settings and the member list for the client (names, kinds, colours; no health data).
  // Member colours as CSS (the CSP forbids inline styles): .pc-<id> sets --pc, body[data-profile=<id>] sets --member.
  if(path==='/members.css')return send(res,200,req.method==='HEAD'?'':members.list().map(m=>`.pc-${m.id}{--pc:${m.color||'#157667'}}body[data-profile=${m.id}]{--member:${m.color||'#157667'}}`).join('\n')+'\n',{'Content-Type':'text/css; charset=utf-8'});
- if(path==='/config.js'){const body='window.APP_CONFIG='+JSON.stringify({name:APP_NAME,timeZone:TIME_ZONE,members:members.list(),user:{email:user.email,role:hh.role},authMode:auth.MODE}).replace(/</g,'\\u003c')+';\n';return send(res,200,req.method==='HEAD'?'':body,{'Content-Type':'text/javascript; charset=utf-8'})}
+ if(path==='/config.js'){const body='window.APP_CONFIG='+JSON.stringify({name:APP_NAME,timeZone:hs.timeZone,settings:{metrics:hs.metrics,units:hs.units},members:members.list(),user:{email:user.email,role:hh.role},authMode:auth.MODE}).replace(/</g,'\\u003c')+';\n';return send(res,200,req.method==='HEAD'?'':body,{'Content-Type':'text/javascript; charset=utf-8'})}
  return serveStatic(req,res,path);
 }
 server.listen(port,'127.0.0.1',()=>{console.log(`${APP_NAME} listening on 127.0.0.1:${port}`);if(!process.env.NO_PUSH)push.start()});

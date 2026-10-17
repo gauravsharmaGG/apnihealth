@@ -18,7 +18,7 @@ Per household member (adults and children; set up from a `members.json` file, se
   from start to recovery, with attachments.
 - **Medicines**: courses with fixed times or intervals, dose check-off, late-dose spacing hints and web-push reminders.
 - **Appointments**: a shared calendar with reminders and `.ics` export.
-- **Daily log**: weight, steps, resting heart rate, blood pressure, sleep and body fat, by hand or from Apple Health
+- **Daily log**: weight, steps, resting heart rate, blood pressure, sleep, body fat, blood oxygen, heart rate variability and body temperature, by hand or from Apple Health
   (Health Auto Export app, Apple Shortcuts, or an `export.zip` import).
 - **Lab results** (every adult): add a dated report with its values in the app; a results explorer shows
   plain-language meanings and trends.
@@ -76,6 +76,14 @@ node server.mjs
   `open` (default) lets anyone with a verified email create an account (they start their own household);
   `invite` limits new accounts to people holding an invite. After the first email sign-in, people are offered a
   passkey once. `scripts/create-user.mjs` can still create users from the command line.
+- **First-run setup:** someone without a household (for example right after signing up) goes to `/welcome`:
+  household name and their own adult profile, other profiles (adults or children, optional), which daily
+  measurements to track (weight, body fat, sleep, steps, resting heart rate, blood pressure, blood oxygen, heart
+  rate variability, body temperature; illness episodes, medicines, appointments and lab results are always
+  included), the household's time zone and units (kg/lb, °C/°F), and an Apple Health key for a profile. Owners can
+  return there from Settings → Household. Values are always stored in kg and °C. Each household's time zone is used
+  for its medicine schedules, reminders and calendar files; `APP_TIME_ZONE` is the default for households that have
+  not chosen one. Households that existed before this version count as set up and keep every measurement.
 - **Health data notice and consent:** before anyone can see or enter health data, they read a short notice (not
   medical advice, not a medical device; what is processed and why) and explicitly consent to the processing of
   health data (GDPR Art. 9 style). The app records when and which version they accepted, and asks again when the
@@ -135,7 +143,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py
