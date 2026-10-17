@@ -5,10 +5,10 @@
 const {esc,day,addDays,nf,disp,unitOf,GROUPS,tracked,spark,api,longDate}=window.AH;
 const $=s=>document.querySelector(s);
 const META={
- sleep:{label:'Sleep',tint:'lilac',dp:1,diffDp:1,agg:'last',icon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'},
+ sleep:{label:'Sleep',tint:'lilac',dp:1,diffDp:1,flat:.25,agg:'last',icon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'},
  steps:{label:'Steps',tint:'green',dp:0,pct:true,agg:'last',icon:'<path d="M8 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5zM6 15h4v2a2 2 0 01-4 0zM16 7c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5zM14 19h4v.5a2 2 0 01-4 0z"/>'},
  heart_rate:{label:'Resting heart rate',tint:'rose',dp:0,diffDp:0,agg:'last',icon:'<path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/>'},
- spo2:{label:'Blood oxygen',tint:'sky',dp:0,diffDp:1,agg:'last',icon:'<path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/>'},
+ spo2:{label:'Blood oxygen',tint:'sky',dp:0,diffDp:1,flat:.5,agg:'last',icon:'<path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/>'},
  hrv:{label:'Heart rate variability',tint:'peach',dp:0,diffDp:0,agg:'last',icon:'<path d="M3 12h4l2-5 4 10 2-5h6"/>'},
  weight:{label:'Weight',tint:'sand',dp:1,diffDp:1,agg:'last',icon:'<path d="M5 8h14l-1.5 12h-11zM9 8a3 3 0 016 0"/>'},
  body_fat:{label:'Body fat',tint:'sand',dp:1,diffDp:1,agg:'last',icon:'<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z"/>'},
@@ -27,7 +27,7 @@ function trendText(key,metric,t){
  const m=META[key];if(!t)return {cls:'flat',text:'Not enough data for a weekly comparison'};
  const a=disp(metric,t.now),b=disp(metric,t.before);
  if(m.pct){const p=b?Math.round((a-b)/b*100):0;if(Math.abs(p)<3)return {cls:'flat',text:'About the same as last week'};return {cls:p>0?'up':'down',text:`${p>0?'↑':'↓'} ${Math.abs(p)}% vs last week`}}
- const d=a-b,lim=m.diffDp?0.05:0.5;if(Math.abs(d)<lim)return {cls:'flat',text:'About the same as last week'};
+ const d=a-b,lim=m.flat??(m.diffDp?0.05:0.5);if(Math.abs(d)<lim)return {cls:'flat',text:'About the same as last week'};
  const u=unitOf(metric)==='%'?'points':unitOf(metric);
  return {cls:d>0?'up':'down',text:`${d>0?'↑':'↓'} ${nf(Math.abs(d),m.diffDp)} ${esc(u)} vs last week`};
 }
