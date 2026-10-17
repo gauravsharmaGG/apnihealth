@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';
 const dir=mkdtempSync(tmpdir()+'/apni-members-');process.env.DB_FILE=dir+'/m.db';
 const M=await import('./members.mjs'),S=await import('./store.mjs'),D=await import('./db.mjs');
+S.enterAs(S.SYSTEM);
 try{
  assert.throws(()=>M.load(),/No household members yet.*import-json/,'an empty database explains how to add members');
  assert.equal(M.has('alex'),false);

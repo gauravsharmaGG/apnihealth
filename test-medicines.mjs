@@ -4,9 +4,9 @@ import {mkdtempSync,cpSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'no
 import {pathToFileURL} from 'node:url';import {tmpdir} from 'node:os';
 const root=mkdtempSync(tmpdir()+'/apni-med-test-');
 try{
-for(const f of ['medicines.mjs','events.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
+for(const f of ['medicines.mjs','events.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
 process.env.DB_FILE=root+'/private/test.db'; // fictional household from config/members.example.json, one episode for alex
-{const S=await import(pathToFileURL(root+'/store.mjs')),h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'test'}])}
+{const S=await import(pathToFileURL(root+'/store.mjs'));S.enterAs(S.SYSTEM);const h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'test'}])}
 const {validate,slots,mutate,list,zoneDate,effective,targetMs,slotMs}=await import(pathToFileURL(root+'/medicines.mjs'));
 const p=validate({name:'Test',days:10,frequency:3,mode:'interval',interval:8,startDate:'2026-10-24',anchor:'2026-10-24T22:00:00+02:00',confirmed:true});
 const ss=slots(p);assert.equal(ss.length,30);for(let i=1;i<ss.length;i++)assert.equal(Date.parse(ss[i].at)-Date.parse(ss[i-1].at),8*36e5);assert.equal(zoneDate(ss[1].at),'2026-10-25');assert.equal(new Date(ss[1].at).toLocaleTimeString('en-GB',{timeZone:'Europe/Berlin'}),'05:00:00');

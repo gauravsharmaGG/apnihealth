@@ -4,9 +4,9 @@ import {mkdtempSync,cpSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'no
 import {createECDH,createDecipheriv,createPublicKey,verify,hkdfSync,randomBytes} from 'node:crypto';
 const root=mkdtempSync(tmpdir()+'/apni-push-');
 try{
-for(const f of ['medicines.mjs','events.mjs','push.mjs','appointments.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
+for(const f of ['medicines.mjs','events.mjs','push.mjs','appointments.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
 process.env.DB_FILE=root+'/private/test.db'; // fictional household from config/members.example.json, one episode for alex
-{const S=await import(pathToFileURL(root+'/store.mjs')),h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'ep'}])}
+{const S=await import(pathToFileURL(root+'/store.mjs'));S.enterAs(S.SYSTEM);const h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'ep'}])}
 const P=await import(pathToFileURL(root+'/push.mjs')),M=await import(pathToFileURL(root+'/medicines.mjs'));
 const b=s=>Buffer.from(s,'base64url');
 // 1) encryption round trip, decrypted the way a browser (user agent) does it

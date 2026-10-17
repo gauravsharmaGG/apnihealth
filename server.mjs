@@ -2,7 +2,9 @@ import http from 'node:http';
 import {readFileSync,createReadStream,statSync} from 'node:fs';
 import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {authorized} from './access.mjs';
+import * as auth from './auth.mjs';
+import * as A from './accounts.mjs';
+import {runAs,SYSTEM,households,AccessError,canWrite} from './store.mjs';
 import * as hlog from './log.mjs';
 import * as ev from './events.mjs';
 import * as meds from './medicines.mjs';
@@ -11,33 +13,44 @@ import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
 import * as labs from './labs.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
+import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const pub=resolve(root,'public'),port=PORT;
-members.load(); // fail fast at startup when the database has no members (the error says how to add them)
+runAs(SYSTEM,()=>members.load()); // fail fast at startup when the database has no members (the error says how to add them)
+if(auth.MODE==='builtin'&&!A.userCount())console.log('No users yet. Create the first one: node scripts/create-user.mjs --email you@example.com --role owner --link');
+setInterval(()=>A.purgeExpired(),36e5).unref();
+// Errors from the access check: read-only access is 403; unknown or someone else's member stays 400.
+const fail=(res,e)=>json(res,e instanceof AccessError&&e.status===403?403:400,{error:e.message||'Invalid request'});
 labs.catalog(); // and when the marker catalog (config/markers.default.json + private/markers.json) is invalid
-const headers={'Cache-Control':'private, no-store, max-age=0','X-Robots-Tag':'noindex, nofollow, noarchive','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",'Permissions-Policy':'camera=(), microphone=(), geolocation=()'};
-const frameHeaders={...headers,'X-Frame-Options':'SAMEORIGIN','Content-Security-Policy':headers['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'")};
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.pdf':'application/pdf','.md':'text/plain; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.webmanifest':'application/manifest+json'};
-function readBody(req,limit=1048576){return new Promise((ok,no)=>{let b='',n=0;req.on('data',c=>{n+=c.length;if(n>limit){no(Error('too large'));req.destroy()}else b+=c});req.on('end',()=>ok(b));req.on('error',no)})}
-const json=(res,status,obj)=>send(res,status,JSON.stringify(obj),{'Content-Type':'application/json; charset=utf-8'});
-const hits=new Map();function limited(key,max,windowMs){const now=Date.now(),a=(hits.get(key)||[]).filter(t=>now-t<windowMs);a.push(now);hits.set(key,a);return a.length>max}
-const allowed=new Set([...(APP_HOST?[APP_HOST]:[]),`127.0.0.1:${port}`,`localhost:${port}`]);
-function send(res,status,body='',extra={}){res.writeHead(status,{...headers,'Content-Type':'text/html; charset=utf-8',...extra});res.end(body)}
-function sameOrigin(req){
- const scheme=APP_HOST&&req.headers.host===APP_HOST?'https':'http';
- const expected=`${scheme}://${req.headers.host}`;
- const origin=req.headers.origin,site=req.headers['sec-fetch-site'];
- if(site==='cross-site'||site==='same-site')return false;
- if(origin===expected)return true;
- // Some browsers omit or null the Origin of form POSTs under privacy policies.
- // Browser-controlled Fetch Metadata still proves an exact same-origin request.
- // Never accept an explicit foreign origin or a request lacking both signals.
- return (!origin||origin==='null')&&site==='same-origin';
-}
 const server=http.createServer(async(req,res)=>{try{
  if(!allowed.has(req.headers.host))return send(res,400,'Invalid host');
  if(APP_HOST&&req.headers.host===APP_HOST && req.headers['x-forwarded-proto']!=='https')return send(res,308,'',{Location:publicOrigin()+'/'});
  const reqUrl=new URL(req.url,'http://localhost'),path=decodeURIComponent(reqUrl.pathname);
+ // Write-only Apple Health endpoint: its own bearer token, scoped to one household (no cookies involved).
+ if(path==='/api/ingest')return await runAs({type:'ingest',household:households()[0]?.id},()=>app(req,res,reqUrl,path));
+ // CSRF: every state-changing request must come from this origin (sign-in forms and fetch alike).
+ if(req.method!=='GET'&&req.method!=='HEAD'&&!sameOrigin(req))return path.startsWith('/api/')?json(res,403,{error:'Origin rejected'}):send(res,403,'Origin rejected');
+ if(await auth.handle(req,res,path,reqUrl))return;
+ const user=await auth.authenticate(req);
+ if(!user){
+  if(auth.MODE==='builtin'&&auth.PUBLIC_PATHS.has(path)&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,path);
+  if(path.startsWith('/api/'))return json(res,401,{error:'Sign in first'});
+  if(auth.MODE==='builtin')return send(res,303,'',{Location:'/login'});
+  return send(res,403,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Sign-in required</title><h1>Sign-in required</h1><p><a href="/">Open your private health record</a></p></html>');
+ }
+ const hh=A.activeHousehold(user);
+ return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>app(req,res,reqUrl,path,user,hh));
+}catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}});
+
+function serveStatic(req,res,path){
+ const file=resolve(pub,'.'+(path==='/'?'/index.html':path));
+ if(!file.startsWith(pub+'/') || path.includes('\0'))return send(res,404,'Not found');
+ let stat;try{stat=statSync(file)}catch{return send(res,404,'Not found')};if(!stat.isFile()||!mime[extname(file)])return send(res,404,'Not found');
+ res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime[extname(file)],'Content-Length':stat.size});if(req.method==='HEAD')res.end();else createReadStream(file).on('error',()=>res.destroy()).pipe(res);
+}
+
+// The app itself, running inside the request's access context (store.actor()).
+async function app(req,res,reqUrl,path,user,hh){
  const qProfile=reqUrl.searchParams.get('profile')||members.defaultId();
  // Write-only Apple Health / Shortcuts endpoint with its own bearer token (Cloudflare Access must bypass this one path).
  if(path==='/api/ingest'){
@@ -48,8 +61,12 @@ const server=http.createServer(async(req,res)=>{try{
   let body;try{body=JSON.parse(await readBody(req))}catch{return json(res,400,{error:'Invalid JSON'})}
   const prof=hlog.profileOk(body.profile)?body.profile:(reqUrl.searchParams.has('profile')&&hlog.profileOk(qProfile)?qProfile:members.defaultId());const entries=hlog.parseIngest(body);return json(res,200,{received:entries.length,saved:hlog.add(entries,'apple-health',prof)});
  }
- if(!await authorized(req))return send(res,403,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Sign-in required</title><h1>Sign-in required</h1><p><a href="/">Open your private health record</a></p></html>');
- if(path==='/logout'&&req.method==='POST'){if(!sameOrigin(req))return send(res,403,'Origin rejected');return send(res,303,'',{Location:process.env.LOGOUT_URL||'/cdn-cgi/access/logout'})}
+ if(!hh){ // signed in, but not in any household yet
+  if(path.startsWith('/api/'))return json(res,403,{error:'You are not a member of a household yet'});
+  const [st,html]=auth.page('No household yet','<h1>You are signed in</h1><p>You are not part of a household yet. Ask its owner for an invite link.</p><form method="post" action="/logout"><button class="ghost">Sign out</button></form>');
+  return send(res,path==='/'?st:404,html);
+ }
+ if(path==='/api/me'&&req.method==='GET')return json(res,200,{email:user.email,name:user.name,mode:auth.MODE,household:hh,households:A.householdsOf(user.id)});
  if(path.startsWith('/api/')&&!hlog.profileOk(qProfile))return json(res,400,{error:'Unknown profile'});
  if(path==='/api/medicines'){
   try{
@@ -59,7 +76,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(!sameOrigin(req))return json(res,403,{error:'Origin rejected'});
    if(limited('medicines',300,600000))return json(res,429,{error:'Too many requests'});
    const b=JSON.parse(await readBody(req,65536));meds.mutate(qProfile,b);return json(res,200,{plans:view()});
-  }catch(e){return json(res,400,{error:e.message})}
+  }catch(e){return fail(res,e)}
  }
 
  if(path==='/api/import'){
@@ -69,7 +86,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(limited('import',60,600000))return json(res,429,{error:'Too many requests'});
    const b=JSON.parse(await readBody(req,4*1024*1024));if(!Array.isArray(b.entries)||b.entries.length>60000)throw Error('Send at most 60,000 values at a time');
    const saved=hlog.add(hlog.parseIngest({entries:b.entries}),'apple-health',qProfile);return json(res,200,{received:b.entries.length,saved});
-  }catch(e){return json(res,400,{error:e.message})}
+  }catch(e){return fail(res,e)}
  }
 
  if(path==='/api/appointments/ics'){
@@ -84,7 +101,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(!sameOrigin(req))return json(res,403,{error:'Origin rejected'});
    if(limited('appointments',300,600000))return json(res,429,{error:'Too many requests'});
    const b=JSON.parse(await readBody(req,32768));return json(res,200,{appointments:appts.mutate(qProfile,b)});
-  }catch(e){return json(res,400,{error:e.message})}
+  }catch(e){return fail(res,e)}
  }
 
  if(path==='/api/push'){
@@ -104,7 +121,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(b.action==='mute')return json(res,200,push.mute(ep,String(b.planId),b.muted===true));
    if(b.action==='test'){const s=push.subs().find(x=>x.endpoint===ep);if(!s)throw Error('Not subscribed');const r=await push.deliver(s,{title:'Reminders are on',body:'You will get a notification when a medicine is due.',tag:'meds-test',url:'/?p='+qProfile+'#episodes'},{ttl:300});return json(res,r.status>=200&&r.status<300?200:502,{ok:r.status>=200&&r.status<300,status:r.status})}
    throw Error('Unknown action');
-  }catch(e){return json(res,400,{error:e.message})}
+  }catch(e){return fail(res,e)}
  }
  // Lab results: catalog of known markers (names, groups, aliases), and per-member reports.
  if(path==='/api/labs/catalog'&&req.method==='GET')return json(res,200,{markers:labs.catalog().markers.map(({name,group,aliases})=>({name,group,aliases}))});
@@ -119,7 +136,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(req.method==='POST'&&!id){const r=labs.addReport(qProfile,JSON.parse(await readBody(req,262144)));return json(res,201,{id:r.id,...view()})}
    if(req.method==='DELETE'&&id)return labs.deleteReport(qProfile,id)?json(res,200,{removed:true,...view()}):json(res,404,{error:'Report not found'});
    return json(res,404,{error:'Not found'});
-  }catch(e){return json(res,400,{error:e.message||'Invalid request'})}
+  }catch(e){return fail(res,e)}
  }
  if(path==='/api/log'){
   if(req.method==='GET')return json(res,200,{metrics:hlog.METRICS,entries:hlog.list(qProfile)});
@@ -145,7 +162,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(!id)return json(res,404,{error:'Not found'});
    if(req.method==='PUT'){const e=ev.updateEvent(qProfile,id,JSON.parse(await readBody(req,32768)));return e?json(res,200,{event:e}):json(res,404,{error:'Event not found'})}
    return ev.deleteEvent(qProfile,id)?json(res,200,{removed:true}):json(res,404,{error:'Event not found'});
-  }catch(e){return json(res,400,{error:e.message||'Invalid request'})}
+  }catch(e){return fail(res,e)}
  }
  if(path==='/api/episodes'||path.startsWith('/api/episodes/')){
   const id=path.split('/')[3];
@@ -158,7 +175,7 @@ const server=http.createServer(async(req,res)=>{try{
    if(!id)return json(res,404,{error:'Not found'});
    if(req.method==='PUT'){const e=ev.updateEpisode(qProfile,id,JSON.parse(await readBody(req,16384)));return e?json(res,200,{episode:e}):json(res,404,{error:'Episode not found'})}
    return ev.deleteEpisode(qProfile,id)?json(res,200,{removed:true}):json(res,404,{error:'Episode not found'});
-  }catch(e){return json(res,400,{error:e.message||'Invalid request'})}
+  }catch(e){return fail(res,e)}
  }
  if(path==='/api/inbox'||path.startsWith('/api/inbox/')){
   const parts=path.split('/'),id=parts[3],isFile=parts[4]==='file';
@@ -175,18 +192,15 @@ const server=http.createServer(async(req,res)=>{try{
    if(req.method==='POST'&&!id){const b=JSON.parse(await readBody(req,ev.MAX_UPLOAD_BODY));return json(res,201,{item:ev.addInbox(qProfile,b)})}
    if(req.method==='DELETE'&&id)return ev.deleteInbox(qProfile,id)?json(res,200,{removed:true}):json(res,404,{error:'Upload not found'});
    return json(res,404,{error:'Not found'});
-  }catch(e){return json(res,400,{error:e.message||'Invalid request'})}
+  }catch(e){return fail(res,e)}
  }
+ if(path==='/api/sync-info'&&req.method==='GET'&&!canWrite(hh.role))return json(res,403,{error:'Read-only access'});
  if(path==='/api/sync-info'&&req.method==='GET')return json(res,200,{token:hlog.token(),endpoint:publicOrigin()+'/api/ingest?profile='+qProfile});
  if(req.method!=='GET'&&req.method!=='HEAD')return send(res,405,'Method not allowed',{'Allow':'GET, HEAD'});
- if(path==='/login')return send(res,303,'',{Location:'/'});
  // Instance settings and the member list for the client (names, kinds, colours; no health data).
  // Member colours as CSS (the CSP forbids inline styles): .pc-<id> sets --pc, body[data-profile=<id>] sets --member.
  if(path==='/members.css')return send(res,200,req.method==='HEAD'?'':members.list().map(m=>`.pc-${m.id}{--pc:${m.color||'#157667'}}body[data-profile=${m.id}]{--member:${m.color||'#157667'}}`).join('\n')+'\n',{'Content-Type':'text/css; charset=utf-8'});
- if(path==='/config.js'){const body='window.APP_CONFIG='+JSON.stringify({name:APP_NAME,timeZone:TIME_ZONE,members:members.list()}).replace(/</g,'\\u003c')+';\n';return send(res,200,req.method==='HEAD'?'':body,{'Content-Type':'text/javascript; charset=utf-8'})}
- const file=resolve(pub,'.'+(path==='/'?'/index.html':path));
- if(!file.startsWith(pub+'/') || path.includes('\0'))return send(res,404,'Not found');
- let stat;try{stat=statSync(file)}catch{return send(res,404,'Not found')};if(!stat.isFile()||!mime[extname(file)])return send(res,404,'Not found');
- res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime[extname(file)],'Content-Length':stat.size});if(req.method==='HEAD')res.end();else createReadStream(file).on('error',()=>res.destroy()).pipe(res);
- }catch{if(!res.headersSent)send(res,400,'Unable to process request');else res.destroy()}});
+ if(path==='/config.js'){const body='window.APP_CONFIG='+JSON.stringify({name:APP_NAME,timeZone:TIME_ZONE,members:members.list(),user:{email:user.email,role:hh.role},authMode:auth.MODE}).replace(/</g,'\\u003c')+';\n';return send(res,200,req.method==='HEAD'?'':body,{'Content-Type':'text/javascript; charset=utf-8'})}
+ return serveStatic(req,res,path);
+}
 server.listen(port,'127.0.0.1',()=>{console.log(`${APP_NAME} listening on 127.0.0.1:${port}`);if(!process.env.NO_PUSH)push.start()});

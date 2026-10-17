@@ -43,6 +43,8 @@ jobs:
           node test-db.mjs
           node test-import.mjs
           node test-labs.mjs
+          node test-mailer.mjs
+          node test-auth.mjs
           node test-members.mjs
           node test-medicines.mjs
           node test-push.mjs

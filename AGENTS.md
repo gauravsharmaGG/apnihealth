@@ -34,8 +34,11 @@ every instance keeps its health data in git-ignored folders on its own server. S
 - `server.mjs`: Node HTTP server on `127.0.0.1:$PORT`: static `public/`, JSON APIs (`/api/...`), `/config.js`
   (instance name, time zone and members for the client), `/members.css` (member colours) and the push loop.
 - `env.mjs`: instance settings from the environment. `members.mjs`: the member list.
-- `access.mjs`: verifies the Cloudflare Access JWT (issuer, audience, allowed identities) on every request
-  except `/api/ingest`, which uses its own bearer token.
+- `auth.mjs`: who is asking (`AUTH_MODE` builtin sessions or trusted-proxy), sign-in routes and pages.
+  `accounts.mjs`: users, memberships, sessions, sign-in links. `mailer.mjs`: SMTP. `http.mjs`: shared HTTP helpers.
+  `access.mjs`: verifies the Cloudflare Access JWT for trusted-proxy mode. `/api/ingest` uses its own bearer token.
+- Every request runs with an actor (`store.runAs`): the user and their active household, a sync token, or
+  `SYSTEM` (scripts, scheduler). `forMember` refuses access without one; never use `enterAs(SYSTEM)` in request code.
 - `db.mjs` (SQLite connection, migrations runner, transactions), `migrations.mjs` (schema versions),
   `store.mjs` (the member access check `forMember`, document tables, households and members),
   `importer.mjs` + `scripts/import-json.mjs` (one-time JSON `private/` to SQLite import, counts only).

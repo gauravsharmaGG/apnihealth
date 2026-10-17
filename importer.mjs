@@ -5,7 +5,7 @@
 import {readFileSync,existsSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {db,transaction} from './db.mjs';
-import {createHousehold,addMember,docs,households,system} from './store.mjs';
+import {createHousehold,addMember,docs,households,system,runAs,SYSTEM} from './store.mjs';
 import {validate} from './members.mjs';
 import {addReport} from './labs.mjs';
 
@@ -17,7 +17,8 @@ function readJson(file,fallback){
 }
 const dayOk=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
 
-export function importJson({privateDir,householdName='Household',dryRun=false}){
+export const importJson=opts=>runAs(SYSTEM,()=>importAll(opts));
+function importAll({privateDir,householdName='Household',dryRun=false}){
  const d=db();
  if(households().length)throw Error('The database already has a household; import only runs into an empty database');
  const raw=readJson(join(privateDir,'members.json'),null);

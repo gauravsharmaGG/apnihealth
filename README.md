@@ -31,9 +31,9 @@ Per household member (adults and children; set up from a `members.json` file, se
 ## Requirements
 
 - Node.js 22.13 or newer (uses the built-in `node:sqlite`; no npm dependencies) and Python 3 for the build script.
-- An authenticating reverse proxy. For now the server only accepts requests carrying a valid
-  [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) JWT for one of the allowed
-  identities, and rejects everything else (fail closed). See "Roadmap".
+- A TLS reverse proxy or tunnel in front of the server (it listens on `127.0.0.1` only).
+- For built-in sign-in by email: an SMTP account (optional during setup; links are printed to the server log
+  until SMTP is configured).
 
 ## Set up
 
@@ -42,6 +42,7 @@ mkdir -p private/profiles public/records
 cp config/members.example.json private/members.json      # your household: ids, names, adult/child, colours
 node scripts/import-json.mjs                             # creates private/apnihealth.db with these members
 cp .env.example .env                                     # then edit; export these variables for the server
+node scripts/create-user.mjs --email you@example.com --role owner --link   # first user; prints a sign-in link
 # optional:
 cp config/overview.example.json private/overview.json    # overview page text (generic defaults otherwise)
 cp config/reports.example.json private/reports.json      # report library (PDFs go in public/records/)
@@ -60,9 +61,26 @@ An old `private/lab-values.json` (shape: `config/lab-values.example.json`) is im
 
 ```bash
 PORT=4174 APP_HOST=health.example.com APP_TIME_ZONE=Europe/Berlin \
-CF_ACCESS_ISSUER=https://<team>.cloudflareaccess.com CF_ACCESS_AUD=<aud> CF_ACCESS_EMAIL=you@example.com \
+SMTP_URL=smtps://user:password@smtp.example.com:465 SMTP_FROM="ApniHealth <health@example.com>" \
 node server.mjs
 ```
+
+### Sign-in (AUTH_MODE)
+
+- `AUTH_MODE=builtin` (default): people sign in with a one-time link sent by email (valid 15 minutes, single use).
+  The server keeps the session (30 days, extended while used) and sets an `HttpOnly`, `SameSite=Lax` cookie,
+  `Secure` with the `__Host-` prefix when served through `APP_HOST` over TLS. Without `SMTP_URL`, sign-in links
+  are printed to the server log instead of emailed (development only). There is no open sign-up: create people
+  with `scripts/create-user.mjs` (invites are planned).
+- `AUTH_MODE=trusted-proxy`: Cloudflare Access (or a proxy issuing the same signed JWT) signs people in. Set
+  `CF_ACCESS_ISSUER`, `CF_ACCESS_AUD` and `CF_ACCESS_EMAIL` (allowed emails). An allowed email becomes a user on
+  first visit: the first one owns the household, later ones join as `TRUSTED_PROXY_ROLE` (default `editor`).
+  If `CF_ACCESS_ISSUER` is set without `AUTH_MODE`, the server refuses to start, so an existing Cloudflare setup
+  never silently switches modes.
+
+Roles per household: **owner** and **editor** can read and change every member's records; **viewer** can only read.
+Members (including children) do not need a login. Every state-changing request must come from the app's own
+origin (CSRF protection), and the sign-in endpoints are rate limited.
 
 The server listens on `127.0.0.1` only. Put it behind your proxy or tunnel with TLS, and run it with your
 service manager of choice (systemd, launchd, ...). Re-run `python3 build.py` after changing files in `private/`.
@@ -95,7 +113,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py
@@ -108,8 +126,8 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 
 ## Roadmap
 
-- Built-in accounts (passkeys, email links), sign-up, households and invites, roles.
-- SQLite storage with per-member isolation enforced in one place (in progress); export and account deletion.
+- Accounts: passkeys, invites, several households per user (in progress).
+- Export and account deletion.
 - Lab results: CSV import, and lab views for children.
 - Docker image and self-hosting guide.
 - A refreshed dashboard design.
