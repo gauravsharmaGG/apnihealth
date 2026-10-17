@@ -1,11 +1,12 @@
-// Self-reported + Apple Health measurements. Stored privately, never served as a static file.
-import {readFileSync,writeFileSync,renameSync,existsSync,mkdirSync,chmodSync} from 'node:fs';
+// Self-reported + Apple Health measurements, in the log_entries table (one row per value, per member).
+import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
 import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 import * as members from './members.mjs';
+import {forMember} from './store.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
-const dir=resolve(root,'private'),store=resolve(dir,'health-log.json'),tokenFile=resolve(dir,'ingest-token.txt');
+const dir=resolve(root,'private'),tokenFile=resolve(dir,'ingest-token.txt');
 export const profileOk=p=>members.has(p);
 export const METRICS={
  weight:{label:'Weight',unit:'kg',min:20,max:300,dp:1},
@@ -16,11 +17,8 @@ export const METRICS={
  sleep:{label:'Sleep',unit:'h',min:0,max:24,dp:1},
  body_fat:{label:'Body fat',unit:'%',min:2,max:70,dp:1}
 };
-let db;
-function load(){if(db)return db;try{db=JSON.parse(readFileSync(store,'utf8'));if(!Array.isArray(db.entries))throw 0}catch{db={entries:[]}}return db}
-function save(){mkdirSync(dir,{recursive:true});const t=store+'.tmp';writeFileSync(t,JSON.stringify(db),{mode:0o600});renameSync(t,store)}
 export function token(){
- if(!existsSync(tokenFile)){writeFileSync(tokenFile,randomBytes(32).toString('base64url')+'\n',{mode:0o600})}
+ if(!existsSync(tokenFile)){mkdirSync(dir,{recursive:true,mode:0o700});writeFileSync(tokenFile,randomBytes(32).toString('base64url')+'\n',{mode:0o600})}
  return readFileSync(tokenFile,'utf8').trim();
 }
 export function tokenOk(candidate){
@@ -34,20 +32,22 @@ export function clean(e){
  if(!validDay(e.date))return null;
  return {metric:e.metric,date:e.date,value:Number(v.toFixed(m.dp))};
 }
-export function list(profile=members.defaultId()){const def=members.defaultId();return load().entries.filter(e=>(e.profile||def)===profile).sort((a,b)=>a.date===b.date?a.ts-b.ts:a.date<b.date?-1:1)}
+export function list(profile=members.defaultId()){
+ return forMember(profile).all('SELECT id,metric,date,value,source,ts FROM log_entries WHERE member_id=$member ORDER BY date,ts,rowid').map(e=>({...e,profile}));
+}
 // Manual entries append. Apple Health entries replace the same metric+day (steps keep growing through the day).
 export function add(entries,source,profile=members.defaultId()){
- if(!members.has(profile))throw Error('Unknown profile');const def=members.defaultId();
- load();const fresh=[];
+ const m=forMember(profile),fresh=[];
  for(const raw of entries){const e=clean(raw);if(e)fresh.push(e)}
  if(!fresh.length)return 0;
- // Apple Health values replace the same metric+day (one pass, so large imports stay fast).
- if(source==='apple-health'){const keys=new Set(fresh.map(e=>e.metric+'|'+e.date));db.entries=db.entries.filter(x=>!(x.source==='apple-health'&&(x.profile||def)===profile&&keys.has(x.metric+'|'+x.date)))}
- const ts=Date.now();for(const e of fresh)db.entries.push({id:randomUUID(),...e,profile,source,ts});
- if(db.entries.length>200000)db.entries=db.entries.slice(-200000);
- save();return fresh.length;
+ const ts=Date.now();
+ m.tx(()=>{
+  if(source==='apple-health')for(const e of fresh)m.run("DELETE FROM log_entries WHERE member_id=$member AND source='apple-health' AND metric=$metric AND date=$date",{metric:e.metric,date:e.date});
+  for(const e of fresh)m.run('INSERT INTO log_entries(id,member_id,metric,date,value,source,ts) VALUES($id,$member,$metric,$date,$value,$source,$ts)',{id:randomUUID(),...e,source,ts});
+ });
+ return fresh.length;
 }
-export function remove(id,profile){load();const def=members.defaultId(),b=db.entries.length;db.entries=db.entries.filter(e=>!(e.id===id&&(profile===undefined||(e.profile||def)===profile)));if(db.entries.length!==b){save();return true}return false}
+export function remove(id,profile){return forMember(profile).run('DELETE FROM log_entries WHERE member_id=$member AND id=$id',{id:String(id)}).changes>0}
 const day=s=>{const m=/^(\d{4}-\d{2}-\d{2})/.exec(String(s||''));return m&&m[1]};
 // Accepts {entries:[{date,metric,value}]} or the Health Auto Export app's {data:{metrics:[{name,units,data:[...]}]}}.
 export function parseIngest(body){

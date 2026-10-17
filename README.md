@@ -12,7 +12,7 @@ A self-hosted, mobile-first health record for you and your household. Open sourc
 
 ## Features
 
-Per household member (configured in `private/members.json`; adults and children):
+Per household member (adults and children; set up from a `members.json` file, see below):
 
 - **Episodes**: group symptoms, temperatures, medicines, visits and test results of one illness or injury,
   from start to recovery, with attachments.
@@ -39,6 +39,7 @@ Per household member (configured in `private/members.json`; adults and children)
 ```bash
 mkdir -p private/profiles public/records
 cp config/members.example.json private/members.json      # your household: ids, names, adult/child, colours
+node scripts/import-json.mjs                             # creates private/apnihealth.db with these members
 cp .env.example .env                                     # then edit; export these variables for the server
 # optional:
 cp config/overview.example.json private/overview.json    # overview page text (generic defaults otherwise)
@@ -65,13 +66,17 @@ The server listens on `127.0.0.1` only. Put it behind your proxy or tunnel with 
 service manager of choice (systemd, launchd, ...). Re-run `python3 build.py` after changing files in `private/`.
 
 All health data lives in git-ignored `private/` and `public/records/`. Back these folders up and keep them
-encrypted at rest; the server keeps them in plain JSON files with owner-only permissions.
+encrypted at rest.
 
-### Storage (moving to SQLite)
+### Storage
 
-ApniHealth is moving from JSON files to a SQLite database (`private/apnihealth.db`, or `DB_FILE`), created
-with owner-only permissions and migrated automatically on start. Every query on member data goes through one
-access check (`store.mjs`). To copy an existing JSON `private/` folder into the database (stop the server first):
+Members, the daily log, episodes and their entries, the record inbox, medicines, appointments and push
+subscriptions are stored in a SQLite database (`private/apnihealth.db`, or `DB_FILE`). It is created with
+owner-only permissions and migrated automatically on start. Uploaded files stay in `private/profiles/<id>/uploads/`.
+Every query on member data goes through one access check (`store.mjs`). Back up the database with the server
+stopped, or with `sqlite3 private/apnihealth.db ".backup backup.db"`.
+
+Coming from an older version that stored JSON files in `private/`? Stop the server, then:
 
 ```bash
 node scripts/import-json.mjs --dry-run      # validate and print counts only; writes nothing

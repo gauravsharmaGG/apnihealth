@@ -1,9 +1,9 @@
-import {readFileSync,writeFileSync,renameSync,mkdirSync} from 'node:fs';
+// Medicine plans (courses) per member, with dose logs; stored in the medicine_plans document table.
 import {randomUUID} from 'node:crypto';
 import {listEpisodes} from './events.mjs';
-import * as members from './members.mjs';
+import {docs} from './store.mjs';
 import {TIME_ZONE} from './env.mjs';
-const base=new URL('./private/profiles/',import.meta.url);
+const PLANS=docs('medicine_plans');
 const dateOK=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00Z').toISOString().slice(0,10)===s;
 const timeOK=s=>typeof s==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 export function validate(v){
@@ -29,9 +29,8 @@ export function slots(p){
  if(p.times.length!==p.frequency)return [];
  return Array.from({length:p.days},(_,d)=>{const date=new Date(Date.parse(p.startDate+'T12:00Z')+d*864e5).toISOString().slice(0,10);return p.times.map((time,i)=>({key:d+':'+i,date,time}))}).flat();
 }
-function file(p){if(!members.has(p))throw Error('Unknown profile');return new URL(p+'/medicines.json',base)}
-export function list(p){try{return JSON.parse(readFileSync(file(p),'utf8'))}catch(e){if(e.code==='ENOENT')return [];throw e}}
-function save(p,a){const f=file(p);mkdirSync(new URL('./',f),{recursive:true,mode:0o700});const t=new URL(f.href+'.tmp');writeFileSync(t,JSON.stringify(a,null,2)+'\n',{mode:0o600});renameSync(t,f)}
+export const list=p=>PLANS.list(p);
+const save=(p,a)=>PLANS.replace(p,a);
 export function mutate(p,b){
  const a=list(p),old=a.find(x=>x.id===b.id);
  if(b.action==='plan'){

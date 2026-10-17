@@ -1,19 +1,17 @@
-// Per-profile appointments: stored in private/profiles/<id>/appointments.json, with .ics export and reminder helpers.
-import {readFileSync,writeFileSync,renameSync,mkdirSync} from 'node:fs';
+// Per-profile appointments (appointments document table), with .ics export and reminder helpers.
 import {randomUUID} from 'node:crypto';
 import {listEpisodes} from './events.mjs';
 import {instant} from './medicines.mjs';
-import * as members from './members.mjs';
+import {docs} from './store.mjs';
 import {APP_NAME,APP_HOST} from './env.mjs';
-const base=new URL('./private/profiles/',import.meta.url);
+const APPTS=docs('appointments');
 export const CATEGORIES=['Check-up','Vaccination','Test or scan','Specialist','Dentist','Therapy','Other'];
 const STATUS=new Set(['scheduled','done','cancelled']);
 const dateOK=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00Z').toISOString().slice(0,10)===s;
 const timeOK=s=>typeof s==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 const text=(v,label,max)=>{if(v===undefined||v===null||v==='')return '';if(typeof v!=='string')throw Error(label+' must be text');const t=v.trim();if(t.length>max)throw Error(label+' is too long');return t};
-function file(p){if(!members.has(p))throw Error('Unknown profile');return new URL(p+'/appointments.json',base)}
-export function list(p){try{const a=JSON.parse(readFileSync(file(p),'utf8'));return Array.isArray(a)?a:[]}catch(e){if(e.code==='ENOENT')return [];throw e}}
-function save(p,a){const f=file(p);mkdirSync(new URL('./',f),{recursive:true,mode:0o700});const t=new URL(f.href+'.tmp');writeFileSync(t,JSON.stringify(a,null,2)+'\n',{mode:0o600});renameSync(t,f)}
+export const list=p=>APPTS.list(p);
+const save=(p,a)=>APPTS.replace(p,a);
 export function validate(v,p){
  if(!v||typeof v!=='object')throw Error('Invalid appointment');
  const title=text(v.title,'Title',100);if(!title)throw Error('Add a title');

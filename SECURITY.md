@@ -20,7 +20,8 @@ The project is in an early stage; only the latest commit on `main` is supported.
 - The server binds to `127.0.0.1` and rejects requests without a valid identity token (fail closed). Do not
   expose it without an authenticating proxy.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Writes require a same-origin request.
-- Data is kept as JSON files under `private/` with owner-only permissions. Encrypt the disk and back it up.
+- Data is kept in a SQLite database and upload files under `private/`, with owner-only permissions. Encrypt the
+  disk and back it up. All member data access goes through one access check (`store.mjs`).
 - The Apple Health ingest key only allows adding measurements. Treat it like a password and rotate it by
   deleting `private/ingest-token.txt` if it leaks.
 - Responses send a strict Content-Security-Policy, `no-store` caching and `noindex` headers.

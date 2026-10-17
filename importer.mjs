@@ -5,7 +5,8 @@
 import {readFileSync,existsSync,readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {db,transaction} from './db.mjs';
-import {createHousehold,addMember,cleanMember,docs,households,system} from './store.mjs';
+import {createHousehold,addMember,docs,households,system} from './store.mjs';
+import {validate} from './members.mjs';
 
 const FILES={episodes:'episodes.json',episode_entries:'events.json',inbox_items:'inbox.json',medicine_plans:'medicines.json',appointments:'appointments.json'};
 class Rollback extends Error{}
@@ -20,8 +21,7 @@ export function importJson({privateDir,householdName='Household',dryRun=false}){
  if(households().length)throw Error('The database already has a household; import only runs into an empty database');
  const raw=readJson(join(privateDir,'members.json'),null);
  if(!Array.isArray(raw)||!raw.length)throw Error('members.json is missing or empty');
- const list=raw.map((m,i)=>cleanMember(m,'members.json entry '+i));
- if(new Set(list.map(m=>m.id)).size!==list.length)throw Error('members.json has duplicate ids');
+ const list=validate(raw);
  const known=new Set(list.map(m=>m.id)),def=list[0].id;
  const counts={members:list.length,log_entries:0,episodes:0,episode_entries:0,inbox_items:0,medicine_plans:0,appointments:0,push_subscriptions:0,push_topics:0,push_sent:0,skipped:0,missing_upload_files:0,unknown_profile_dirs:0};
  try{

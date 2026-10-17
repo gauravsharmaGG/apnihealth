@@ -1,9 +1,11 @@
-// Per-profile care log (fever, medicine, notes) and record inbox (photo/PDF uploads awaiting review).
-import {readFileSync,writeFileSync,renameSync,mkdirSync,statSync,unlinkSync,createReadStream} from 'node:fs';
+// Per-profile episodes, care log (fever, medicine, notes) and record inbox (photo/PDF uploads awaiting review).
+// Records live in the database (document tables via store.docs); uploaded files stay in private/profiles/<id>/uploads.
+import {writeFileSync,mkdirSync,statSync,unlinkSync,createReadStream} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {resolve,sep} from 'node:path';
 import * as members from './members.mjs';
+import {docs,forMember} from './store.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const base=p=>{if(!members.has(p))throw Error('Unknown profile');return resolve(root,'private/profiles',p)};
 const kinds=new Set(['temperature','medication','care','status','note','symptom','visit','test']);
@@ -11,8 +13,7 @@ const epCats=new Set(['Illness','Infection','Injury','Procedure','Chronic condit
 const cats=new Set(['u-examination','vaccination','growth-chart','medical-document','lab-report','other']);
 const mimes=new Map([['image/jpeg','.jpg'],['image/png','.png'],['image/webp','.webp'],['image/heic','.heic'],['image/heif','.heif'],['application/pdf','.pdf']]);
 export const MAX_UPLOAD_BODY=12*1024*1024,MAX_FILE=8*1024*1024;
-const readJson=(f,fallback)=>{try{const v=JSON.parse(readFileSync(f,'utf8'));return Array.isArray(v)?v:fallback}catch{return fallback}};
-function writeJson(f,v){mkdirSync(resolve(f,'..'),{recursive:true,mode:0o700});const t=f+'.'+process.pid+'.tmp';writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600});renameSync(t,f)}
+const EV=docs('episode_entries'),EP=docs('episodes'),IN=docs('inbox_items');
 const opt=(v,label,max=500)=>{if(v===undefined||v===null||v==='')return undefined;if(typeof v!=='string')throw Error(label+' must be text');const c=v.trim();if(!c||c.length>max)throw Error(label+' is invalid');return c};
 function cleanLink(l){
  if(!l||typeof l!=='object')throw Error('Attachment is invalid');const title=opt(l.title,'Attachment title',120)||'Report';
@@ -42,10 +43,9 @@ export function validateEvent(v){
  if(['care','status','note','symptom','visit','test'].includes(v.kind)&&!e.note)throw Error('Notes are required');
  return e;
 }
-const evFile=p=>resolve(base(p),'events.json'),inFile=p=>resolve(base(p),'inbox.json'),upDir=p=>resolve(base(p),'uploads');
-export const listEvents=p=>readJson(evFile(p),[]);
-const epFile=p=>resolve(base(p),'episodes.json');
-export const listEpisodes=p=>readJson(epFile(p),[]);
+const upDir=p=>resolve(base(p),'uploads');
+export const listEvents=p=>EV.list(p);
+export const listEpisodes=p=>EP.list(p);
 const dateOk=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
 export function validateEpisode(v,prev){
  if(!v||typeof v!=='object'||Array.isArray(v))throw Error('Episode must be an object');
@@ -61,17 +61,18 @@ export function validateEpisode(v,prev){
  const sb=m.summaryBy==='ai'?'ai':m.summary?'manual':undefined,sa=dateOk(m.summaryAt)?m.summaryAt:(sb?new Date().toISOString().slice(0,10):undefined),sc=Number.isInteger(m.summaryCount)&&m.summaryCount>=0?m.summaryCount:undefined;
  return {title,category,summary,...(summary&&sb?{summaryBy:sb,summaryAt:sa}:{}),...(summary&&sb==='ai'&&sc!==undefined?{summaryCount:sc}:{}),startDate,status,endDate,...(links&&links.length?{links}:{})};
 }
-export function addEpisode(p,v){const e={id:randomUUID(),...validateEpisode(v),createdAt:new Date().toISOString()};const all=listEpisodes(p);all.push(e);writeJson(epFile(p),all);return e}
+export function addEpisode(p,v){const e={id:randomUUID(),...validateEpisode(v),createdAt:new Date().toISOString()};const all=listEpisodes(p);all.push(e);EP.replace(p,all);return e}
 export function updateEpisode(p,id,v){const all=listEpisodes(p),i=all.findIndex(e=>e.id===id);if(i<0)return null;const prev=all[i],edited=typeof v.summary==='string'&&v.summary.trim()!==(prev.summary||'')&&v.summaryBy===undefined;
  const base=edited?{...prev,summaryBy:'manual',summaryAt:new Date().toISOString().slice(0,10),summaryCount:undefined}:prev;
- all[i]={...validateEpisode(v,base),id,createdAt:prev.createdAt};writeJson(epFile(p),all);return all[i]}
-export function deleteEpisode(p,id){const all=listEpisodes(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);writeJson(epFile(p),all);const evs=listEvents(p).filter(e=>e.episodeId!==id);writeJson(evFile(p),evs);return true}
-function checkLink(p,e){if(e.link?.type==='upload'&&!readJson(inFile(p),[]).some(x=>x.id===e.link.ref))throw Error('Attached file not found')}
-export function addEvent(p,v){const e={id:randomUUID(),...validateEvent(v)};if(e.episodeId&&!listEpisodes(p).some(x=>x.id===e.episodeId))throw Error('Episode not found');checkLink(p,e);const all=listEvents(p);all.push(e);writeJson(evFile(p),all);return e}
-export function updateEvent(p,id,v){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return null;const n=validateEvent(v);if(n.episodeId&&!listEpisodes(p).some(x=>x.id===n.episodeId))throw Error('Episode not found');checkLink(p,n);all[i]={...all[i],...n,id};if(!('episodeId' in n))delete all[i].episodeId;if(!('link' in n))delete all[i].link;writeJson(evFile(p),all);return all[i]}
-export function deleteEvent(p,id){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);writeJson(evFile(p),all);return true}
+ all[i]={...validateEpisode(v,base),id,createdAt:prev.createdAt};EP.replace(p,all);return all[i]}
+export function deleteEpisode(p,id){return forMember(p).tx(()=>deleteEpisodeTx(p,id))}
+function deleteEpisodeTx(p,id){const all=listEpisodes(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);EP.replace(p,all);const evs=listEvents(p).filter(e=>e.episodeId!==id);EV.replace(p,evs);return true}
+function checkLink(p,e){if(e.link?.type==='upload'&&!IN.list(p).some(x=>x.id===e.link.ref))throw Error('Attached file not found')}
+export function addEvent(p,v){const e={id:randomUUID(),...validateEvent(v)};if(e.episodeId&&!listEpisodes(p).some(x=>x.id===e.episodeId))throw Error('Episode not found');checkLink(p,e);const all=listEvents(p);all.push(e);EV.replace(p,all);return e}
+export function updateEvent(p,id,v){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return null;const n=validateEvent(v);if(n.episodeId&&!listEpisodes(p).some(x=>x.id===n.episodeId))throw Error('Episode not found');checkLink(p,n);all[i]={...all[i],...n,id};if(!('episodeId' in n))delete all[i].episodeId;if(!('link' in n))delete all[i].link;EV.replace(p,all);return all[i]}
+export function deleteEvent(p,id){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);EV.replace(p,all);return true}
 const pub=({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status})=>({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status});
-export const listInbox=p=>readJson(inFile(p),[]).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(pub);
+export const listInbox=p=>IN.list(p).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(pub);
 export function addInbox(p,v){
  if(!v||typeof v!=='object')throw Error('Upload must be an object');
  if(!cats.has(v.category))throw Error('Record type is invalid');
@@ -84,16 +85,16 @@ export function addInbox(p,v){
  const id=randomUUID(),stored=id+mimes.get(v.mimeType);mkdirSync(upDir(p),{recursive:true,mode:0o700});writeFileSync(resolve(upDir(p),stored),buf,{mode:0o600,flag:'wx'});
  const epId=typeof v.episodeId==='string'&&listEpisodes(p).some(x=>x.id===v.episodeId)?v.episodeId:undefined;
  const item={id,category:v.category,episodeId:epId,date:v.date,title,note,fileName,storedFileName:stored,mimeType:v.mimeType,size:buf.length,createdAt:new Date().toISOString(),status:'needs-review'};
- const all=readJson(inFile(p),[]);all.push(item);try{writeJson(inFile(p),all)}catch(e){unlinkSync(resolve(upDir(p),stored));throw e}
+ const all=IN.list(p);all.push(item);try{IN.replace(p,all)}catch(e){unlinkSync(resolve(upDir(p),stored));throw e}
  return pub(item);
 }
 export function inboxFile(p,id){
- const it=readJson(inFile(p),[]).find(x=>x.id===id);if(!it)return null;
+ const it=IN.list(p).find(x=>x.id===id);if(!it)return null;
  const f=resolve(upDir(p),it.storedFileName);if(!f.startsWith(upDir(p)+sep))return null;
  try{const st=statSync(f);return {path:f,size:st.size,mime:it.mimeType,name:it.fileName}}catch{return null}
 }
 export function deleteInbox(p,id){
- const all=readJson(inFile(p),[]),i=all.findIndex(x=>x.id===id);if(i<0)return false;const [it]=all.splice(i,1);writeJson(inFile(p),all);
+ const all=IN.list(p),i=all.findIndex(x=>x.id===id);if(i<0)return false;const [it]=all.splice(i,1);IN.replace(p,all);
  try{unlinkSync(resolve(upDir(p),it.storedFileName))}catch{}return true;
 }
 export {createReadStream};
