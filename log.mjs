@@ -1,12 +1,7 @@
 // Self-reported + Apple Health measurements, in the log_entries table (one row per value, per member).
-import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
-import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
-import {fileURLToPath} from 'node:url';
-import {resolve} from 'node:path';
+import {randomUUID} from 'node:crypto';
 import * as members from './members.mjs';
 import {forMember} from './store.mjs';
-const root=fileURLToPath(new URL('.',import.meta.url));
-const dir=resolve(root,'private'),tokenFile=resolve(dir,'ingest-token.txt');
 export const profileOk=p=>members.has(p);
 export const METRICS={
  weight:{label:'Weight',unit:'kg',min:20,max:300,dp:1},
@@ -17,14 +12,6 @@ export const METRICS={
  sleep:{label:'Sleep',unit:'h',min:0,max:24,dp:1},
  body_fat:{label:'Body fat',unit:'%',min:2,max:70,dp:1}
 };
-export function token(){
- if(!existsSync(tokenFile)){mkdirSync(dir,{recursive:true,mode:0o700});writeFileSync(tokenFile,randomBytes(32).toString('base64url')+'\n',{mode:0o600})}
- return readFileSync(tokenFile,'utf8').trim();
-}
-export function tokenOk(candidate){
- if(typeof candidate!=='string')return false;const a=Buffer.from(candidate),b=Buffer.from(token());
- return a.length===b.length&&timingSafeEqual(a,b);
-}
 const dayRe=/^\d{4}-\d{2}-\d{2}$/;
 function validDay(d){if(!dayRe.test(d))return false;const t=Date.parse(d+'T12:00:00Z');return Number.isFinite(t)&&t<=Date.now()+36e5*30&&t>=Date.parse('1990-01-01')}
 export function clean(e){

@@ -4,7 +4,7 @@ import {resolve,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import * as auth from './auth.mjs';
 import * as A from './accounts.mjs';
-import {runAs,SYSTEM,households,AccessError,canWrite} from './store.mjs';
+import {runAs,SYSTEM,households,AccessError,canWrite,actor} from './store.mjs';
 import * as hlog from './log.mjs';
 import * as ev from './events.mjs';
 import * as meds from './medicines.mjs';
@@ -13,11 +13,13 @@ import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
 import * as labs from './labs.mjs';
 import * as household from './household.mjs';
+import * as ingest from './ingest.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
 import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const pub=resolve(root,'public'),port=PORT;
 runAs(SYSTEM,()=>members.load()); // fail fast at startup when the database has no members (the error says how to add them)
+if(runAs(SYSTEM,()=>ingest.migrateLegacy()))console.log('Registered the existing Apple Health key from private/ingest-token.txt as a shared household key. Create per-profile keys in the app and revoke it when ready.');
 if(auth.MODE==='builtin'&&!A.userCount())console.log('No users yet. Create the first one: node scripts/create-user.mjs --email you@example.com --role owner --link');
 setInterval(()=>A.purgeExpired(),36e5).unref();
 // Errors from the access check: read-only access is 403; unknown or someone else's member stays 400.
@@ -28,7 +30,13 @@ const server=http.createServer(async(req,res)=>{try{
  if(APP_HOST&&req.headers.host===APP_HOST && req.headers['x-forwarded-proto']!=='https')return send(res,308,'',{Location:publicOrigin()+'/'});
  const reqUrl=new URL(req.url,'http://localhost'),path=decodeURIComponent(reqUrl.pathname);
  // Write-only Apple Health endpoint: its own bearer token, scoped to one household (no cookies involved).
- if(path==='/api/ingest')return await runAs({type:'ingest',household:households()[0]?.id},()=>app(req,res,reqUrl,path));
+ if(path==='/api/ingest'){
+  if(req.method!=='POST')return json(res,405,{error:'POST only'});
+  if(limited('ingest',120,600000))return json(res,429,{error:'Too many requests'});
+  const m=/^Bearer (.+)$/.exec(req.headers.authorization||''),a=m&&ingest.actorFor(m[1]);
+  if(!a)return json(res,401,{error:'Invalid token'});
+  return await runAs(a,()=>app(req,res,reqUrl,path));
+ }
  // CSRF: every state-changing request must come from this origin (sign-in forms and fetch alike).
  if(req.method!=='GET'&&req.method!=='HEAD'&&!sameOrigin(req))return path.startsWith('/api/')?json(res,403,{error:'Origin rejected'}):send(res,403,'Origin rejected');
  if(await auth.handle(req,res,path,reqUrl))return;
@@ -57,12 +65,11 @@ async function app(req,res,reqUrl,path,user,hh){
  const qProfile=reqUrl.searchParams.get('profile')||members.defaultId();
  // Write-only Apple Health / Shortcuts endpoint with its own bearer token (Cloudflare Access must bypass this one path).
  if(path==='/api/ingest'){
-  if(req.method!=='POST')return json(res,405,{error:'POST only'});
-  if(limited('ingest',120,600000))return json(res,429,{error:'Too many requests'});
-  const m=/^Bearer (.+)$/.exec(req.headers.authorization||'');
-  if(!m||!hlog.tokenOk(m[1]))return json(res,401,{error:'Invalid token'});
   let body;try{body=JSON.parse(await readBody(req))}catch{return json(res,400,{error:'Invalid JSON'})}
-  const prof=hlog.profileOk(body.profile)?body.profile:(reqUrl.searchParams.has('profile')&&hlog.profileOk(qProfile)?qProfile:members.defaultId());const entries=hlog.parseIngest(body);return json(res,200,{received:entries.length,saved:hlog.add(entries,'apple-health',prof)});
+  const key=actor().memberId,asked=body.profile??(reqUrl.searchParams.has('profile')?qProfile:undefined);
+  if(key&&asked!==undefined&&asked!==key)return json(res,403,{error:'This key belongs to another profile'});
+  if(!key&&asked!==undefined&&!hlog.profileOk(asked))return json(res,400,{error:'Unknown profile'}); // never fall back to someone else
+  const prof=key||(asked!==undefined?asked:members.defaultId());const entries=hlog.parseIngest(body);return json(res,200,{received:entries.length,saved:hlog.add(entries,'apple-health',prof)});
  }
  if(!hh){ // signed in, but not in any household yet
   if(path.startsWith('/api/'))return json(res,403,{error:'You are not a member of a household yet'});
@@ -116,14 +123,15 @@ async function app(req,res,reqUrl,path,user,hh){
    if(limited('push',120,600000))return json(res,429,{error:'Too many requests'});
    const b=JSON.parse(await readBody(req,16384)),ep=b.endpoint||b.subscription?.endpoint;
    const topic=b.topic==='appointments'?'appointments':'medicine';
-   if(b.action==='subscribe')return json(res,200,push.subscribe(b.subscription,qProfile,Date.now(),topic));
+   const uid=user.id;
+   if(b.action==='subscribe')return json(res,200,push.subscribe(b.subscription,qProfile,Date.now(),topic,uid));
    if(typeof ep!=='string')throw Error('Missing endpoint');
-   if(b.action==='unsubscribe')return json(res,200,push.unsubscribe(ep,qProfile,topic));
-   if(b.action==='status')return json(res,200,push.status(ep,qProfile));
-   if(b.action==='summary')return json(res,200,push.summary(ep));
-   if(b.action==='unsubscribe-all')return json(res,200,push.unsubscribe(ep));
-   if(b.action==='mute')return json(res,200,push.mute(ep,String(b.planId),b.muted===true));
-   if(b.action==='test'){const s=push.subs().find(x=>x.endpoint===ep);if(!s)throw Error('Not subscribed');const r=await push.deliver(s,{title:'Reminders are on',body:'You will get a notification when a medicine is due.',tag:'meds-test',url:'/?p='+qProfile+'#episodes'},{ttl:300});return json(res,r.status>=200&&r.status<300?200:502,{ok:r.status>=200&&r.status<300,status:r.status})}
+   if(b.action==='unsubscribe')return json(res,200,push.unsubscribe(ep,qProfile,topic,uid));
+   if(b.action==='status')return json(res,200,push.status(ep,qProfile,uid));
+   if(b.action==='summary')return json(res,200,push.summary(ep,uid));
+   if(b.action==='unsubscribe-all')return json(res,200,push.unsubscribe(ep,undefined,'medicine',uid));
+   if(b.action==='mute')return json(res,200,push.mute(ep,String(b.planId),b.muted===true,uid));
+   if(b.action==='test'){const s=push.device(ep,uid);if(!s)throw Error('Not subscribed');const r=await push.deliver(s,{title:'Reminders are on',body:'You will get a notification when a medicine is due.',tag:'meds-test',url:'/?p='+qProfile+'#episodes'},{ttl:300});return json(res,r.status>=200&&r.status<300?200:502,{ok:r.status>=200&&r.status<300,status:r.status})}
    throw Error('Unknown action');
   }catch(e){return fail(res,e)}
  }
@@ -199,7 +207,15 @@ async function app(req,res,reqUrl,path,user,hh){
   }catch(e){return fail(res,e)}
  }
  if(path==='/api/sync-info'&&req.method==='GET'&&!canWrite(hh.role))return json(res,403,{error:'Read-only access'});
- if(path==='/api/sync-info'&&req.method==='GET')return json(res,200,{token:hlog.token(),endpoint:publicOrigin()+'/api/ingest?profile='+qProfile});
+ if(path==='/api/sync-info'&&req.method==='GET')return json(res,200,{endpoint:publicOrigin()+'/api/ingest',keys:ingest.keysFor(qProfile)});
+ if(path==='/api/sync-info'&&req.method==='POST'){
+  try{
+   const b=JSON.parse(await readBody(req,4096)||'{}');
+   if(b.action==='create')return json(res,200,{endpoint:publicOrigin()+'/api/ingest',token:ingest.createKey(qProfile,b.label,user.id)});
+   if(b.action==='revoke')return ingest.revokeKey(qProfile,b.id)?json(res,200,{ok:true}):json(res,404,{error:'Not found'});
+   throw Error('Unknown action');
+  }catch(e){return fail(res,e)}
+ }
  if(req.method!=='GET'&&req.method!=='HEAD')return send(res,405,'Method not allowed',{'Allow':'GET, HEAD'});
  // Instance settings and the member list for the client (names, kinds, colours; no health data).
  // Member colours as CSS (the CSP forbids inline styles): .pc-<id> sets --pc, body[data-profile=<id>] sets --member.

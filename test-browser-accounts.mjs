@@ -70,6 +70,13 @@ try{
  await ev("const f=document.querySelector('form[data-form=invite]');f.role.value='viewer';f.requestSubmit()");
  const invite=await until(()=>ev("document.getElementById('hh-link')?.value"),5000,'invite link');assert.match(invite,/\/invite\?token=[A-Za-z0-9_-]{43}$/);
  assert.equal(await ev("document.querySelectorAll('#hh-invites li').length"),1);await noScroll('invite created');
+ // Apple Health keys for the current profile: the migrated shared key, plus a new one shown once
+ await go(base+'/#log');await until(()=>ev("!!document.getElementById('sync')&&!document.getElementById('log').hidden"),5000,'log view');
+ await ev("document.getElementById('sync').open=true;document.getElementById('sync-reveal').click()");
+ await until(()=>ev("document.querySelectorAll('#sync-keys li [data-revoke-key]').length===1"),5000,'shared key listed');
+ await ev("document.getElementById('sync-label').value='Test phone';document.getElementById('sync-new').click()");
+ await until(()=>ev("/^Bearer [A-Za-z0-9_-]{43}$/.test(document.getElementById('sync-token').value)"),5000,'new key shown');
+ await until(()=>ev("document.querySelectorAll('#sync-keys li [data-revoke-key]').length===2"),5000,'two keys');await noScroll('sync keys');
  assert.deepEqual(errors,[],'no script errors (owner)');
  // 5. a new person opens the invite in a separate browser context and joins as viewer
  const bws=new WebSocket((await(await fetch(`http://127.0.0.1:${dbg}/json/version`)).json()).webSocketDebuggerUrl);await new Promise(r=>bws.onopen=r);
@@ -99,5 +106,5 @@ try{
  assert(await ev2('document.documentElement.scrollWidth<=innerWidth'),'viewer settings: no horizontal scroll');
  assert.deepEqual(errors2,[],'no script errors (viewer)');ws2.close();bws.close();
  assert.deepEqual(errors,[],'no script errors');
- console.log('PASS browser accounts: email-link sign-in, add passkey (virtual authenticator), sign out, passkey sign-in; add child profile, viewer invite joined in a second context with write controls hidden; 390x844.');
+ console.log('PASS browser accounts: email-link sign-in, add passkey (virtual authenticator), sign out, passkey sign-in; add child profile, Apple Health key created, viewer invite joined in a second context with write controls hidden; 390x844.');
 }finally{try{br?.kill()}catch{};try{srv?.kill()}catch{};rmSync(dir,{recursive:true,force:true})}

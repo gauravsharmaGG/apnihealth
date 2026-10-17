@@ -34,7 +34,7 @@ try{
  assert.equal((await get('/api/log?profile=nobody')).status,400);
  assert.equal((await get('/api/episodes?profile=../alex')).status,400);
  assert.equal((await (await get('/api/episodes?profile=mia')).json()).episodes.length,1);
- const sync=await (await get('/api/sync-info?profile=sam')).json();assert.equal(sync.endpoint,'https://health.example.com/api/ingest?profile=sam');
+ const sync=await (await get('/api/sync-info?profile=sam')).json();assert.equal(sync.endpoint,'https://health.example.com/api/ingest');assert.equal(sync.keys.length,1,'the migrated shared key');assert(sync.keys[0].shared);
  const ics=await (await get('/api/appointments/ics?profile=alex&id='+(await (await get('/api/appointments?profile=alex')).json()).appointments[0].id)).text();
  assert(ics.includes('PRODID:-//Test Health//EN')&&ics.includes('@health.example.com')&&ics.includes('SUMMARY:Alex: '));
  const child=await (await get('/data-child.js')).text();assert(child.startsWith('window.CHILD_RECORDS={"mia":'));

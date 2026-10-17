@@ -13,6 +13,11 @@ const P=()=>window.PROFILE;
 const MEM=()=>window.PROFILES?.[P()]||{},isLabs=()=>!!MEM().labs,isStarter=()=>MEM().kind==='adult'&&!MEM().labs,hasLabResults=()=>MEM().kind==='adult';
 const withP=u=>u+(u.includes('?')?'&':'?')+'profile='+P();
 async function api(path,opt){const r=await fetch(path.startsWith('/api/log')||path.startsWith('/api/sync-info')?withP(path):path,{credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(Error(j.error||'Request failed'),{status:r.status});return j}
+async function syncKeys(){
+ const j=await api('/api/sync-info'),day=s=>s?new Date(s).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):'never';
+ $('#sync-url').value=j.endpoint;
+ $('#sync-keys').innerHTML=j.keys.length?j.keys.map(k=>`<li><span class="nm">${esc(k.label)}<small>${k.shared?'Shared by the whole household · ':''}added ${esc(day(k.createdAt))} · last used ${esc(day(k.lastUsedAt))}</small></span><button type="button" class="ghost" data-revoke-key="${esc(k.id)}">Revoke</button></li>`).join(''):'<li class="muted">No keys yet. Create one for each phone that sends data.</li>';
+}
 async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(hasLabResults())window.mergeLog?.(E,M);renderAll()}
 
 // Newest value per day for a metric (later entries on the same day win).
@@ -108,10 +113,12 @@ document.addEventListener('click',async ev=>{
   const tb=ev.target.closest('[data-tab]');if(tb&&TABS.some(t=>t[0]===tb.dataset.tab)){tab=tb.dataset.tab;if(location.hash!=='#log')location.hash='#log';renderTabs();renderChart();if(tb.classList.contains('tile'))setTimeout(()=>$('#log-chart').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'}),60);return}
   const rg=ev.target.closest('#log-range button');if(rg){days=Number(rg.dataset.days);document.querySelectorAll('#log-range button').forEach(b=>b.classList.toggle('selected',b===rg));renderChart();return}
   const del=ev.target.closest('[data-del]');if(del){if(!confirm('Delete this entry?'))return;try{await api('/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({delete:del.dataset.del,profile:P()})});await refresh()}catch{alert('Could not delete. Try again.')}return}
-  if(ev.target.id==='sync-reveal'){try{const j=await api('/api/sync-info');$('#sync-url').value=j.endpoint;$('#sync-token').value='Bearer '+j.token;$('#sync-details').hidden=false;ev.target.hidden=true}catch{alert('Could not load the sync key.')}return}
+  if(ev.target.id==='sync-reveal'){try{await syncKeys();$('#sync-details').hidden=false;ev.target.hidden=true}catch{alert('Could not load the sync keys.')}return}
+  if(ev.target.id==='sync-new'){try{const j=await api('/api/sync-info',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',label:$('#sync-label').value})});$('#sync-token').value='Bearer '+j.token;$('#sync-newkey').hidden=false;$('#sync-label').value='';await syncKeys()}catch(e){alert(e.message)}return}
+  if(ev.target.dataset.revokeKey){if(!confirm('Revoke this key? Devices using it stop syncing.'))return;try{await api('/api/sync-info',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',id:ev.target.dataset.revokeKey})});await syncKeys()}catch(e){alert(e.message)}return}
   if(ev.target.id==='sync-copy'){const v=$('#sync-token').value;try{await navigator.clipboard.writeText(v);ev.target.textContent='Copied ✓'}catch{$('#sync-token').select();ev.target.textContent='Select and copy manually'}setTimeout(()=>ev.target.textContent='Copy header value',2500)}
 });
 addEventListener('layoutchange',renderChart);
-addEventListener('profilechange',()=>{E=[];renderAll();refresh().catch(()=>{})});
+addEventListener('profilechange',()=>{E=[];const sd=$('#sync-details');if(sd){sd.hidden=true;$('#sync-newkey').hidden=true;$('#sync-token').value='';$('#sync-reveal').hidden=false}renderAll();refresh().catch(()=>{})});
 refresh().catch(()=>{$('#today-strip').innerHTML='';$('#log-tiles').innerHTML='<div class="empty-tiles"><strong>Could not load your daily numbers</strong><span>Refresh the page to try again.</span></div>'});
 })();

@@ -7,7 +7,7 @@ import {mkdtempSync,cpSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';import http from 'node:http';
 import {randomBytes} from 'node:crypto';
 import * as W from './webauthn.mjs';
-import {softAuthenticator,encodeCbor,until} from './testlib.mjs';
+import {softAuthenticator,encodeCbor,startServer} from './testlib.mjs';
 
 // ---- verifier units ----
 const origin='https://health.example.com',rpId='health.example.com',ch=()=>randomBytes(32).toString('base64url');
@@ -66,11 +66,9 @@ const out={};for(const [e,r] of [['owner@example.com','owner'],['viewer@example.
 console.log(JSON.stringify(out));`);
 const r=spawnSync(process.execPath,['setup.mjs'],{cwd:dir,env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);
 const U=JSON.parse(r.stdout.trim().split('\n').at(-1));
-const port=4900+Math.floor(Math.random()*400),O=`http://localhost:${port}`;
-const p=spawn(process.execPath,['server.mjs'],{cwd:dir,env:{...env,PORT:String(port)},stdio:['ignore','pipe','pipe']});let log='';p.stdout.on('data',d=>log+=d);p.stderr.on('data',d=>log+=d);
+let log='';const {p,port}=await startServer({cwd:dir,env,onData:d=>log+=d}),O=`http://localhost:${port}`;
 const req=({method='GET',path,cookie,body,origin=O})=>new Promise((ok,no)=>{const q=http.request({host:'127.0.0.1',port,method,path,headers:{Host:`localhost:${port}`,...(cookie?{Cookie:'apni_session='+cookie}:{}),...(method!=='GET'?{'Content-Type':'application/json',...(origin?{Origin:origin}:{})}:{})}},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{let j;try{j=JSON.parse(b)}catch{}ok({status:res.statusCode,headers:res.headers,body:b,json:j})})});q.on('error',no);q.end(body?JSON.stringify(body):undefined)});
 try{
- await until(()=>/listening/.test(log),8000,'server');
  const own=U['owner@example.com'].token,view=U['viewer@example.com'].token,rp={origin:O,rpId:'localhost'};
  assert.equal((await req({path:'/api/passkeys'})).status,401);
  assert.deepEqual((await req({path:'/api/passkeys',cookie:own})).json,{passkeys:[]});

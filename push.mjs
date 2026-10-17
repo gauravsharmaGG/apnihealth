@@ -43,11 +43,13 @@ export function deliver(sub,payload,{ttl=3600,urgency='high'}={}){
  });
 }
 // ---- Subscriptions: one record per device (endpoint) with the profiles it wants reminders for ----
-// Stored in push_subscriptions + push_topics (instance-wide: a device can follow several members).
+// Stored in push_subscriptions + push_topics. A device belongs to the user who subscribed from it (userId); devices
+// from before accounts have none until someone subscribes from them again. A user only sees and changes their own
+// devices, and reminders only go out for profiles the device's user can still access.
 export function subs(){
  const d=system(),out=new Map();
- for(const r of d.prepare('SELECT endpoint,p256dh,auth,created_at,muted FROM push_subscriptions ORDER BY rowid').all())
-  out.set(r.endpoint,{endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth},createdAt:r.created_at,profiles:{},appt:{},muted:JSON.parse(r.muted)});
+ for(const r of d.prepare('SELECT endpoint,p256dh,auth,created_at,muted,user_id FROM push_subscriptions ORDER BY rowid').all())
+  out.set(r.endpoint,{endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth},createdAt:r.created_at,profiles:{},appt:{},muted:JSON.parse(r.muted),userId:r.user_id||null});
  for(const t of d.prepare('SELECT endpoint,member_id,topic,since FROM push_topics ORDER BY rowid').all()){const s=out.get(t.endpoint);if(s)(t.topic==='appointments'?s.appt:s.profiles)[t.member_id]={since:t.since}}
  return [...out.values()];
 }
@@ -55,8 +57,8 @@ function saveSubs(a){
  const d=system(),known=new Set(listMembers().map(m=>m.id)); // all households: this rewrites every device's topics
  transaction(d,()=>{
   d.exec('DELETE FROM push_subscriptions'); // topics cascade
-  const s=d.prepare('INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at,muted) VALUES(?,?,?,?,?)'),t=d.prepare('INSERT INTO push_topics(endpoint,member_id,topic,since) VALUES(?,?,?,?)');
-  for(const r of a){s.run(r.endpoint,r.keys.p256dh,r.keys.auth,r.createdAt||0,JSON.stringify(r.muted||[]));
+  const s=d.prepare('INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at,muted,user_id) VALUES(?,?,?,?,?,?)'),t=d.prepare('INSERT INTO push_topics(endpoint,member_id,topic,since) VALUES(?,?,?,?)');
+  for(const r of a){s.run(r.endpoint,r.keys.p256dh,r.keys.auth,r.createdAt||0,JSON.stringify(r.muted||[]),r.userId||null);
    for(const [topic,map] of [['medicine',r.profiles],['appointments',r.appt]])for(const [m,info] of Object.entries(map||{}))if(known.has(m))t.run(r.endpoint,m,topic,info?.since||0)}
  });
 }
@@ -65,21 +67,27 @@ const readState=()=>Object.fromEntries(system().prepare('SELECT key,ts FROM push
 function saveState(state){const d=system();transaction(d,()=>{d.exec('DELETE FROM push_sent');const i=d.prepare('INSERT INTO push_sent(key,ts) VALUES(?,?)');for(const [k,v] of Object.entries(state))i.run(k,v)})}
 const valid=s=>s&&typeof s.endpoint==='string'&&s.endpoint.length<2000&&s.keys&&typeof s.keys.p256dh==='string'&&typeof s.keys.auth==='string';
 const slot=(r,topic)=>topic==='appointments'?(r.appt??={}):r.profiles;
-export function subscribe(sub,profile,now=Date.now(),topic='medicine'){
+// A device record the user may see: theirs, or one from before accounts (no user). null otherwise.
+const own=(a,endpoint,userId)=>{const r=a.find(x=>x.endpoint===endpoint);return r&&(!r.userId||!userId||r.userId===userId)?r:null};
+export function subscribe(sub,profile,now=Date.now(),topic='medicine',userId=null){
  if(!valid(sub)||!members.has(profile)||!['medicine','appointments'].includes(topic))throw Error('Invalid subscription');
  if(new URL(sub.endpoint).protocol!=='https:')throw Error('Invalid endpoint');
  const a=subs();let r=a.find(x=>x.endpoint===sub.endpoint);
+ // Someone else signed in on this device: it becomes theirs, starting with no topics.
+ if(r&&userId&&r.userId&&r.userId!==userId){r.userId=userId;r.profiles={};r.appt={};r.muted=[]}
  if(!r){r={endpoint:sub.endpoint,keys:{p256dh:sub.keys.p256dh,auth:sub.keys.auth},createdAt:now,profiles:{},appt:{},muted:[]};a.push(r)}
+ if(userId)r.userId=userId;
  r.keys={p256dh:sub.keys.p256dh,auth:sub.keys.auth};const m=slot(r,topic);if(!m[profile])m[profile]={since:now};
- saveSubs(a);return status(sub.endpoint,profile);
+ saveSubs(a);return status(sub.endpoint,profile,userId);
 }
-export function unsubscribe(endpoint,profile,topic='medicine'){
- let a=subs();const r=a.find(x=>x.endpoint===endpoint);if(r){if(profile)delete slot(r,topic)[profile];else a=a.filter(x=>x!==r)}
- saveSubs(a);return status(endpoint,profile);
+export function unsubscribe(endpoint,profile,topic='medicine',userId=null){
+ let a=subs();const r=own(a,endpoint,userId);if(r){if(profile)delete slot(r,topic)[profile];else a=a.filter(x=>x!==r)}
+ saveSubs(a);return status(endpoint,profile,userId);
 }
-export function mute(endpoint,planId,muted){const a=subs(),r=a.find(x=>x.endpoint===endpoint);if(!r)throw Error('Not subscribed');r.muted=(r.muted||[]).filter(x=>x!==planId);if(muted)r.muted.push(planId);saveSubs(a);return status(endpoint)}
-export function summary(endpoint){const r=subs().find(x=>x.endpoint===endpoint);return {known:!!r,profiles:Object.fromEntries(members.ids().map(k=>[k,!!r?.profiles[k]])),appointments:Object.fromEntries(members.ids().map(k=>[k,!!r?.appt?.[k]])),muted:r?.muted||[]}}
-export function status(endpoint,profile){const r=subs().find(x=>x.endpoint===endpoint);return {subscribed:!!r&&(!profile||!!r.profiles[profile]),muted:r?.muted||[]}}
+export function mute(endpoint,planId,muted,userId=null){const a=subs(),r=own(a,endpoint,userId);if(!r)throw Error('Not subscribed');r.muted=(r.muted||[]).filter(x=>x!==planId);if(muted)r.muted.push(planId);saveSubs(a);return status(endpoint,undefined,userId)}
+export const device=(endpoint,userId=null)=>own(subs(),endpoint,userId);
+export function summary(endpoint,userId=null){const r=own(subs(),endpoint,userId);return {known:!!r,profiles:Object.fromEntries(members.ids().map(k=>[k,!!r?.profiles[k]])),appointments:Object.fromEntries(members.ids().map(k=>[k,!!r?.appt?.[k]])),muted:r?.muted||[]}}
+export function status(endpoint,profile,userId=null){const r=own(subs(),endpoint,userId);return {subscribed:!!r&&(!profile||!!r.profiles[profile]),muted:r?.muted||[]}}
 // ---- Scheduler ----
 const LATE=30*6e4,WINDOW=3*36e5;
 // Pure: which reminders are due now? state = {sentKey:timestamp}. Returns [{endpoint,profile,keys:[...],items:[{plan,slot,late}]}].
@@ -125,12 +133,19 @@ export function message(n){
  const who=whoPrefix(n.profile);
  return {title:late?'Medicine not recorded yet':'Time for your medicine',body:who+names.join(', ')+(times.length===1?' · '+times[0]:' · due '+times.join(', ')),tag:'meds-'+n.profile,url:'/?p='+n.profile+'#episodes'};
 }
+// Drops topics for profiles the device's user can no longer access (removed from the household, or it was deleted).
+export function reachable(list){
+ const d=system(),q=d.prepare('SELECT 1 FROM members m JOIN memberships s ON s.household_id=m.household_id WHERE m.id=? AND s.user_id=?');
+ const keep=(map,u)=>Object.fromEntries(Object.entries(map||{}).filter(([m])=>q.get(m,u)));
+ return list.map(s=>s.userId?{...s,profiles:keep(s.profiles,s.userId),appt:keep(s.appt,s.userId)}:s);
+}
 export async function tick(now=Date.now(),send=deliver){
  let state=readState();
  const live=new Map();const plansOf=pr=>{if(!live.has(pr)){const eps=listEpisodes(pr);live.set(pr,meds.list(pr).filter(p=>eps.some(e=>e.id===p.episodeId)))}return live.get(pr)};
- const list=due(now,subs(),plansOf,state);let changed=false,gone=[];
+ const current=reachable(subs());
+ const list=due(now,current,plansOf,state);let changed=false,gone=[];
  const apptsLive=new Map();const apptsOf=pr=>{if(!apptsLive.has(pr))apptsLive.set(pr,appts.list(pr));return apptsLive.get(pr)};
- const alist=dueAppts(now,subs(),apptsOf,state);
+ const alist=dueAppts(now,current,apptsOf,state);
  for(const n of list){
   const r=await send({endpoint:n.endpoint,keys:n.keys},message(n),{ttl:n.items.every(i=>i.kind==='late')?900:1800});
   if(r.gone)gone.push(n.endpoint);

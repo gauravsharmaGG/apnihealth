@@ -197,5 +197,22 @@ CREATE TABLE invites(
  used_by TEXT REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX invites_household ON invites(household_id);
+`},
+ {version:6,name:'per-profile ingest keys; push subscriptions belong to users',sql:`
+-- Apple Health / Shortcuts keys. member_id is NULL only for the shared household key migrated from
+-- private/ingest-token.txt; it keeps working for that household until revoked.
+CREATE TABLE ingest_tokens(
+ token_hash TEXT PRIMARY KEY,
+ household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+ member_id TEXT REFERENCES members(id) ON DELETE CASCADE,
+ label TEXT NOT NULL,
+ created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+ created_at TEXT NOT NULL,
+ last_used_at TEXT,
+ revoked_at TEXT
+);
+CREATE INDEX ingest_tokens_member ON ingest_tokens(member_id);
+-- Devices subscribed before accounts have no user until someone subscribes from them again.
+ALTER TABLE push_subscriptions ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
 `}
 ];
