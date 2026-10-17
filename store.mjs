@@ -107,6 +107,37 @@ export function addMember(householdId,m){
   .run({...c,labs:c.labs?1:0,household:householdId,pos,at:new Date().toISOString()});
  return c;
 }
+// A new, instance-wide unique member id from a display name (ids are folder names and the global key).
+export function newMemberId(name){
+ const base=String(name||'').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/^[^a-z]+/,'').slice(0,20)||'member';
+ const d=db();
+ for(;;){const id=base+'-'+randomUUID().slice(0,4);if(!d.prepare('SELECT 1 FROM members WHERE id=?').get(id))return id}
+}
+// Profile changes go through the access check and need the owner role in the member's household.
+function ownerOf(memberId){
+ const m=forMember(memberId);
+ if(m.role!=='owner')throw new AccessError('Only an owner can change profiles',403);
+ return m;
+}
+export function updateMember(memberId,patch){
+ ownerOf(memberId);
+ const d=db(),cur=d.prepare('SELECT * FROM members WHERE id=?').get(memberId);
+ const c=cleanMember({id:memberId,name:patch.name??cur.name,kind:patch.kind??cur.kind,color:patch.color===undefined?cur.color:patch.color,labs:!!cur.labs,initial:patch.name&&patch.name!==cur.name?undefined:cur.initial});
+ d.prepare('UPDATE members SET name=$name,initial=$initial,kind=$kind,labs=$labs,color=$color WHERE id=$id').run({...c,labs:c.labs?1:0});
+ return c;
+}
+export function addProfile(householdId,m){
+ if(roleIn(householdId)!=='owner')throw new AccessError('Only an owner can add profiles',403);
+ return addMember(householdId,{...m,id:newMemberId(m?.name)});
+}
+// Deletes a profile and, through ON DELETE CASCADE, all of its records.
+export function removeMember(memberId){
+ const m=ownerOf(memberId),d=db();
+ return transaction(d,()=>{
+  if(d.prepare('SELECT COUNT(*) n FROM members WHERE household_id=?').get(m.household).n<=1)throw Error('A household needs at least one profile');
+  d.prepare('DELETE FROM members WHERE id=?').run(memberId);
+ });
+}
 const rowToMember=r=>({id:r.id,name:r.name,initial:r.initial,kind:r.kind,labs:!!r.labs,color:r.color,household:r.household_id});
 export function listMembers(householdId){
  const d=db();

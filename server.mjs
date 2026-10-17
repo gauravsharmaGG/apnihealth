@@ -12,6 +12,7 @@ import * as push from './push.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
 import * as labs from './labs.mjs';
+import * as household from './household.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
 import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -39,6 +40,7 @@ const server=http.createServer(async(req,res)=>{try{
   return send(res,403,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Sign-in required</title><h1>Sign-in required</h1><p><a href="/">Open your private health record</a></p></html>');
  }
  if(await auth.account(req,res,path,user))return;
+ if(await household.handleAnywhere(req,res,path,user))return;
  const hh=A.activeHousehold(user);
  return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>app(req,res,reqUrl,path,user,hh));
 }catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}});
@@ -64,9 +66,10 @@ async function app(req,res,reqUrl,path,user,hh){
  }
  if(!hh){ // signed in, but not in any household yet
   if(path.startsWith('/api/'))return json(res,403,{error:'You are not a member of a household yet'});
-  const [st,html]=auth.page('No household yet','<h1>You are signed in</h1><p>You are not part of a household yet. Ask its owner for an invite link.</p><form method="post" action="/logout"><button class="ghost">Sign out</button></form>');
+  const [st,html]=auth.page('No household yet','<h1>You are signed in</h1><p>You are not part of a household yet. Open an invite link from its owner, or start your own.</p><form method="post" action="/api/households" class="auth-form"><label class="field">Household name<input name="name" maxlength="80" required value="My household"></label><button class="primary" type="submit">Start a household</button></form><form method="post" action="/logout"><button class="ghost">Sign out</button></form>');
   return send(res,path==='/'?st:404,html);
  }
+ if(await household.handle(req,res,path,user,hh))return;
  if(path==='/api/me'&&req.method==='GET')return json(res,200,{email:user.email,name:user.name,mode:auth.MODE,household:hh,households:A.householdsOf(user.id)});
  if(path.startsWith('/api/')&&!hlog.profileOk(qProfile))return json(res,400,{error:'Unknown profile'});
  if(path==='/api/medicines'){

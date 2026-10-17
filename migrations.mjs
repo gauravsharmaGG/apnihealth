@@ -182,5 +182,20 @@ CREATE TABLE webauthn_challenges(
  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
  expires_at INTEGER NOT NULL
 );
+`},
+ {version:5,name:'household invites',sql:`
+-- Invite links: only the SHA-256 hash of the token is stored. email (optional) limits who may accept.
+CREATE TABLE invites(
+ token_hash TEXT PRIMARY KEY,
+ household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+ role TEXT NOT NULL CHECK(role IN ('owner','editor','viewer')),
+ email TEXT COLLATE NOCASE,
+ created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ used_at INTEGER,
+ used_by TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX invites_household ON invites(household_id);
 `}
 ];

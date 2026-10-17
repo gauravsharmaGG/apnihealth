@@ -73,15 +73,24 @@ node server.mjs
   are printed to the server log instead of emailed (development only). Once signed in, anyone can add a
   **passkey** (Face ID, Touch ID, device PIN) in Settings and sign in with it from then on; passkeys need HTTPS
   (or `localhost`) and are tied to the host name in `APP_HOST`. There is no open sign-up: create people with
-  `scripts/create-user.mjs` (invites are planned).
+  `scripts/create-user.mjs` for the first owner, then invite everyone else from Settings.
 - `AUTH_MODE=trusted-proxy`: Cloudflare Access (or a proxy issuing the same signed JWT) signs people in. Set
   `CF_ACCESS_ISSUER`, `CF_ACCESS_AUD` and `CF_ACCESS_EMAIL` (allowed emails). An allowed email becomes a user on
   first visit: the first one owns the household, later ones join as `TRUSTED_PROXY_ROLE` (default `editor`).
   If `CF_ACCESS_ISSUER` is set without `AUTH_MODE`, the server refuses to start, so an existing Cloudflare setup
   never silently switches modes.
 
-Roles per household: **owner** and **editor** can read and change every member's records; **viewer** can only read.
-Members (including children) do not need a login. Every state-changing request must come from the app's own
+### Households, people and profiles
+
+- A **profile** (member) is someone with health records: an adult or a child. Profiles do not need a login.
+- **People** sign in and get a role in a household: **owner** (everything, including profiles, invites and who has
+  access), **editor** (add and change records of every profile) or **viewer** (read only). A household always keeps
+  at least one owner. One login can belong to several households and switch between them in Settings.
+- Owners invite from Settings → Household: an invite link (anyone holding it can join once) or an invite for one
+  email address (emailed when SMTP is set up). Invites expire after 7 days. In `AUTH_MODE=builtin` an invite is
+  the only way for a new address to get an account.
+- Deleting a profile deletes its records from the database; uploaded files under `private/profiles/<id>/` stay on
+  disk for you to remove. Every state-changing request must come from the app's own
 origin (CSRF protection), and the sign-in endpoints are rate limited.
 
 The server listens on `127.0.0.1` only. Put it behind your proxy or tunnel with TLS, and run it with your
@@ -115,12 +124,12 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs && node test-households.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py
 node test-server.mjs                 # end to end on preview data
-node test-browser-smoke.mjs && node test-browser-passkeys.mjs   # need Chrome (CHROME_BIN)
+node test-browser-smoke.mjs && node test-browser-accounts.mjs   # need Chrome (CHROME_BIN)
 # or: npm test && npm run test:browser
 ```
 
@@ -128,7 +137,6 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 
 ## Roadmap
 
-- Accounts: invites, several households per user (in progress).
 - Export and account deletion.
 - Lab results: CSV import, and lab views for children.
 - Docker image and self-hosting guide.
