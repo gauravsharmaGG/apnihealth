@@ -16,6 +16,7 @@ import * as household from './household.mjs';
 import * as ingest from './ingest.mjs';
 import * as consentPage from './consent-page.mjs';
 import * as settings from './settings.mjs';
+import * as rights from './datarights.mjs';
 import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
@@ -54,6 +55,15 @@ const server=http.createServer(async(req,res)=>{try{
  // The sign-in page's assets (styles, icons, scripts) also serve signed-in people without a household yet.
  if(auth.PUBLIC_PATHS.has(path)&&path!=='/login'&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,path);
  if(await auth.account(req,res,path,user))return;
+ // Deleting the account works at any time, also before accepting the notice (withdrawing consent).
+ if(path==='/api/account'&&req.method==='GET')return json(res,200,{email:user.email,mode:auth.MODE,soleOwned:rights.soleOwned(user.id)});
+ if(path==='/api/account/delete'&&req.method==='POST'){
+  if(limited('delete:'+user.id,10,36e5))return json(res,429,{error:'Too many requests'});
+  let b={};try{b=JSON.parse(await readBody(req,4096)||'{}')}catch{}
+  if(typeof b.confirm!=='string'||b.confirm.trim().toLowerCase()!==user.email)return json(res,400,{error:'Type your email address to confirm'});
+  const r=rights.deleteAccount(user);
+  return send(res,200,JSON.stringify({deleted:true,households:r.households}),{'Content-Type':'application/json; charset=utf-8',...(auth.MODE==='builtin'?{'Set-Cookie':auth.clearSession(req)}:{})});
+ }
  // Nothing health-related happens before the current health-data notice is accepted (consent.mjs).
  if(await consentPage.handle(req,res,path,user))return;
  if(!hasConsent(user.id)){
@@ -61,6 +71,14 @@ const server=http.createServer(async(req,res)=>{try{
   return send(res,303,'',{Location:'/consent'});
  }
  if(await household.handleAnywhere(req,res,path,user))return;
+ // Export: the account and every household this person belongs to, with uploaded files, as one ZIP.
+ if(path==='/api/export'&&req.method==='GET'){
+  if(limited('export:'+user.id,20,36e5))return json(res,429,{error:'Too many exports; try again later'});
+  const exp=await runAs({type:'user',userId:user.id,household:null},()=>rights.exportData(user));
+  res.writeHead(200,{...headers,'Content-Type':'application/zip','Content-Disposition':`attachment; filename="${APP_NAME.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()}-export-${new Date().toISOString().slice(0,10)}.zip"`});
+  try{rights.writeZip(res,exp);res.end()}catch(e){console.error('export failed:',e.message);res.destroy()}
+  return;
+ }
  const hh=A.activeHousehold(user);
  const hs=hh?settings.get(hh.id):null;
  return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>inZone(hs?.timeZone,()=>app(req,res,reqUrl,path,user,hh,hs)));

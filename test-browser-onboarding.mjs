@@ -81,6 +81,16 @@ try{
  assert.match(await ev("document.querySelector('#log-entries li').textContent"),/154\.3 lb/);await shot('log');
  const me=await ev("fetch('/api/log').then(r=>r.json()).then(j=>j.entries.map(e=>[e.metric,e.value]))");
  assert.deepEqual(me,[['weight',70]],'stored in kilograms');
+ // Settings → Your data: export is offered; deleting the account (sole owner) removes the household and signs out
+ await go(base+'/#settings');await until(()=>ev("!!document.getElementById('del-open')"),8000,'your data card');await noScroll('your data');
+ assert.equal(await ev("document.getElementById('data-export').getAttribute('href')"),'/api/export');
+ const zipHead=await ev("fetch('/api/export').then(r=>r.arrayBuffer()).then(b=>[...new Uint8Array(b.slice(0,4))])");assert.deepEqual(zipHead,[0x50,0x4b,3,4],'a ZIP download');
+ await ev("document.getElementById('del-open').click()");
+ await until(()=>ev("!!document.getElementById('del-confirm')"),3000,'delete form');
+ assert.match(await ev("document.getElementById('data-card').textContent"),/only owner of “Example Family”/);await noScroll('delete form');
+ await ev("document.getElementById('del-confirm').value='first-time@example.com';document.getElementById('del-go').click()");
+ await until(()=>ev("location.pathname==='/login'"),8000,'signed out after deletion');
+ assert.equal((await fetch(base+'/api/me',{headers:{Host:`localhost:${port}`}})).status,401);
  assert.deepEqual(errors,[],'no script errors');
- console.log('PASS browser onboarding: sign up, passkey offer skipped, health data notice accepted, household + child + measurements + time zone + lb/°F + Apple Health key, first weight logged in lb (stored in kg); 390x844, no horizontal scroll.');
+ console.log('PASS browser onboarding: sign up, passkey offer skipped, health data notice accepted, household + child + measurements + time zone + lb/°F + Apple Health key, first weight logged in lb (stored in kg), export download, account deletion from Settings; 390x844, no horizontal scroll.');
 }finally{try{br?.kill()}catch{};try{srv?.kill()}catch{};rmSync(dir,{recursive:true,force:true})}

@@ -436,3 +436,8 @@ html[data-role=viewer] :is(#add-event,#new-episode,#lab-add,#log-form,#sync,.mt-
 .ob-card .ghost{width:100%;min-height:46px;margin-top:14px}
 .ob-signout{margin-top:1rem;text-align:center}
 .fields .field[hidden]{display:none}
+.del-box{border:1px solid #e7c3b8;background:#fdf6f3;border-radius:12px;padding:12px 14px;margin-top:8px}
+button.danger{background:#9b3b27;color:#fff;border:0;border-radius:10px;min-height:44px;padding:0 16px;font-weight:600}
+button.ghost.danger{background:transparent;color:#9b3b27;border:1px solid #e0b4a7}
+/* viewers can only look: hide every control that would change something (the server refuses those anyway) */
+html[data-role=viewer] :is(#ah-import,[data-del],[data-lab-del],[data-delbox],[data-delev],[data-epdel],[data-edit],[data-epedit],[data-resolve],[data-reopen],[data-addto],[data-ap-new],[data-ap-del],[data-ap-done],[data-ap-edit],[data-ap-reopen],[data-dose],[data-newmed],[data-mededit],.mt-take,.mt-undo,.mt-more,[data-revoke-key]){display:none!important}

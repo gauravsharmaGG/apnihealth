@@ -36,6 +36,9 @@ The project is in an early stage; only the latest commit on `main` is supported.
   the health data notice (`consent.mjs`): the server answers 403 for every API and sends pages to `/consent`, and
   the store refuses writes by users without consent as a second check. Acceptance is stored with its time and
   version. Apple Health keys keep working, since an editor who already consented created them.
+- Export (`/api/export`) runs as the signed-in user through the same access check as the app, needs consent, and
+  leaves out secrets (session and key hashes, passkey public keys). Account deletion needs the account's email
+  typed again plus a same-origin request; it deletes sole-owned households in one transaction and then their files.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Every state-changing request must be same-origin.
 - Data is kept in a SQLite database and upload files under `private/`, with owner-only permissions. Encrypt the
   disk and back it up. All member data access goes through one access check (`store.mjs`).

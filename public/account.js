@@ -4,7 +4,7 @@
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const buf=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
 const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const S={passkeys:null,msg:'',busy:false,hh:null,hmsg:'',link:''};
+const S={passkeys:null,msg:'',busy:false,hh:null,hmsg:'',link:'',acct:null,del:false,dmsg:''};
 const cfg=()=>window.APP_CONFIG||{};
 const role=()=>(cfg().user||{}).role;
 document.documentElement.dataset.role=role()||'';
@@ -14,6 +14,7 @@ const ROLE={owner:'Owner: can change everything',editor:'Editor: can add and cha
 async function load(){
  try{S.hh=await call('/api/household')}catch(e){S.hmsg=e.message}
  if(cfg().authMode==='builtin'){try{S.passkeys=(await call('/api/passkeys')).passkeys}catch(e){S.msg=e.message}}
+ try{S.acct=await call('/api/account')}catch{}
  render();
 }
 // Runs a household action; reload=true reloads the page (the profile list or household changed).
@@ -89,9 +90,34 @@ function render(){
  if(S.msg)h+='<p class="set-msg" role="status">'+esc(S.msg)+'</p>';
  h+='<p class="muted"><a href="/consent">Health data notice</a></p>';
  h+='<form method="post" action="/logout" class="set-actions"><button type="submit" class="ghost">Sign out</button></form></section>';
- el.innerHTML=household()+h;wireHousehold(el);
+ el.innerHTML=household()+h+yourData();wireHousehold(el);wireData(el);
  const a=$('#pk-add');if(a)a.onclick=add;
  el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{if(confirm('Remove this passkey? You can still sign in with an email link.'))remove(b.dataset.remove)});
+}
+// Your data: download everything (ZIP), or delete the account.
+function yourData(){
+ const so=S.acct?.soleOwned||[];
+ let h='<section class="set-card" id="data-card"><h2>Your data</h2><p class="muted">Download everything you can see here: your account, every household you belong to, all records and uploaded files, as one ZIP file.</p>';
+ h+='<p><a class="button-link" id="data-export" href="/api/export" download>Download all data</a></p>';
+ h+='<h3>Delete account</h3>';
+ if(!S.del)h+='<div class="set-actions"><button type="button" class="ghost danger" id="del-open">Delete my account…</button></div>';
+ else{
+  h+='<div class="del-box"><p><strong>This cannot be undone.</strong> Your login, passkeys and access to every household end now.</p>';
+  h+=so.length?'<p>You are the only owner of '+so.map(x=>'“'+esc(x.name)+'”'+(x.others?' (shared with '+x.others+' other '+(x.others===1?'person':'people')+', who will lose access)':'')).join(', ')+'. '+(so.length===1?'It is':'They are')+' deleted too, with every profile, record and uploaded file.</p>':'<p>Households you share with other owners stay as they are.</p>';
+  h+='<p class="muted">Download your data first if you want to keep a copy.</p><label class="field">Type your email address to confirm<input id="del-confirm" type="email" autocomplete="off" placeholder="'+esc(S.acct?.email||'')+'"></label>';
+  h+='<div class="set-actions"><button type="button" class="danger" id="del-go"'+(S.busy?' disabled':'')+'>Delete my account</button><button type="button" class="ghost" id="del-cancel">Cancel</button></div></div>';
+ }
+ if(S.dmsg)h+='<p class="set-msg" role="status">'+esc(S.dmsg)+'</p>';
+ return h+'</section>';
+}
+function wireData(el){
+ const o=el.querySelector('#del-open');if(o)o.onclick=()=>{S.del=true;S.dmsg='';render();el.querySelector('#del-confirm')?.focus()};
+ const c=el.querySelector('#del-cancel');if(c)c.onclick=()=>{S.del=false;S.dmsg='';render()};
+ const g=el.querySelector('#del-go');if(g)g.onclick=async()=>{
+  S.busy=true;S.dmsg='';const v=el.querySelector('#del-confirm').value;render();
+  try{await call('/api/account/delete',{confirm:v});location.href=cfg().authMode==='builtin'?'/login':'/'}
+  catch(e){S.busy=false;S.dmsg=e.message;render()}
+ };
 }
 function sync(){if(location.hash==='#settings')load()}
 addEventListener('hashchange',sync);
