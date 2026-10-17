@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {mkdtempSync,cpSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';
-import {startServer} from './testlib.mjs';
+import {startServer,launchChrome} from './testlib.mjs';
 const chrome=process.env.CHROME_BIN||'google-chrome';
 if(spawnSync(chrome,['--version']).status!==0){console.log('SKIP browser accounts: Chrome not found (set CHROME_BIN)');process.exit(0)}
 if(typeof WebSocket==='undefined'){console.log('SKIP browser accounts: needs Node 22+');process.exit(0)}
@@ -20,12 +20,11 @@ let srv,br;
 try{
  assert.equal(spawnSync(process.execPath,['scripts/preview/seed.mjs'],{cwd:dir,env}).status,0);spawnSync('git',['init','-q'],{cwd:dir});
  assert.equal(spawnSync('python3',['build.py'],{cwd:dir,env}).status,0);
- const dbg=9800+Math.floor(Math.random()*150); // base is set once the server has a port
  let log='';
  // a free port (retries if taken) and wait until the server listens
  const {p:proc,port}=await startServer({cwd:dir,env:{PATH:env.PATH,NO_PUSH:'1',AUTH_MODE:'builtin'},onData:d=>log+=d});srv=proc;const base=`http://localhost:${port}`;
- br=spawn(chrome,['--headless=new','--disable-gpu','--no-sandbox','--remote-debugging-port='+dbg,'--user-data-dir='+mkdtempSync(join(tmpdir(),'apni-chrome-')),'about:blank'],{stdio:'ignore'});
- let t;for(let i=0;i<40&&!t;i++){await sleep(250);try{t=(await(await fetch(`http://127.0.0.1:${dbg}/json`)).json()).find(x=>x.type==='page')}catch{}}
+ // waits for DevTools and a page target (clear error with Chrome's output if it never gets there)
+ const chromeRun=await launchChrome({chrome});br=chromeRun.proc;const t=chromeRun.target,dbg=chromeRun.port;
  const ws=new WebSocket(t.webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);
  let id=0;const wait={},errors=[];
  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&wait[m.id]){wait[m.id](m);delete wait[m.id]}

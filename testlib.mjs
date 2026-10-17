@@ -72,3 +72,29 @@ export async function startServer({cwd,env,onData=()=>{},args=['server.mjs']}){
   if(attempt>=4||!/EADDRINUSE/.test(out))throw Error('server exited:\n'+out);
  }
 }
+
+// Starts headless Chrome for the browser tests and resolves once DevTools is listening AND a page target exists.
+// --remote-debugging-port=0 lets Chrome pick a free port (no clashes between runs or with other services); Chrome
+// prints the address on stderr ("DevTools listening on ws://127.0.0.1:PORT/..."). If Chrome exits or is not ready
+// within `ms`, this fails with a clear message and Chrome's own output instead of handing back an undefined target.
+import {mkdtempSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
+export async function launchChrome({chrome=process.env.CHROME_BIN||'google-chrome',args=[],ms=60000}={}){
+ const t0=Date.now(),deadline=t0+ms;
+ const proc=spawn(chrome,['--headless=new','--disable-gpu','--no-sandbox','--remote-debugging-port=0','--user-data-dir='+mkdtempSync(join(tmpdir(),'apni-chrome-')),...args,'about:blank'],{stdio:['ignore','ignore','pipe']});
+ let err='',exit=null;proc.stderr.on('data',d=>{err=(err+d).slice(-20000)});proc.on('exit',(c,s)=>{exit=c??s});proc.on('error',e=>{exit=e.message});
+ const fail=why=>{try{proc.kill()}catch{};return Error(`Chrome ${why} (after ${Date.now()-t0} ms)\n--- chrome stderr (last lines) ---\n${err.slice(-3000)}`)};
+ const sleep=t=>new Promise(r=>setTimeout(r,t));
+ let port,last='';
+ for(;;){
+  if(exit!==null)throw fail(`exited (${exit}) before DevTools was ready`);
+  port??=/DevTools listening on ws:\/\/[^\s/]+:(\d+)\//.exec(err)?.[1];
+  if(port){
+   try{const list=await(await fetch(`http://127.0.0.1:${port}/json/list`)).json();last=JSON.stringify(list.map(x=>x.type));
+    const target=list.find(x=>x.type==='page'&&x.webSocketDebuggerUrl);
+    if(target){const readyMs=Date.now()-t0;if(readyMs>5000)console.log(`note: Chrome took ${readyMs} ms to become ready`);return {proc,port:+port,target,readyMs}}
+   }catch(e){last=e.message}
+  }
+  if(Date.now()>deadline)throw fail(port?`had no page target (last /json/list: ${last})`:'did not report a DevTools port');
+  await sleep(50);
+ }
+}

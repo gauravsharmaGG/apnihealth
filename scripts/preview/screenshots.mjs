@@ -3,6 +3,7 @@
 // [name=hash@WIDTHxHEIGHT ...]. Copies the repo to a temp dir, seeds preview data there, runs the server with the
 // preview auth shim and drives headless Chrome over CDP (CHROME_BIN). Never touches ./private.
 import {spawn,spawnSync} from 'node:child_process';
+import {launchChrome} from '../../testlib.mjs';
 import {mkdtempSync,cpSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {randomBytes} from 'node:crypto';
 const out=resolve(process.argv[2]||'shots');mkdirSync(out,{recursive:true});
@@ -14,10 +15,10 @@ let srv,br;
 try{
  if(spawnSync(process.execPath,['scripts/preview/seed.mjs'],{cwd:dir,env}).status!==0)throw Error('seed failed');spawnSync('git',['init','-q'],{cwd:dir});
  if(spawnSync('python3',['build.py'],{cwd:dir,env}).status!==0)throw Error('build failed');
- const token=randomBytes(16).toString('hex'),port=5200+Math.floor(Math.random()*300),dbg=9600+Math.floor(Math.random()*150);
+ const token=randomBytes(16).toString('hex'),port=5200+Math.floor(Math.random()*300);
  srv=spawn(process.execPath,['--import','./scripts/preview/loader.mjs','server.mjs'],{cwd:dir,env:{...env,PORT:String(port),PREVIEW_AUTH_TOKEN:token},stdio:'ignore'});
- br=spawn(chrome,['--headless=new','--disable-gpu','--no-sandbox','--hide-scrollbars','--remote-debugging-port='+dbg,'--user-data-dir='+mkdtempSync(join(tmpdir(),'apni-chrome-')),'about:blank'],{stdio:'ignore'});
- let t;for(let i=0;i<40&&!t;i++){await sleep(250);try{t=(await(await fetch(`http://127.0.0.1:${dbg}/json`)).json()).find(x=>x.type==='page')}catch{}}
+ // waits for DevTools and a page target (clear error with Chrome's output if it never gets there)
+ const chromeRun=await launchChrome({chrome,args:['--hide-scrollbars']});br=chromeRun.proc;const t=chromeRun.target,dbg=chromeRun.port;
  const ws=new WebSocket(t.webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);
  let id=0;const wait={};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&wait[m.id]){wait[m.id](m);delete wait[m.id]}};
  const send=(method,params={})=>new Promise(r=>{wait[++id]=r;ws.send(JSON.stringify({id,method,params}))});
