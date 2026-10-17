@@ -619,3 +619,22 @@ html.lite :is(.appbar,.sidebar,.tabbar){background:var(--surface-solid)}
 .in-dose .in-ico{background:var(--warn-soft);color:var(--warn)}.in-cal .in-ico{background:var(--tint-lilac);color:var(--ink-2)}.in-gap .in-ico{background:var(--tint-sand);color:var(--ink-2)}
 .in-go{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;color:var(--ink-2);text-decoration:none;font-size:18px}.in-go:hover{background:var(--accent-soft);color:var(--accent-strong)}
 .in-note{margin:14px 0 0;font-size:12px;color:var(--muted)}
+/* ===== Phase 4: remaining views, sign-in and onboarding in the new theme ===== */
+button.text-button.danger{background:none;color:var(--bad);border:0;min-height:44px;padding:0 8px;font-weight:600}
+button.text-button.danger:hover{background:var(--bad-soft)}
+.button-link.ghost{background:transparent;color:var(--accent-strong);border:1px solid var(--border-strong);justify-content:center}
+.button-link.ghost:hover{background:var(--accent-soft);color:var(--accent-strong)}
+.auth-card .button-link{width:100%;justify-content:center;margin-top:10px}
+.auth-card>.eyebrow:first-child:not(#ob-progress){display:flex;align-items:center;gap:10px;font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:700;margin-bottom:18px}
+.auth-card>.eyebrow:first-child:not(#ob-progress)::before{content:"AH" / "";width:34px;height:34px;border-radius:11px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:12px;letter-spacing:.04em}
+#ob-progress.has-steps::after{content:"";display:block;height:6px;margin-top:10px;border-radius:6px;background:linear-gradient(90deg,var(--accent) 0 calc(var(--p,0) * 100%),#e4eaee calc(var(--p,0) * 100%) 100%)}
+.ob-card .check{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 14px;margin:0 0 8px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-solid);font-weight:550;cursor:pointer}
+.ob-card .check:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.ob-card .check input{width:20px;height:20px;accent-color:var(--accent);margin:0}
+.ob-card .check:focus-within{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
+/* section headings across the restyled views share the home rhythm */
+.view>.page-heading{padding-top:28px}
+.view>.subnav+.page-heading{padding-top:16px}
+.tile,.measurement,.ep-card,.cal-card,.set-card,.record{border-radius:var(--radius)}
+.ap{background:var(--surface-solid);border-color:var(--border);border-radius:var(--radius)}
+#ob-progress.has-steps{flex-wrap:wrap}#ob-progress.has-steps::after{flex:1 0 100%}

@@ -39,17 +39,17 @@ try{
  const shot=async name=>{if(process.env.SHOTS)(await import('node:fs')).writeFileSync(join(process.env.SHOTS,name+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))};
  const step=n=>until(()=>ev(`document.getElementById('ob-progress')?.textContent.startsWith('Step ${n} of 5')`),8000,'onboarding step '+n);
  // sign up
- await go(base+'/');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);
+ await go(base+'/');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);await shot('login');
  await ev("document.querySelector('input[name=email]').value='first-time@example.com';document.querySelector('form.auth-form').requestSubmit()");
  const link=await until(()=>(log.match(/sign-in link for first-time@example\.com: (\S+)/)||[])[1],5000,'sign-up link');
  await go(link.replace(/^https?:\/\/[^/]+/,base));await ev("document.querySelector('form.auth-form').requestSubmit()");
- await until(()=>ev("location.pathname==='/welcome/passkey'"),8000,'passkey offer');await noScroll('passkey offer');
+ await until(()=>ev("location.pathname==='/welcome/passkey'"),8000,'passkey offer');await noScroll('passkey offer');await shot('passkey-offer');
  await ev("document.getElementById('pk-prompt-skip').click()");
  // notice and consent
  await until(()=>ev("location.pathname==='/consent'&&!!document.querySelector('input[name=consent]')"),8000,'consent page');await noScroll('consent');await shot('consent');
  await ev("document.querySelector('input[name=disclaimer]').click();document.querySelector('input[name=consent]').click();document.querySelector('form[action=\"/consent\"]').requestSubmit()");
  // onboarding
- await until(()=>ev("location.pathname==='/welcome'"),8000,'welcome');await step(1);await noScroll('step 1');
+ await until(()=>ev("location.pathname==='/welcome'"),8000,'welcome');await step(1);await noScroll('step 1');await shot('ob1');
  await ev("(()=>{const f=document.getElementById('ob-household');f.name.value='Example Family';f.memberName.value='Alex Example';f.requestSubmit()})()");
  await step(2);await noScroll('step 2');assert.match(await ev("document.getElementById('ob-member-list').textContent"),/Alex Example/);
  await ev("(()=>{const f=document.getElementById('ob-member');f.name.value='Sam Example';f.kind.value='child';f.requestSubmit()})()");
@@ -62,7 +62,7 @@ try{
  await step(4);await noScroll('step 4');await shot('ob4');
  assert(await ev("document.querySelectorAll('#ob-zone option').length>50"),'time zone list');
  await ev("document.getElementById('ob-zone').value='America/Chicago';document.querySelector('input[name=weight][value=lb]').click();document.querySelector('input[name=temperature][value=F]').click();document.getElementById('ob-next').click()");
- await step(5);await noScroll('step 5');
+ await step(5);await noScroll('step 5');await shot('ob5');
  await ev("document.getElementById('ob-key-create').click()");
  await until(()=>ev("/^Bearer [A-Za-z0-9_-]{43}$/.test(document.getElementById('ob-key').value)"),5000,'Apple Health key');await noScroll('key shown');await shot('ob5');
  await ev("document.getElementById('ob-next').click()");

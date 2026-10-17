@@ -10,7 +10,7 @@ async function api(path,body){
 let S,step=0;
 const STEPS=['Your household','Who else','What to track','Time and units','Apple Health'];
 const msg=(t,bad=true)=>{const m=$('#ob-msg');if(m){m.className='form-msg'+(t?bad?' bad':' good':'');m.textContent=t||''}};
-const head=(n,title,lede)=>{progress.textContent=`Step ${n} of ${STEPS.length} · ${STEPS[n-1]}`;return `<h1>${esc(title)}</h1>${lede?`<p class="muted">${esc(lede)}</p>`:''}`};
+const head=(n,title,lede)=>{progress.textContent=`Step ${n} of ${STEPS.length} · ${STEPS[n-1]}`;progress.style.setProperty('--p',String(n/STEPS.length));progress.classList.add('has-steps');return `<h1>${esc(title)}</h1>${lede?`<p class="muted">${esc(lede)}</p>`:''}`};
 const next=label=>`<button class="primary" type="button" id="ob-next">${esc(label||'Continue')}</button><p id="ob-msg" class="form-msg" role="status"></p>`;
 async function load(){S=await api('/api/onboarding')}
 
