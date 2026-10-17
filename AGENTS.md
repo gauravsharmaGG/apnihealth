@@ -21,7 +21,11 @@ every instance keeps its health data in git-ignored folders on its own server. S
    a data-like file, stop. Never force-add it.
 5. Keep authentication **fail closed** and writes same-origin only. Keep the strict Content-Security-Policy:
    no inline scripts or `style="..."` attributes (set styles through the CSSOM instead).
-6. The server has no npm dependencies for now. Adding any needs a maintainer decision first.
+6. Dependencies stay minimal. Storage uses Node's built-in `node:sqlite` (Node 22.13+), so there are no npm
+   dependencies today. Adding one needs a maintainer decision first; when approved, pin an exact version
+   (no `^`/`~`), commit the lockfile and note the reason in the PR. All SQL on member data goes through
+   `store.mjs` (`forMember(id)`), which binds `$member` itself and refuses unscoped queries. Schema changes
+   are new entries in `migrations.mjs`; never edit a migration that has been released.
 7. Member ids come from `private/members.json` and are validated by `members.mjs`; every data module must
    check them before touching the filesystem. Never hardcode member ids or names.
 
@@ -32,6 +36,9 @@ every instance keeps its health data in git-ignored folders on its own server. S
 - `env.mjs`: instance settings from the environment. `members.mjs`: the member list.
 - `access.mjs`: verifies the Cloudflare Access JWT (issuer, audience, allowed identities) on every request
   except `/api/ingest`, which uses its own bearer token.
+- `db.mjs` (SQLite connection, migrations runner, transactions), `migrations.mjs` (schema versions),
+  `store.mjs` (the member access check `forMember`, document tables, households and members),
+  `importer.mjs` + `scripts/import-json.mjs` (one-time JSON `private/` to SQLite import, counts only).
 - `log.mjs`, `events.mjs` (episodes, entries, record inbox), `medicines.mjs`, `appointments.mjs`, `push.mjs`
   (Web Push with built-in crypto, reminder scheduler): data modules storing JSON under `private/`.
 - `plain_data.py` + `redesign.py` (`build.py`): generate `public/data.js`, `public/reports-data.js`,
