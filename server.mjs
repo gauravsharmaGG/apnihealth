@@ -18,6 +18,7 @@ import * as ingest from './ingest.mjs';
 import * as consentPage from './consent-page.mjs';
 import * as settings from './settings.mjs';
 import * as rights from './datarights.mjs';
+import {blobs} from './blobs.mjs';
 import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,DEMO_NOTICE,publicOrigin} from './env.mjs';
@@ -63,7 +64,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(limited('delete:'+user.id,10,36e5))return json(res,429,{error:'Too many requests'});
   let b={};try{b=JSON.parse(await readBody(req,4096)||'{}')}catch{}
   if(typeof b.confirm!=='string'||b.confirm.trim().toLowerCase()!==user.email)return json(res,400,{error:'Type your email address to confirm'});
-  const r=rights.deleteAccount(user);
+  const r=await rights.deleteAccount(user);
   return send(res,200,JSON.stringify({deleted:true,households:r.households}),{'Content-Type':'application/json; charset=utf-8',...(auth.MODE==='builtin'?{'Set-Cookie':auth.clearSession(req)}:{})});
  }
  // Nothing health-related happens before the current health-data notice is accepted (consent.mjs).
@@ -78,7 +79,7 @@ const server=http.createServer(async(req,res)=>{try{
   if(limited('export:'+user.id,20,36e5))return json(res,429,{error:'Too many exports; try again later'});
   const exp=await runAs({type:'user',userId:user.id,household:null},()=>rights.exportData(user));
   res.writeHead(200,{...headers,'Content-Type':'application/zip','Content-Disposition':`attachment; filename="${APP_NAME.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()}-export-${new Date().toISOString().slice(0,10)}.zip"`});
-  try{rights.writeZip(res,exp);res.end()}catch(e){console.error('export failed:',e.message);res.destroy()}
+  try{await rights.writeZip(res,exp);res.end()}catch(e){console.error('export failed:',e.message);res.destroy()}
   return;
  }
  const hh=A.activeHousehold(user);
@@ -235,15 +236,15 @@ async function app(req,res,reqUrl,path,user,hh,hs){
   try{
    if(req.method==='GET'&&!id)return json(res,200,{items:ev.listInbox(qProfile)});
    if(req.method==='GET'&&id&&isFile){
-    const f=ev.inboxFile(qProfile,id);if(!f)return send(res,404,'Upload not found');
+    const f=await ev.inboxFile(qProfile,id);if(!f)return send(res,404,'Upload not found');
     res.writeHead(200,{...frameHeaders,'Content-Disposition':`inline; filename*=UTF-8''${encodeURIComponent(f.name)}`,'Content-Length':f.size,'Content-Type':f.mime});
-    return ev.createReadStream(f.path).on('error',()=>res.destroy()).pipe(res);
+    return blobs().stream(f.key).on('error',()=>res.destroy()).pipe(res);
    }
    if(!['POST','DELETE'].includes(req.method))return json(res,405,{error:'Method not allowed'});
    if(!sameOrigin(req))return json(res,403,{error:'Origin rejected'});
    if(limited('inbox',60,600000))return json(res,429,{error:'Too many requests'});
-   if(req.method==='POST'&&!id){const b=JSON.parse(await readBody(req,ev.MAX_UPLOAD_BODY));return json(res,201,{item:ev.addInbox(qProfile,b)})}
-   if(req.method==='DELETE'&&id)return ev.deleteInbox(qProfile,id)?json(res,200,{removed:true}):json(res,404,{error:'Upload not found'});
+   if(req.method==='POST'&&!id){const b=JSON.parse(await readBody(req,ev.MAX_UPLOAD_BODY));return json(res,201,{item:await ev.addInbox(qProfile,b)})}
+   if(req.method==='DELETE'&&id)return (await ev.deleteInbox(qProfile,id))?json(res,200,{removed:true}):json(res,404,{error:'Upload not found'});
    return json(res,404,{error:'Not found'});
   }catch(e){return fail(res,e)}
  }

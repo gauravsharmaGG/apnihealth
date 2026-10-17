@@ -3,7 +3,7 @@ process.env.APP_TIME_ZONE='Europe/Berlin'; // fixtures below use Berlin offsets
 import {mkdtempSync,cpSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs';import {tmpdir} from 'node:os';import {pathToFileURL} from 'node:url';
 const root=mkdtempSync(tmpdir()+'/apni-appt-');
 try{
-for(const f of ['medicines.mjs','events.mjs','push.mjs','appointments.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs','consent.mjs','settings.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
+for(const f of ['medicines.mjs','events.mjs','push.mjs','appointments.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs','consent.mjs','settings.mjs','blobs.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
 process.env.DB_FILE=root+'/private/test.db'; // fictional household from config/members.example.json, one episode for alex
 {const S=await import(pathToFileURL(root+'/store.mjs'));S.enterAs(S.SYSTEM);const h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'ep'}])}
 const A=await import(pathToFileURL(root+'/appointments.mjs')),P=await import(pathToFileURL(root+'/push.mjs'));

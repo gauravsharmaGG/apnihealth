@@ -50,6 +50,7 @@ jobs:
           node test-consent.mjs
           node test-onboarding.mjs
           node test-datarights.mjs
+          node test-blobs.mjs
           node test-passkeys.mjs
           node test-households.mjs
           node test-ingest-push.mjs

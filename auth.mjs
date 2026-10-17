@@ -112,7 +112,7 @@ export async function handle(req,res,path,url){
    if(mailConfigured()){
     sendMail({to:email,subject,text:`${intro}\n\n${link}\n\nThe link works once and expires in ${A.LINK_MINUTES} minutes. If you did not ask for it, you can ignore this email.\n`})
      .catch(e=>console.error('sign-in email could not be sent:',e.message));
-   }else console.log(`[auth] SMTP is not configured; sign-in link for ${email}: ${link}`);
+   }else console.log(`[auth] Email is not configured; sign-in link for ${email}: ${link}`);
   }
   return send(res,303,'',{Location:'/login?sent=1'}),true;
  }

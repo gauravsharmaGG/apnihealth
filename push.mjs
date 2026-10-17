@@ -1,8 +1,9 @@
 // Web Push (RFC 8030 / 8291 aes128gcm / 8292 VAPID) with Node's built-in crypto only, plus the medicine-reminder scheduler.
-// The VAPID key pair stays in private/vapid.json (a secret, not member data); subscriptions and sent state are in the database.
-import {generateKeyPairSync,createPrivateKey,createPublicKey,createECDH,createCipheriv,randomBytes,hkdfSync,sign} from 'node:crypto';
+// The VAPID key pair comes from VAPID_PRIVATE_JWK (a secret in the environment, e.g. on Workers) or else stays in
+// private/vapid.json (generated on first use; a secret, not member data). Subscriptions and sent state are in the database.
+// Delivery uses fetch (Node 22 and Workers alike).
+import {generateKeyPairSync,createECDH,createCipheriv,randomBytes,hkdfSync,sign} from 'node:crypto';
 import {readFileSync,writeFileSync,renameSync,mkdirSync} from 'node:fs';
-import {request} from 'node:https';
 import {listEpisodes} from './events.mjs';
 import * as meds from './medicines.mjs';
 import * as appts from './appointments.mjs';
@@ -14,12 +15,24 @@ const dir=new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('
 const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
 const wr=(n,v)=>{mkdirSync(dir,{recursive:true,mode:0o700});const f=new URL(n,dir),t=new URL(n+'.tmp',dir);writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600});renameSync(t,f)};
 // ---- VAPID keys (generated once, kept private) ----
-export function vapid(){let k=rd('vapid.json',null);if(!k){const {privateKey}=generateKeyPairSync('ec',{namedCurve:'prime256v1'});const j=privateKey.export({format:'jwk'});k={d:j.d,x:j.x,y:j.y};wr('vapid.json',k)}return k}
+// VAPID_PRIVATE_JWK: the private key as a JWK ({"kty":"EC","crv":"P-256","d":...,"x":...,"y":...}). Checked once:
+// a malformed or mismatched key fails loudly instead of sending unverifiable pushes.
+let envKey=null,envRaw=null;
+function fromEnv(raw){
+ if(raw===envRaw)return envKey;
+ let j;try{j=JSON.parse(raw)}catch{throw Error('VAPID_PRIVATE_JWK is not valid JSON')}
+ const b=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{43}$/.test(s);
+ if(!j||(j.kty&&j.kty!=='EC')||(j.crv&&j.crv!=='P-256')||!b(j.d)||!b(j.x)||!b(j.y))throw Error('VAPID_PRIVATE_JWK must be a P-256 EC private key (JWK with d, x, y)');
+ const k={d:j.d,x:j.x,y:j.y};
+ try{const e=createECDH('prime256v1');e.setPrivateKey(unb64(k.d));if(!e.getPublicKey().equals(Buffer.concat([Buffer.from([4]),unb64(k.x),unb64(k.y)])))throw 0}catch{throw Error('VAPID_PRIVATE_JWK: d does not match x/y')}
+ envRaw=raw;envKey=k;return k;
+}
+export function vapid(){if(process.env.VAPID_PRIVATE_JWK)return fromEnv(process.env.VAPID_PRIVATE_JWK);let k=rd('vapid.json',null);if(!k){const {privateKey}=generateKeyPairSync('ec',{namedCurve:'prime256v1'});const j=privateKey.export({format:'jwk'});k={d:j.d,x:j.x,y:j.y};wr('vapid.json',k)}return k}
 export const publicKey=()=>{const k=vapid();return b64(Buffer.concat([Buffer.from([4]),unb64(k.x),unb64(k.y)]))};
 export function jwt(audience,now=Date.now(),sub=process.env.VAPID_SUBJECT||publicOrigin()){
  const k=vapid(),h=b64(JSON.stringify({typ:'JWT',alg:'ES256'})),p=b64(JSON.stringify({aud:audience,exp:Math.floor(now/1000)+12*3600,sub}));
- const key=createPrivateKey({key:{kty:'EC',crv:'P-256',d:k.d,x:k.x,y:k.y},format:'jwk'});
- return h+'.'+p+'.'+b64(sign('sha256',Buffer.from(h+'.'+p),{key,dsaEncoding:'ieee-p1363'}));
+ // The key goes in as a JWK, not a KeyObject: Workers' nodejs_compat refuses a KeyObject inside the options object.
+ return h+'.'+p+'.'+b64(sign('sha256',Buffer.from(h+'.'+p),{key:{kty:'EC',crv:'P-256',d:k.d,x:k.x,y:k.y},format:'jwk',dsaEncoding:'ieee-p1363'}));
 }
 // ---- Payload encryption (RFC 8291) ----
 export function encrypt(sub,payload){
@@ -32,16 +45,20 @@ export function encrypt(sub,payload){
  const rs=Buffer.alloc(4);rs.writeUInt32BE(4096);
  return Buffer.concat([salt,rs,Buffer.from([65]),asPub,ct]);
 }
-export function deliver(sub,payload,{ttl=3600,urgency='high'}={}){
- return new Promise(resolve=>{
-  let u;try{u=new URL(sub.endpoint)}catch{return resolve({status:0,gone:true})}
-  if(u.protocol!=='https:')return resolve({status:0,gone:true});
-  const body=encrypt(sub,JSON.stringify(payload));
-  const req=request({hostname:u.hostname,port:u.port||443,path:u.pathname+u.search,method:'POST',timeout:15000,ca:readFileSync('/etc/ssl/cert.pem'),headers:{
-   'Content-Type':'application/octet-stream','Content-Encoding':'aes128gcm','Content-Length':body.length,TTL:String(ttl),Urgency:urgency,
-   Authorization:'vapid t='+jwt(u.origin)+', k='+publicKey()}},res=>{res.resume();res.on('end',()=>resolve({status:res.statusCode,gone:res.statusCode===404||res.statusCode===410}))});
-  req.on('timeout',()=>req.destroy(Error('timeout')));req.on('error',e=>resolve({status:0,error:e.message}));req.end(body);
- });
+// Sends one encrypted message. Resolves {status, gone} (gone: the push service says the device is gone), or
+// {status:0, error} on network errors and timeouts; never rejects. Push services must be https; redirects are not followed.
+// endpointOk lets tests allow a plain-http loopback push service.
+export async function deliver(sub,payload,{ttl=3600,urgency='high',timeout=15000,endpointOk=u=>u.protocol==='https:'}={}){
+ let u;try{u=new URL(sub.endpoint)}catch{return {status:0,gone:true}}
+ if(!endpointOk(u))return {status:0,gone:true};
+ let body;try{body=encrypt(sub,JSON.stringify(payload))}catch(e){return {status:0,error:e.message}}
+ try{
+  const res=await fetch(u,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(timeout),body,headers:{
+   'Content-Type':'application/octet-stream','Content-Encoding':'aes128gcm',TTL:String(ttl),Urgency:urgency,
+   Authorization:'vapid t='+jwt(u.origin)+', k='+publicKey()}});
+  await res.arrayBuffer().catch(()=>{});
+  return {status:res.status,gone:res.status===404||res.status===410};
+ }catch(e){return {status:0,error:e?.name==='TimeoutError'?'timeout':(e?.cause?.code||e?.message||'network error')}}
 }
 // ---- Subscriptions: one record per device (endpoint) with the profiles it wants reminders for ----
 // Stored in push_subscriptions + push_topics. A device belongs to the user who subscribed from it (userId); devices

@@ -4,7 +4,7 @@ import {mkdtempSync,cpSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'no
 import {pathToFileURL} from 'node:url';import {tmpdir} from 'node:os';
 const root=mkdtempSync(tmpdir()+'/apni-med-test-');
 try{
-for(const f of ['medicines.mjs','events.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs','consent.mjs','settings.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
+for(const f of ['medicines.mjs','events.mjs','members.mjs','env.mjs','db.mjs','migrations.mjs','store.mjs','accounts.mjs','consent.mjs','settings.mjs','blobs.mjs'])cpSync(new URL(f,import.meta.url),root+'/'+f);
 process.env.DB_FILE=root+'/private/test.db'; // fictional household from config/members.example.json, one episode for alex
 {const S=await import(pathToFileURL(root+'/store.mjs'));S.enterAs(S.SYSTEM);const h=S.createHousehold('Example household');for(const m of JSON.parse(readFileSync(new URL('config/members.example.json',import.meta.url),'utf8')))S.addMember(h.id,m);S.docs('episodes').replace('alex',[{id:'test'}])}
 const {validate,slots,mutate,list,zoneDate,effective,targetMs,slotMs}=await import(pathToFileURL(root+'/medicines.mjs'));
