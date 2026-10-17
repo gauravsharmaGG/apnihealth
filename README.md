@@ -72,8 +72,10 @@ node server.mjs
   `Secure` with the `__Host-` prefix when served through `APP_HOST` over TLS. Without `SMTP_URL`, sign-in links
   are printed to the server log instead of emailed (development only). Once signed in, anyone can add a
   **passkey** (Face ID, Touch ID, device PIN) in Settings and sign in with it from then on; passkeys need HTTPS
-  (or `localhost`) and are tied to the host name in `APP_HOST`. There is no open sign-up: create people with
-  `scripts/create-user.mjs` for the first owner, then invite everyone else from Settings.
+  (or `localhost`) and are tied to the host name in `APP_HOST`. Sign-up is controlled by `SIGNUP_MODE`:
+  `open` (default) lets anyone with a verified email create an account (they start their own household);
+  `invite` limits new accounts to people holding an invite. After the first email sign-in, people are offered a
+  passkey once. `scripts/create-user.mjs` can still create users from the command line.
 - `AUTH_MODE=trusted-proxy`: Cloudflare Access (or a proxy issuing the same signed JWT) signs people in. Set
   `CF_ACCESS_ISSUER`, `CF_ACCESS_AUD` and `CF_ACCESS_EMAIL` (allowed emails). An allowed email becomes a user on
   first visit: the first one owns the household, later ones join as `TRUSTED_PROXY_ROLE` (default `editor`).
@@ -87,7 +89,7 @@ node server.mjs
   access), **editor** (add and change records of every profile) or **viewer** (read only). A household always keeps
   at least one owner. One login can belong to several households and switch between them in Settings.
 - Owners invite from Settings → Household: an invite link (anyone holding it can join once) or an invite for one
-  email address (emailed when SMTP is set up). Invites expire after 7 days. In `AUTH_MODE=builtin` an invite is
+  email address (emailed when SMTP is set up). Invites expire after 7 days. With `SIGNUP_MODE=invite` an invite is
   the only way for a new address to get an account.
 - **Apple Health sync** uses one key per profile (Log → Sync from Apple Health), so a phone can only add numbers to
   its own profile. An existing `private/ingest-token.txt` key keeps working as a shared household key until you
@@ -128,7 +130,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py

@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';import {join} from 'node:path';import http from '
 import {until,startServer} from './testlib.mjs';
 const src=new URL('.',import.meta.url).pathname,dir=mkdtempSync(join(tmpdir(),'apni-hh-'));
 cpSync(src,dir,{recursive:true,filter:p=>!new Set(['.git','private','node_modules']).has(p.slice(src.length).split('/')[0])});
-const env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:join(dir,'private/test.db'),AUTH_MODE:'builtin'};
+const env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:join(dir,'private/test.db'),AUTH_MODE:'builtin',SIGNUP_MODE:'invite'};
 writeFileSync(join(dir,'setup.mjs'),`
 const S=await import('./store.mjs'),A=await import('./accounts.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
 const a=S.createHousehold('Household A'),b=S.createHousehold('Household B');

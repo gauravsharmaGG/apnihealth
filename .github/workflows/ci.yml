@@ -45,6 +45,7 @@ jobs:
           node test-labs.mjs
           node test-mailer.mjs
           node test-auth.mjs
+          node test-signup.mjs
           node test-passkeys.mjs
           node test-households.mjs
           node test-ingest-push.mjs
