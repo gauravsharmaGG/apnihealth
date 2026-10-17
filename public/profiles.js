@@ -1,4 +1,4 @@
-// Household members from window.APP_CONFIG (served as /config.js from private/members.json).
+// Household members from window.APP_CONFIG (served as /config.js from the database).
 // Chooses the member, builds its navigation from its kind and themes the page.
 (()=>{
 const I={

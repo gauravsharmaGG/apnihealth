@@ -7,13 +7,13 @@ a neutral stub is created only if it is missing.
 
 public/index.html is NOT tracked: it is rendered from the tracked templates/index.template.html plus
 the git-ignored files in private/:
-  members.json       household members (required; config/members.example.json)
   reports.json       report library of the lab-results member (optional; config/reports.example.json)
   overview.json      overview page text: takeaway cards, records summary, urgent-help and "About dates"
                      notes (optional; generic defaults are used when missing; config/overview.example.json)
   lab-values.json    lab results (optional; see plain_data.py)
-  profiles/<id>/child-record.json   growth/check-up/vaccination record of each child member (optional;
-                     config/child-record.example.json)
+  profiles/<id>/child-record.json   growth/check-up/vaccination record of a child member (optional;
+                     config/child-record.example.json; shown only in child members' views)
+Household members live in the database (see README.md), not here.
 A malformed file fails the build with a "BUILD ERROR:" line naming it.
 """
 from pathlib import Path
@@ -24,7 +24,7 @@ SLOTS=('takeaways','records_summary','urgent_help','about_dates')
 SLOT_MARK={s:f'<!--SLOT:{s}-->' for s in SLOTS}
 TEMPLATE=R/'templates/index.template.html'
 OUT=R/'public/index.html'
-REQUIRED_PRIVATE=('members.json',)
+REQUIRED_PRIVATE=()  # every private input is optional; members live in the database
 DEFAULT_OVERVIEW={
  'takeaways':[],
  'records_summary':'<span class="dot"></span> Your records<br><small>Not a live health assessment</small>',
@@ -87,39 +87,32 @@ def atomic_write(path,text):
 
 NOTES_STUB='window.HEALTH_NOTES=window.HEALTH_NOTES||{};\nwindow.LOCKED_PDFS=window.LOCKED_PDFS||[];\n'
 
-def child_records(members):
- """{member id: record} for child members that have private/profiles/<id>/child-record.json."""
- out={}
- for m in members:
-  if m.get('kind')!='child':continue
-  p=R/'private/profiles'/m['id']/'child-record.json'
-  if not p.is_file():continue
-  try:rec=json.loads(p.read_text(encoding='utf-8'))
-  except ValueError:build_error(f'private/profiles/{m["id"]}/child-record.json is not valid JSON')
-  if not isinstance(rec,dict):build_error(f'private/profiles/{m["id"]}/child-record.json must be a JSON object')
-  out[m['id']]=rec
- return out
-
-def load_members():
- ms=load_private('members.json')
+def child_records():
+ """{member id: record} for every private/profiles/<id>/child-record.json (the client shows them in child views only)."""
  import re
- if not isinstance(ms,list) or not ms or not all(isinstance(m,dict) and isinstance(m.get('id'),str) and re.fullmatch(r'[a-z][a-z0-9-]{0,31}',m['id']) for m in ms):
-  build_error('private/members.json must be a non-empty list of members with valid ids (see config/members.example.json)')
- return ms
+ out={};base=R/'private/profiles'
+ if not base.is_dir():return out
+ for d in sorted(base.iterdir()):
+  p=d/'child-record.json'
+  if not re.fullmatch(r'[a-z][a-z0-9-]{0,31}',d.name) or not p.is_file():continue
+  try:rec=json.loads(p.read_text(encoding='utf-8'))
+  except ValueError:build_error(f'private/profiles/{d.name}/child-record.json is not valid JSON')
+  if not isinstance(rec,dict):build_error(f'private/profiles/{d.name}/child-record.json must be a JSON object')
+  out[d.name]=rec
+ return out
 
 def main():
  if tracked(OUT):raise SystemExit('Refusing to write public/index.html: it is tracked by git. It must stay untracked (see AGENTS.md).')
  preflight()
  out=Path(os.environ.get('BUILD_OUT_DIR') or R/'public');out.mkdir(parents=True,exist_ok=True)
  from plain_data import make,data_js
- members=load_members()
  reports=[tuple(r) for r in load_private('reports.json',[])]  # [[file,name,date,pages],...]
  overview=load_private('overview.json',{})
  try:data=make(R)
  except ValueError as e:build_error(str(e))
  outputs={ # everything is computed and validated before anything is published
   'data.js':data_js(data),
-  'data-child.js':'window.CHILD_RECORDS='+json.dumps(child_records(members),ensure_ascii=False).replace('<','\\u003c')+';',
+  'data-child.js':'window.CHILD_RECORDS='+json.dumps(child_records(),ensure_ascii=False).replace('<','\\u003c')+';',
   'reports-data.js':'window.REPORTS='+json.dumps([{'file':f,'name':n,'date':d,'pages':pg} for f,n,d,pg in reports])+';',
   'index.html':render_index(reports,overview)}
  for name,text in outputs.items():atomic_write(out/name,text)

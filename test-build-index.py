@@ -58,7 +58,7 @@ assert redesign.tracked(redesign.OUT) is False,'real git check on this repo'
 def private_dir(root,**over):
  """A scratch repo root with the private inputs present (examples as content)."""
  (root/'private').mkdir(parents=True,exist_ok=True);(root/'public').mkdir(exist_ok=True)
- files={'members.json':json.loads((CFG/'members.example.json').read_text()),'reports.json':json.loads((CFG/'reports.example.json').read_text()),'overview.json':OV}
+ files={'reports.json':json.loads((CFG/'reports.example.json').read_text()),'overview.json':OV}
  files.update(over)
  for n,v in files.items():
   if v is not None:(root/'private'/n).write_text(v if isinstance(v,str) else json.dumps(v))
@@ -88,10 +88,10 @@ OUTS=('data.js','data-child.js','reports-data.js','index.html')
 def old_outputs(r):
  for n in OUTS:(r/'public'/n).write_text('OLD')
 def untouched(r):return all((r/'public'/n).read_text()=='OLD' for n in OUTS)
-# child records: only child members, only when the file exists; a malformed record fails by member id
-r=private_dir(Path(tempfile.mkdtemp()));(r/'private/profiles/mia').mkdir(parents=True);(r/'private/profiles/sam').mkdir(parents=True)
+# child records: one per member folder that has the file (valid ids only); a malformed record fails by member id
+r=private_dir(Path(tempfile.mkdtemp()));(r/'private/profiles/mia').mkdir(parents=True);(r/'private/profiles/sam').mkdir(parents=True);(r/'private/profiles/Bad Id').mkdir(parents=True)
 (r/'private/profiles/mia/child-record.json').write_text((CFG/'child-record.example.json').read_text())
-(r/'private/profiles/sam/child-record.json').write_text('{"ignored":true}')
+(r/'private/profiles/Bad Id/child-record.json').write_text('{"ignored":true}')
 in_root(r,redesign.main);js=(r/'public/data-child.js').read_text()
 assert js.startswith('window.CHILD_RECORDS=') and json.loads(js[len('window.CHILD_RECORDS='):-1]).keys()=={'mia'}
 (r/'private/profiles/mia/child-record.json').write_text('{ bad');old_outputs(r)
@@ -101,20 +101,12 @@ assert untouched(r)
 # optional inputs may be missing
 r=private_dir(Path(tempfile.mkdtemp()),**{'reports.json':None,'overview.json':None});in_root(r,redesign.main)
 assert (r/'public/reports-data.js').read_text()=='window.REPORTS=[];'
-# every required input missing: the build names each file and leaves published outputs untouched
-r=Path(tempfile.mkdtemp());(r/'public').mkdir();old_outputs(r)
-try:in_root(r,redesign.main);sys.exit('a build with no private inputs must fail')
-except SystemExit as e:
- for n in redesign.REQUIRED_PRIVATE:assert 'private/'+n in str(e),n
- assert str(e).startswith('BUILD ERROR:')
-assert untouched(r)
-for n in redesign.REQUIRED_PRIVATE:  # one missing file at a time
- r=private_dir(Path(tempfile.mkdtemp()),**{n:None});old_outputs(r)
- try:in_root(r,redesign.main);sys.exit(f'missing {n} must fail')
- except SystemExit as e:assert 'BUILD ERROR:' in str(e) and 'private/'+n in str(e)
- assert untouched(r)
+# no private inputs at all: the build still works with generic defaults (members live in the database)
+assert redesign.REQUIRED_PRIVATE==()
+r=Path(tempfile.mkdtemp());(r/'public').mkdir();in_root(r,redesign.main)
+assert (r/'public/data-child.js').read_text()=='window.CHILD_RECORDS={};'
 # malformed JSON and incomplete overview fail without publishing anything
-for over,needle in (({'reports.json':'{ malformed'},'reports.json is not valid JSON'),({'members.json':[{'id':'Bad Id'}]},'members.json'),({'overview.json':{**OV,'urgent_help':' '}},'urgent_help')):
+for over,needle in (({'reports.json':'{ malformed'},'reports.json is not valid JSON'),({'overview.json':{**OV,'urgent_help':' '}},'urgent_help')):
  r=private_dir(Path(tempfile.mkdtemp()),**over);old_outputs(r)
  try:in_root(r,redesign.main);sys.exit('bad input must fail the build')
  except SystemExit as e:assert 'BUILD ERROR:' in str(e) and needle in str(e),str(e)

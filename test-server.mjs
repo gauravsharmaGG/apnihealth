@@ -41,5 +41,15 @@ try{
  const del=await fetch(base+'/api/log?profile=sam',{method:'POST',headers:{...H,Origin:base,'Content-Type':'application/json'},body:JSON.stringify({delete:log.entries[0].id})});
  assert.equal((await del.json()).removed,false,'an entry can only be deleted from its own member');
  assert.equal((await fetch(base+'/api/log',{method:'POST',headers:{...H,Origin:'https://evil.example','Content-Type':'application/json'},body:'{}'})).status,403,'foreign origin rejected');
- console.log('PASS server: auth fail-closed, host check, config/members endpoints, member isolation, ics/ingest use instance settings.');
+ // writes go to the database, per member: an episode added for sam is not visible to alex or mia
+ const post=(p,body)=>fetch(base+p,{method:'POST',headers:{...H,Origin:base,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const ep=(await (await post('/api/episodes?profile=sam',{title:'Example sore throat',category:'Illness'})).json()).episode;assert(ep?.id);
+ assert.deepEqual((await (await get('/api/episodes?profile=sam')).json()).episodes.map(e=>e.id),[ep.id]);
+ assert(!(await (await get('/api/episodes?profile=alex')).json()).episodes.some(e=>e.id===ep.id),'episodes are isolated');
+ assert.equal((await post('/api/events?profile=alex',{episodeId:ep.id,date:'2000-01-01',time:'08:00',kind:'note',note:'x'})).status,400,'cannot attach to another member\'s episode');
+ assert.equal((await post('/api/events?profile=sam',{episodeId:ep.id,date:'2000-01-01',time:'08:00',kind:'note',note:'Example note'})).status,201);
+ assert.equal((await post('/api/log?profile=sam',{entries:[{metric:'steps',date:new Date().toISOString().slice(0,10),value:1234}]})).status,200);
+ assert.equal((await (await get('/api/log?profile=sam')).json()).entries.length,1);
+ assert(existsSync(join(dir,'private/apnihealth.db'))&&!existsSync(join(dir,'private/health-log.json'))&&!existsSync(join(dir,'private/profiles/sam/episodes.json')),'data is stored in the database, not JSON files');
+ console.log('PASS server: auth fail-closed, host check, config/members endpoints, member isolation (reads and writes, stored in SQLite), ics/ingest use instance settings.');
 }finally{srv?.kill();rmSync(dir,{recursive:true,force:true})}

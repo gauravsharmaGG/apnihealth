@@ -1,4 +1,5 @@
 // Web Push (RFC 8030 / 8291 aes128gcm / 8292 VAPID) with Node's built-in crypto only, plus the medicine-reminder scheduler.
+// The VAPID key pair stays in private/vapid.json (a secret, not member data); subscriptions and sent state are in the database.
 import {generateKeyPairSync,createPrivateKey,createPublicKey,createECDH,createCipheriv,randomBytes,hkdfSync,sign} from 'node:crypto';
 import {readFileSync,writeFileSync,renameSync,mkdirSync} from 'node:fs';
 import {request} from 'node:https';
@@ -6,6 +7,7 @@ import {listEpisodes} from './events.mjs';
 import * as meds from './medicines.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
+import {system,transaction} from './store.mjs';
 import {TIME_ZONE,publicOrigin} from './env.mjs';
 const dir=new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('base64url'),unb64=s=>Buffer.from(s,'base64url');
 const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
@@ -41,8 +43,26 @@ export function deliver(sub,payload,{ttl=3600,urgency='high'}={}){
  });
 }
 // ---- Subscriptions: one record per device (endpoint) with the profiles it wants reminders for ----
-export const subs=()=>rd('push-subs.json',[]);
-const saveSubs=a=>wr('push-subs.json',a);
+// Stored in push_subscriptions + push_topics (instance-wide: a device can follow several members).
+export function subs(){
+ const d=system(),out=new Map();
+ for(const r of d.prepare('SELECT endpoint,p256dh,auth,created_at,muted FROM push_subscriptions ORDER BY rowid').all())
+  out.set(r.endpoint,{endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth},createdAt:r.created_at,profiles:{},appt:{},muted:JSON.parse(r.muted)});
+ for(const t of d.prepare('SELECT endpoint,member_id,topic,since FROM push_topics ORDER BY rowid').all()){const s=out.get(t.endpoint);if(s)(t.topic==='appointments'?s.appt:s.profiles)[t.member_id]={since:t.since}}
+ return [...out.values()];
+}
+function saveSubs(a){
+ const d=system(),known=new Set(members.ids());
+ transaction(d,()=>{
+  d.exec('DELETE FROM push_subscriptions'); // topics cascade
+  const s=d.prepare('INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at,muted) VALUES(?,?,?,?,?)'),t=d.prepare('INSERT INTO push_topics(endpoint,member_id,topic,since) VALUES(?,?,?,?)');
+  for(const r of a){s.run(r.endpoint,r.keys.p256dh,r.keys.auth,r.createdAt||0,JSON.stringify(r.muted||[]));
+   for(const [topic,map] of [['medicine',r.profiles],['appointments',r.appt]])for(const [m,info] of Object.entries(map||{}))if(known.has(m))t.run(r.endpoint,m,topic,info?.since||0)}
+ });
+}
+// Sent-reminder keys (push_sent), so a reminder goes out once.
+const readState=()=>Object.fromEntries(system().prepare('SELECT key,ts FROM push_sent').all().map(r=>[r.key,r.ts]));
+function saveState(state){const d=system();transaction(d,()=>{d.exec('DELETE FROM push_sent');const i=d.prepare('INSERT INTO push_sent(key,ts) VALUES(?,?)');for(const [k,v] of Object.entries(state))i.run(k,v)})}
 const valid=s=>s&&typeof s.endpoint==='string'&&s.endpoint.length<2000&&s.keys&&typeof s.keys.p256dh==='string'&&typeof s.keys.auth==='string';
 const slot=(r,topic)=>topic==='appointments'?(r.appt??={}):r.profiles;
 export function subscribe(sub,profile,now=Date.now(),topic='medicine'){
@@ -106,7 +126,7 @@ export function message(n){
  return {title:late?'Medicine not recorded yet':'Time for your medicine',body:who+names.join(', ')+(times.length===1?' · '+times[0]:' · due '+times.join(', ')),tag:'meds-'+n.profile,url:'/?p='+n.profile+'#episodes'};
 }
 export async function tick(now=Date.now(),send=deliver){
- let state=rd('push-state.json',{});
+ let state=readState();
  const live=new Map();const plansOf=pr=>{if(!live.has(pr)){const eps=listEpisodes(pr);live.set(pr,meds.list(pr).filter(p=>eps.some(e=>e.id===p.episodeId)))}return live.get(pr)};
  const list=due(now,subs(),plansOf,state);let changed=false,gone=[];
  const apptsLive=new Map();const apptsOf=pr=>{if(!apptsLive.has(pr))apptsLive.set(pr,appts.list(pr));return apptsLive.get(pr)};
@@ -125,7 +145,7 @@ export async function tick(now=Date.now(),send=deliver){
  }
  if(gone.length)saveSubs(subs().filter(s=>!gone.includes(s.endpoint)));
  for(const k of Object.keys(state))if(now-state[k]>3*864e5){delete state[k];changed=true}
- if(changed)wr('push-state.json',state);
+ if(changed)saveState(state);
  return list.length+alist.length;
 }
 export function start(){setInterval(()=>tick().catch(e=>console.error('push tick',e.message)),30000).unref?.()}

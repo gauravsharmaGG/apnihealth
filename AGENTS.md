@@ -26,8 +26,8 @@ every instance keeps its health data in git-ignored folders on its own server. S
    (no `^`/`~`), commit the lockfile and note the reason in the PR. All SQL on member data goes through
    `store.mjs` (`forMember(id)`), which binds `$member` itself and refuses unscoped queries. Schema changes
    are new entries in `migrations.mjs`; never edit a migration that has been released.
-7. Member ids come from `private/members.json` and are validated by `members.mjs`; every data module must
-   check them before touching the filesystem. Never hardcode member ids or names.
+7. Members live in the database (`members.mjs` reads them through `store.mjs`); every data module must go
+   through `forMember` before touching member data or the filesystem. Never hardcode member ids or names.
 
 ## Structure
 
@@ -40,7 +40,8 @@ every instance keeps its health data in git-ignored folders on its own server. S
   `store.mjs` (the member access check `forMember`, document tables, households and members),
   `importer.mjs` + `scripts/import-json.mjs` (one-time JSON `private/` to SQLite import, counts only).
 - `log.mjs`, `events.mjs` (episodes, entries, record inbox), `medicines.mjs`, `appointments.mjs`, `push.mjs`
-  (Web Push with built-in crypto, reminder scheduler): data modules storing JSON under `private/`.
+  (Web Push with built-in crypto, reminder scheduler): data modules on top of `store.mjs`
+  (uploaded files stay under `private/profiles/<id>/uploads/`).
 - `plain_data.py` + `redesign.py` (`build.py`): generate `public/data.js`, `public/reports-data.js`,
   `public/data-child.js` and `public/index.html` from `templates/index.template.html` and `private/`.
 - `public/`: the PWA (vanilla JS/CSS, service worker, manifest, icons). Views declare which members they are
