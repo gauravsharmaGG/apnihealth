@@ -57,6 +57,7 @@ jobs:
           node test-members.mjs
           node test-medicines.mjs
           node test-push.mjs
+          node test-scheduler.mjs
           node test-appointments.mjs
           node test-access.mjs
           node test-ahparse.mjs

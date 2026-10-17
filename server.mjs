@@ -9,6 +9,7 @@ import * as hlog from './log.mjs';
 import * as ev from './events.mjs';
 import * as meds from './medicines.mjs';
 import * as push from './push.mjs';
+import {startScheduler} from './scheduler.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
 import * as labs from './labs.mjs';
@@ -29,7 +30,6 @@ const pub=resolve(root,'public'),port=PORT;
 if(!(auth.MODE==='builtin'&&auth.SIGNUP==='open'))runAs(SYSTEM,()=>members.load());
 if(runAs(SYSTEM,()=>ingest.migrateLegacy()))console.log('Registered the existing Apple Health key from private/ingest-token.txt as a shared household key. Create per-profile keys in the app and revoke it when ready.');
 if(auth.MODE==='builtin'&&!A.userCount())console.log('No users yet. Create the first one: node scripts/create-user.mjs --email you@example.com --role owner --link');
-setInterval(()=>A.purgeExpired(),36e5).unref();
 // Errors from the access check: read-only access is 403; unknown or someone else's member stays 400.
 const fail=(res,e)=>json(res,e instanceof AccessError&&e.status===403?403:400,{error:e.message||'Invalid request'});
 labs.catalog(); // and when the marker catalog (config/markers.default.json + private/markers.json) is invalid
@@ -265,4 +265,5 @@ async function app(req,res,reqUrl,path,user,hh,hs){
  if(path==='/config.js'){const body='window.APP_CONFIG='+JSON.stringify({name:APP_NAME,timeZone:hs.timeZone,settings:{metrics:hs.metrics,units:hs.units},members:members.list(),user:{email:user.email,role:hh.role},authMode:auth.MODE}).replace(/</g,'\\u003c')+';\n';return send(res,200,req.method==='HEAD'?'':body,{'Content-Type':'text/javascript; charset=utf-8'})}
  return serveStatic(req,res,path);
 }
-server.listen(port,'127.0.0.1',()=>{console.log(`${APP_NAME} listening on 127.0.0.1:${port}`);if(!process.env.NO_PUSH)push.start()});
+// Background jobs (expired-session purge, reminders unless NO_PUSH) run on one timer; see scheduler.mjs.
+server.listen(port,'127.0.0.1',()=>{console.log(`${APP_NAME} listening on 127.0.0.1:${port}`);startScheduler()});
