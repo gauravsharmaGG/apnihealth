@@ -104,7 +104,7 @@ node server.mjs
 - Owners invite from Settings → Household: an invite link (anyone holding it can join once) or an invite for one
   email address (emailed when SMTP is set up). Invites expire after 7 days. With `SIGNUP_MODE=invite` an invite is
   the only way for a new address to get an account.
-- **Apple Health sync** uses one key per profile (Log → Sync from Apple Health), so a phone can only add numbers to
+- **Apple Health sync** uses one key per profile (Integrations → Sync from Apple Health), so a phone can only add numbers to
   its own profile. An existing `private/ingest-token.txt` key keeps working as a shared household key until you
   revoke it there.
 - **Notifications** are per device and belong to the person who turned them on.

@@ -58,7 +58,7 @@ function apple(){
  `<label class="field">Profile<select id="ob-profile">${S.members.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label>
  <button class="ghost" type="button" id="ob-key-create">Create a key for this profile</button>
  <div id="ob-key-box" hidden><label class="field">Send data to<input id="ob-url" readonly></label><label class="field">Authorization header (shown once)<input id="ob-key" readonly></label>
- <p class="muted">In an app such as Health Auto Export, or an Apple Shortcut, add a REST API export to this address with this header. Keep the key private; you can revoke it under Log → Sync from Apple Health.</p></div>
+ <p class="muted">In an app such as Health Auto Export, or an Apple Shortcut, add a REST API export to this address with this header. Keep the key private; you can revoke it under Integrations → Sync from Apple Health.</p></div>
  <p class="muted">No iPhone? Skip this. You can always add numbers by hand.</p>`+next('Finish setup');
  $('#ob-key-create').addEventListener('click',async()=>{
   try{const j=await api('/api/sync-info?profile='+encodeURIComponent($('#ob-profile').value),{action:'create',label:'Apple Health'});$('#ob-url').value=j.endpoint;$('#ob-key').value='Bearer '+j.token;$('#ob-key-box').hidden=false;msg('Key created. Copy it now; it will not be shown again.',false)}catch(x){msg(x.message)}});
