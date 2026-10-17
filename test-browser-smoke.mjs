@@ -66,8 +66,9 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:vw,height:vw>500?800:844,deviceScaleFactor:vw>500?1:2,mobile:vw<500});
   await ev(`localStorage.setItem('profile','${m}')`);await send('Page.navigate',{url:base+'?p='+m+'#home'});await sleep(1500);
   assert.equal(await ev(`document.querySelector('#home-greet').textContent`),m==='alex'?'Hello, Alex.':'Hello, Sam.');
-  if(m==='alex'){assert.equal(await ev(`document.querySelectorAll('#home-cards .metric-card').length`),7,'one card per tracked measurement');assert(await ev(`document.querySelectorAll('#home-cards .mc-spark').length>=5`),'sparklines')}
-  else assert(await ev(`!!document.querySelector('#home-cards .home-empty')`),'empty state for a new profile');
+  if(m==='alex'){assert.equal(await ev(`document.querySelectorAll('#home-cards .metric-card').length`),7,'one card per tracked measurement');assert(await ev(`document.querySelectorAll('#home-cards .mc-spark').length>=5`),'sparklines')
+   assert(await ev(`document.querySelectorAll('#home-today .tl-row').length>=3`),'today lists doses and appointments');assert.equal(await ev(`document.querySelectorAll('#home-today .tl-ep').length`),1,'ongoing episode');assert(await ev(`document.querySelectorAll('#home-today .tl-dot').length>=3`),'day bar')}
+  else{assert(await ev(`!!document.querySelector('#home-cards .home-empty')`),'empty state for a new profile');assert(await ev(`!!document.querySelector('#home-today .tl-empty')`),'empty today')}
   assert(!(await ev('document.documentElement.scrollWidth>innerWidth+1')),m+' home scrolls horizontally at '+vw);
  }
  // lab results: the second adult sees their own results and can add a report with the form
