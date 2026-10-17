@@ -11,11 +11,11 @@ cpSync(src,dir,{recursive:true,filter:p=>!skip.has(p.slice(src.length).split('/'
 const DB=join(dir,'private/test.db'),env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:DB,AUTH_MODE:'builtin',SIGNUP_MODE:'invite',APP_HOST:'health.example.com'};
 // two households with members, users and a little data
 writeFileSync(join(dir,'setup.mjs'),`
-const S=await import('./store.mjs'),A=await import('./accounts.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
+const S=await import('./store.mjs'),A=await import('./accounts.mjs'),C=await import('./consent.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
 const a=S.createHousehold('Household A'),b=S.createHousehold('Household B');
 S.addMember(a.id,{id:'ann',name:'Ann'});S.addMember(a.id,{id:'kid',name:'Kid',kind:'child'});S.addMember(b.id,{id:'bob',name:'Bob'});
-for(const [e,h,r] of [['owner-a@example.com',a,'owner'],['editor-a@example.com',a,'editor'],['viewer-a@example.com',a,'viewer'],['owner-b@example.com',b,'owner']])A.setMembership(h.id,A.createUser(e).id,r);
-A.createUser('lonely@example.com');
+for(const [e,h,r] of [['owner-a@example.com',a,'owner'],['editor-a@example.com',a,'editor'],['viewer-a@example.com',a,'viewer'],['owner-b@example.com',b,'owner']]){const u=A.createUser(e);A.setMembership(h.id,u.id,r);C.recordConsent(u.id)}
+C.recordConsent(A.createUser('lonely@example.com').id);
 log.add([{metric:'steps',date:'2000-01-01',value:1111}],'manual','ann');log.add([{metric:'steps',date:'2000-01-01',value:2222}],'manual','bob');
 `);
 let r=spawnSync(process.execPath,['setup.mjs'],{cwd:dir,env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);

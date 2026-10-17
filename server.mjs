@@ -14,6 +14,8 @@ import * as members from './members.mjs';
 import * as labs from './labs.mjs';
 import * as household from './household.mjs';
 import * as ingest from './ingest.mjs';
+import * as consentPage from './consent-page.mjs';
+import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
 import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
@@ -50,6 +52,12 @@ const server=http.createServer(async(req,res)=>{try{
  // The sign-in page's assets (styles, icons, scripts) also serve signed-in people without a household yet.
  if(auth.PUBLIC_PATHS.has(path)&&path!=='/login'&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,path);
  if(await auth.account(req,res,path,user))return;
+ // Nothing health-related happens before the current health-data notice is accepted (consent.mjs).
+ if(await consentPage.handle(req,res,path,user))return;
+ if(!hasConsent(user.id)){
+  if(path.startsWith('/api/'))return json(res,403,{error:'Accept the health data notice first',consent:'required'});
+  return send(res,303,'',{Location:'/consent'});
+ }
  if(await household.handleAnywhere(req,res,path,user))return;
  const hh=A.activeHousehold(user);
  return await runAs({type:'user',userId:user.id,household:hh?.id||null},()=>app(req,res,reqUrl,path,user,hh));
@@ -79,7 +87,7 @@ async function app(req,res,reqUrl,path,user,hh){
   return send(res,path==='/'?st:404,html);
  }
  if(await household.handle(req,res,path,user,hh))return;
- if(path==='/api/me'&&req.method==='GET')return json(res,200,{email:user.email,name:user.name,mode:auth.MODE,household:hh,households:A.householdsOf(user.id)});
+ if(path==='/api/me'&&req.method==='GET')return json(res,200,{email:user.email,name:user.name,mode:auth.MODE,household:hh,households:A.householdsOf(user.id),consent:{version:CONSENT_VERSION,accepted:consentsOf(user.id)}});
  if(path.startsWith('/api/')&&!hlog.profileOk(qProfile))return json(res,400,{error:'Unknown profile'});
  if(path==='/api/medicines'){
   try{

@@ -10,11 +10,11 @@ cpSync(src,dir,{recursive:true,filter:p=>!new Set(['.git','private','node_module
 const DB=join(dir,'private/test.db'),env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:DB,AUTH_MODE:'builtin'},LEGACY='legacy-example-key-0000000000';
 mkdirSync(join(dir,'private'),{recursive:true});writeFileSync(join(dir,'private/ingest-token.txt'),LEGACY+'\n');
 writeFileSync(join(dir,'setup.mjs'),`
-const S=await import('./store.mjs'),A=await import('./accounts.mjs');S.enterAs(S.SYSTEM);
+const S=await import('./store.mjs'),A=await import('./accounts.mjs'),C=await import('./consent.mjs');S.enterAs(S.SYSTEM);
 const a=S.createHousehold('Household A'),b=S.createHousehold('Household B');
 S.addMember(a.id,{id:'ann',name:'Ann'});S.addMember(a.id,{id:'kid',name:'Kid',kind:'child'});S.addMember(b.id,{id:'bob',name:'Bob'});
 const out={};
-for(const [e,h,r] of [['owner-a@example.com',a,'owner'],['editor-a@example.com',a,'editor'],['viewer-a@example.com',a,'viewer'],['owner-b@example.com',b,'owner']]){const u=A.createUser(e);A.setMembership(h.id,u.id,r);out[e]={id:u.id,token:A.createSession(u.id)}}
+for(const [e,h,r] of [['owner-a@example.com',a,'owner'],['editor-a@example.com',a,'editor'],['viewer-a@example.com',a,'viewer'],['owner-b@example.com',b,'owner']]){const u=A.createUser(e);A.setMembership(h.id,u.id,r);C.recordConsent(u.id);out[e]={id:u.id,token:A.createSession(u.id)}}
 const d=S.system();d.prepare("INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at,muted) VALUES('https://push.example.com/old','k','a',0,'[]')").run();
 d.prepare("INSERT INTO push_topics(endpoint,member_id,topic,since) VALUES('https://push.example.com/old','ann','medicine',0)").run();
 console.log(JSON.stringify(out));`);

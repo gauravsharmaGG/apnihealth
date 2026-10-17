@@ -62,7 +62,7 @@ const env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:join(dir,'private/test.db')
 writeFileSync(join(dir,'setup.mjs'),`
 const S=await import('./store.mjs'),A=await import('./accounts.mjs');S.enterAs(S.SYSTEM);
 const h=S.createHousehold('Household A');S.addMember(h.id,{id:'ann',name:'Ann'});
-const out={};for(const [e,r] of [['owner@example.com','owner'],['viewer@example.com','viewer']]){const u=A.createUser(e);A.setMembership(h.id,u.id,r);out[e]={id:u.id,token:A.createSession(u.id)}}
+const out={};for(const [e,r] of [['owner@example.com','owner'],['viewer@example.com','viewer']]){const u=A.createUser(e);A.setMembership(h.id,u.id,r);(await import('./consent.mjs')).recordConsent(u.id);out[e]={id:u.id,token:A.createSession(u.id)}}
 console.log(JSON.stringify(out));`);
 const r=spawnSync(process.execPath,['setup.mjs'],{cwd:dir,env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);
 const U=JSON.parse(r.stdout.trim().split('\n').at(-1));

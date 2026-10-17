@@ -8,12 +8,12 @@ const src=new URL('.',import.meta.url).pathname,dir=mkdtempSync(join(tmpdir(),'a
 cpSync(src,dir,{recursive:true,filter:p=>!new Set(['.git','private','node_modules']).has(p.slice(src.length).split('/')[0])});
 const env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:join(dir,'private/test.db'),AUTH_MODE:'builtin',SIGNUP_MODE:'invite'};
 writeFileSync(join(dir,'setup.mjs'),`
-const S=await import('./store.mjs'),A=await import('./accounts.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
+const S=await import('./store.mjs'),A=await import('./accounts.mjs'),C=await import('./consent.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
 const a=S.createHousehold('Household A'),b=S.createHousehold('Household B');
 S.addMember(a.id,{id:'ann',name:'Ann'});S.addMember(b.id,{id:'bob',name:'Bob'});
 const out={a:a.id,b:b.id};
 for(const [e,h,r] of [['owner-a@example.com',a,'owner'],['editor-a@example.com',a,'editor'],['viewer-a@example.com',a,'viewer'],['owner-b@example.com',b,'owner'],['lonely@example.com',null,null]]){
- const u=A.createUser(e);if(h)A.setMembership(h.id,u.id,r);out[e]={id:u.id,token:A.createSession(u.id)};
+ const u=A.createUser(e);if(h)A.setMembership(h.id,u.id,r);C.recordConsent(u.id);out[e]={id:u.id,token:A.createSession(u.id)};
 }
 log.add([{metric:'steps',date:'2000-01-01',value:2222}],'manual','bob');
 console.log(JSON.stringify(out));`);
@@ -53,7 +53,10 @@ try{
  const nl=await linkFor('newbie@example.com');assert.equal(nl.searchParams.get('invite'),il.searchParams.get('token'));
  const conf=await req({path:nl.pathname+nl.search});assert.match(conf.body,/name="invite" value="/);
  const v=await req({method:'POST',path:'/auth/verify',form:{token:nl.searchParams.get('token'),invite:nl.searchParams.get('invite')}});assert.equal(v.status,303,v.body);
- const newbie=cookieOf(v),me=(await req({path:'/api/me',token:newbie})).json;
+ const newbie=cookieOf(v);
+ assert.equal((await req({path:'/api/log?profile=ann',token:newbie})).json.consent,'required','new people accept the notice first');
+ await req({method:'POST',path:'/consent',token:newbie,form:{disclaimer:'yes',consent:'yes',version:(await req({path:'/consent',token:newbie})).body.match(/name="version" value="([^"]+)"/)[1]}});
+ const me=(await req({path:'/api/me',token:newbie})).json;
  assert.equal(me.email,'newbie@example.com');assert.equal(me.household.name,'Household A');assert.equal(me.household.role,'viewer');
  assert.equal((await req({path:'/api/log?profile=ann',token:newbie})).status,200);assert.equal((await req({path:'/api/log?profile=bob',token:newbie})).status,400,'new member sees only A');
  assert.equal((await req({path:il.pathname+il.search})).status,410,'an invite works once');

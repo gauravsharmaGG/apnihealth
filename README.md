@@ -76,6 +76,11 @@ node server.mjs
   `open` (default) lets anyone with a verified email create an account (they start their own household);
   `invite` limits new accounts to people holding an invite. After the first email sign-in, people are offered a
   passkey once. `scripts/create-user.mjs` can still create users from the command line.
+- **Health data notice and consent:** before anyone can see or enter health data, they read a short notice (not
+  medical advice, not a medical device; what is processed and why) and explicitly consent to the processing of
+  health data (GDPR Art. 9 style). The app records when and which version they accepted, and asks again when the
+  notice version (`CONSENT_VERSION` in `consent.mjs`) changes. Set `PRIVACY_URL` to link your own privacy notice;
+  `docs/PRIVACY-TEMPLATE.md` is a starting point for people who host it for others.
 - `AUTH_MODE=trusted-proxy`: Cloudflare Access (or a proxy issuing the same signed JWT) signs people in. Set
   `CF_ACCESS_ISSUER`, `CF_ACCESS_AUD` and `CF_ACCESS_EMAIL` (allowed emails). An allowed email becomes a user on
   first visit: the first one owns the household, later ones join as `TRUSTED_PROXY_ROLE` (default `editor`).
@@ -130,7 +135,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py

@@ -217,5 +217,15 @@ ALTER TABLE push_subscriptions ADD COLUMN user_id TEXT REFERENCES users(id) ON D
 `},
  {version:7,name:'open sign-up: passkey prompt shown once',sql:`
 ALTER TABLE users ADD COLUMN passkey_prompted_at TEXT;
+`},
+ {version:8,name:'consent to processing health data',sql:`
+-- One row per user and notice version they accepted (GDPR Art. 9(2)(a) explicit consent, and the
+-- "not medical advice" notice). A new version means asking again.
+CREATE TABLE consents(
+ user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ version TEXT NOT NULL,
+ accepted_at TEXT NOT NULL,
+ PRIMARY KEY(user_id,version)
+);
 `}
 ];

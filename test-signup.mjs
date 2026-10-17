@@ -29,6 +29,9 @@ try{
  const pp=await S.req({path:'/welcome/passkey',cookie:n.cookie});assert.equal(pp.status,200);assert.match(pp.body,/pk-prompt-add/);assert.match(pp.body,/src="\/passkey-prompt.js"/);
  assert.equal((await S.req({path:'/passkey-prompt.js',cookie:n.cookie})).status,200);
  const again=await S.signIn('new-person@example.com');assert.equal(again.v.headers.location,'/','the passkey prompt is shown once');
+ assert.equal((await S.req({path:'/',cookie:n.cookie})).headers.location,'/consent','the health data notice comes first');
+ const ver=(await S.req({path:'/consent',cookie:n.cookie})).body.match(/name="version" value="([^"]+)"/)[1];
+ assert.equal((await S.req({method:'POST',path:'/consent',cookie:n.cookie,form:{disclaimer:'yes',consent:'yes',version:ver}})).status,303);
  const home=await S.req({path:'/',cookie:n.cookie});assert.match(home.body,/Start a household/,'a new account starts without a household');
  assert.equal((await S.req({path:'/api/log?profile=ann',cookie:n.cookie})).status,403,'and sees nothing of existing households');
  // same answer for known and unknown addresses

@@ -32,6 +32,10 @@ The project is in an early stage; only the latest commit on `main` is supported.
   one email address. With `SIGNUP_MODE=invite`, built-in sign-in never creates
   accounts without a valid invite; with `open` (default), only after the email link is used. The sign-in form answers
   the same for known and unknown addresses.
+- Nothing health-related is readable or writable until the signed-in person has accepted the current version of
+  the health data notice (`consent.mjs`): the server answers 403 for every API and sends pages to `/consent`, and
+  the store refuses writes by users without consent as a second check. Acceptance is stored with its time and
+  version. Apple Health keys keep working, since an editor who already consented created them.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Every state-changing request must be same-origin.
 - Data is kept in a SQLite database and upload files under `private/`, with owner-only permissions. Encrypt the
   disk and back it up. All member data access goes through one access check (`store.mjs`).

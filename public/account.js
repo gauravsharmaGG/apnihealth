@@ -86,6 +86,7 @@ function render(){
   h+=supported()?'<div class="set-actions"><button type="button" id="pk-add"'+dis+'>Add a passkey on this device</button></div>':'<p class="set-hint">This browser does not support passkeys.</p>';
  }
  if(S.msg)h+='<p class="set-msg" role="status">'+esc(S.msg)+'</p>';
+ h+='<p class="muted"><a href="/consent">Health data notice</a></p>';
  h+='<form method="post" action="/logout" class="set-actions"><button type="submit" class="ghost">Sign out</button></form></section>';
  el.innerHTML=household()+h;wireHousehold(el);
  const a=$('#pk-add');if(a)a.onclick=add;
