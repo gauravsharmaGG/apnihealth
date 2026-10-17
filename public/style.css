@@ -572,3 +572,19 @@ html.lite :is(.appbar,.sidebar,.tabbar){background:var(--surface-solid)}
 .empty-state{padding:28px;border-radius:var(--radius);text-align:left}.empty-state h3{margin:0 0 6px}
 .button-link{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:var(--radius-md);background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none}
 .button-link:hover{background:var(--accent-strong);color:var(--on-accent)}
+/* ===== Phase 4: home dashboard ===== */
+.home-head{padding:28px 0 4px}.home-head h1{font-size:clamp(30px,5vw,44px);letter-spacing:-.02em;margin:4px 0 6px}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:14px;margin-top:14px}
+.metric-card{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px 18px 14px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow-1);background:var(--surface-solid);min-width:0}
+.metric-card.tint-green{background:var(--tint-green)}.metric-card.tint-peach{background:var(--tint-peach)}.metric-card.tint-rose{background:var(--tint-rose)}
+.metric-card.tint-sky{background:var(--tint-sky)}.metric-card.tint-lilac{background:var(--tint-lilac)}.metric-card.tint-sand{background:var(--tint-sand)}
+.metric-card header{display:flex;align-items:center;gap:8px}.metric-card h3{margin:0;font-size:14px;font-weight:650;color:var(--ink-2);min-width:0}
+.mc-ico{width:30px;height:30px;padding:6px;border-radius:50%;background:rgba(255,255,255,.85);color:var(--ink);flex:none}
+.mc-when{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.mc-value{margin:4px 0 0;color:var(--muted);font-size:14px}.mc-value strong{font-size:30px;line-height:1.1;color:var(--ink);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mc-spark{display:block;width:100%;height:40px}.spark polyline{fill:none;stroke:var(--ink-2);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.75}
+.mc-trend{margin:0;font-size:12.5px;font-weight:600;color:var(--ink-2)}.mc-trend.flat{color:var(--muted);font-weight:500}
+.mc-empty{margin:10px 0 0;color:var(--muted)}.metric-card.is-empty{justify-content:space-between}
+.home-empty{margin-top:14px}.row-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:14px}
+.home-split{display:grid;gap:16px;margin-top:8px}
+@media(min-width:1100px){.home-split{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}

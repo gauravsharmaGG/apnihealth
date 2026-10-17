@@ -11,12 +11,12 @@ const I={
 };
 // Navigation per kind of profile: [view id, label, icon, on the phone tab bar?, other views that light this item up].
 const NAV={
- labs:[['overview','Home','home',1],['log','Vitals','pulse',1],['trends','Body','body',0],['episodes','Episodes','therm',1],['medicines','Medicines','pill',0],['calendar','Appointments','cal',1],['measurements','Reports & labs','doc',0,'records'],['integrations','Integrations','plug',0],['settings','Settings','gear',0]],
- starter:[['s-overview','Home','home',1],['log','Vitals','pulse',1],['trends','Body','body',0],['episodes','Episodes','therm',1],['medicines','Medicines','pill',0],['calendar','Appointments','cal',1],['measurements','Reports & labs','doc',0,'s-reports'],['integrations','Integrations','plug',0],['settings','Settings','gear',0]],
+ labs:[['home','Home','home',1],['log','Vitals','pulse',1],['trends','Body','body',0],['episodes','Episodes','therm',1],['medicines','Medicines','pill',0],['calendar','Appointments','cal',1],['measurements','Reports & labs','doc',0,'records overview'],['integrations','Integrations','plug',0],['settings','Settings','gear',0]],
+ starter:[['home','Home','home',1],['log','Vitals','pulse',1],['trends','Body','body',0],['episodes','Episodes','therm',1],['medicines','Medicines','pill',0],['calendar','Appointments','cal',1],['measurements','Reports & labs','doc',0,'s-reports s-overview'],['integrations','Integrations','plug',0],['settings','Settings','gear',0]],
  child:[['c-overview','Home','home',1],['c-growth','Growth','grow',1],['episodes','Episodes','therm',1],['medicines','Medicines','pill',0],['calendar','Appointments','cal',1],['c-records','Reports','doc',0],['c-vaccines','Vaccines','shield',0],['settings','Settings','gear',0]]
 };
 // Reports & labs has two pages: lab results and the report files.
-const SUBNAV={labs:[['measurements','Lab results'],['records','Reports']],starter:[['measurements','Lab results'],['s-reports','Reports & files']]};
+const SUBNAV={labs:[['overview','Summary'],['measurements','Lab results'],['records','Reports']],starter:[['s-overview','Summary'],['measurements','Lab results'],['s-reports','Reports & files']]};
 const CFG=window.APP_CONFIG||{members:[]},DEFAULT_COLOR='#157667';
 const groupOf=m=>m.kind==='child'?'child':m.labs?'labs':'starter';
 const PROFILES=Object.fromEntries(CFG.members.map(m=>[m.id,{name:m.name,initial:m.initial,kind:m.kind,labs:!!m.labs,color:m.color||DEFAULT_COLOR,sub:m.kind==='child'?'Child record':'Adult record',tabs:NAV[groupOf(m)],group:groupOf(m)}]));
