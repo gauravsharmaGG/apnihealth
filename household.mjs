@@ -82,7 +82,7 @@ export async function handle(req,res,path,user,hh){
     if(email){
      const text=`${user.name||user.email} invited you to "${hh.name}" on ${APP_NAME} as ${role}.\n\nAccept the invite (valid ${A.INVITE_DAYS} days, works once):\n${link}\n\nIf you were not expecting this, you can ignore this email.\n`;
      if(mailConfigured()){sendMail({to:email,subject:`Invite to ${hh.name} on ${APP_NAME}`,text}).catch(e=>console.error('invite email could not be sent:',e.message));emailed=true}
-     else console.log(`[auth] SMTP is not configured; invite link for ${email}: ${link}`);
+     else console.log(`[auth] Email is not configured; invite link for ${email}: ${link}`);
     }
     return json(res,200,{link,emailed}),true;
    }
