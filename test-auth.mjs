@@ -106,7 +106,15 @@ try{
  await req(S2.port,{method:'POST',path:'/auth/email',headers:{'Content-Type':'application/x-www-form-urlencoded',Origin:`http://127.0.0.1:${S2.port}`},body:form({email:'viewer-a@example.com'})});
  const mail=await until(()=>smtp.messages[0],5000,'email');assert.equal(mail.to,'<viewer-a@example.com>');assert.match(mail.data,/\/auth\/verify\?token=[A-Za-z0-9_-]{43}/);
  assert(!S2.output().includes('sign-in link for'),'not printed when emailed');smtp.close();
- console.log('PASS auth (builtin): sign-in links (single use, no enumeration, emailed or logged), session cookies (HttpOnly, SameSite, Secure/__Host- behind TLS), sign-out, CSRF, rate limit, cross-household isolation, owner/editor/viewer roles.');
+ // with RESEND_API_KEY the same link goes out through the Resend HTTP API (a local fake), not SMTP
+ const got=[],api=http.createServer((rq,rs)=>{let b='';rq.on('data',d=>b+=d);rq.on('end',()=>{got.push({auth:rq.headers.authorization,body:JSON.parse(b)});rs.writeHead(200,{'content-type':'application/json'});rs.end('{"id":"x"}')})});
+ await new Promise(ok=>api.listen(0,'127.0.0.1',ok));
+ const S3=await start({RESEND_API_KEY:'re_test_'+'a'.repeat(20),RESEND_API_URL:`http://127.0.0.1:${api.address().port}/emails`,MAIL_FROM:'Example <no-reply@example.com>'});
+ await req(S3.port,{method:'POST',path:'/auth/email',headers:{'Content-Type':'application/x-www-form-urlencoded',Origin:`http://127.0.0.1:${S3.port}`},body:form({email:'viewer-a@example.com'})});
+ const rm=await until(()=>got[0],5000,'Resend request');
+ assert.equal(rm.auth,'Bearer re_test_'+'a'.repeat(20));assert.deepEqual(rm.body.to,['viewer-a@example.com']);assert.equal(rm.body.from,'Example <no-reply@example.com>');
+ assert.match(rm.body.text,/\/auth\/verify\?token=[A-Za-z0-9_-]{43}/);assert(!S3.output().includes('sign-in link for'),'not printed when emailed');api.close();
+ console.log('PASS auth (builtin): sign-in links (single use, no enumeration, emailed via SMTP or Resend, or logged), session cookies (HttpOnly, SameSite, Secure/__Host- behind TLS), sign-out, CSRF, rate limit, cross-household isolation, owner/editor/viewer roles.');
 }finally{for(const p of procs)p.kill();rmSync(dir,{recursive:true,force:true})}
 
 // ---- units: session expiry and sliding, link expiry, trusted-proxy provisioning, AUTH_MODE checks ----
