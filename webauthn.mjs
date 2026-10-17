@@ -110,8 +110,9 @@ export function verifyAssertion(credential,stored,{challenge,origin,rpId,require
  const authRaw=fromB64u(r.authenticatorData,'authenticator data'),auth=parseAuthData(authRaw);
  checkRp(auth,rpId,requireUV);
  const sig=fromB64u(r.signature,'signature'),data=Buffer.concat([authRaw,sha256(cdRaw)]);
+ // ES256 signatures are DER, the default; the KeyObject is passed directly (Workers refuse one inside an options object).
  const key=createPublicKey({key:fromB64u(stored.publicKey,'key'),format:'der',type:'spki'});
- const ok=stored.alg===-8?cryptoVerify(null,data,key,sig):stored.alg===-7?cryptoVerify('sha256',data,{key,dsaEncoding:'der'},sig):stored.alg===-257?cryptoVerify('sha256',data,key,sig):false;
+ const ok=stored.alg===-8?cryptoVerify(null,data,key,sig):stored.alg===-7?cryptoVerify('sha256',data,key,sig):stored.alg===-257?cryptoVerify('sha256',data,key,sig):false;
  if(!ok)throw Error('Invalid signature');
  // A counter that does not increase (when the authenticator keeps one) suggests a cloned credential.
  if((auth.signCount||stored.signCount)&&auth.signCount<=stored.signCount)throw Error('Passkey counter went backwards');

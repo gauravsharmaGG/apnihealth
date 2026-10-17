@@ -7,6 +7,8 @@ import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import {forMember} from './store.mjs';
+// The default catalog is bundled as a module (no file read at runtime, so it also works without a filesystem).
+import DEFAULT_MARKERS from './config/markers.default.json' with {type:'json'};
 const ROOT=fileURLToPath(new URL('.',import.meta.url));
 const MAX_VALUES=200,MAX_PENDING=50;
 
@@ -15,11 +17,14 @@ const cache=new Map();
 export function catalog(privateDir=join(ROOT,'private')){
  if(cache.has(privateDir))return cache.get(privateDir);
  const entries=new Map();
- for(const file of [join(ROOT,'config/markers.default.json'),join(privateDir,'markers.json')]){
-  if(!existsSync(file))continue;
-  let data;try{data=JSON.parse(readFileSync(file,'utf8'))}catch{throw Error(file.split('/').pop()+' is not valid JSON')}
+ // config/markers.default.json, then the instance's own private/markers.json when there is one (Node only).
+ const own=join(privateDir,'markers.json');
+ const sources=[['markers.default.json',()=>DEFAULT_MARKERS],['markers.json',()=>existsSync(own)?JSON.parse(readFileSync(own,'utf8')):null]];
+ for(const [name,load] of sources){
+  let data;try{data=load()}catch{throw Error(name+' is not valid JSON')}
+  if(!data)continue;
   for(const m of Array.isArray(data?.markers)?data.markers:[]){
-   if(!m||typeof m.name!=='string'||!m.name.trim())throw Error(file.split('/').pop()+': every marker needs a "name"');
+   if(!m||typeof m.name!=='string'||!m.name.trim())throw Error(name+': every marker needs a "name"');
    const old=entries.get(m.name)||{};
    entries.set(m.name,{name:m.name,group:typeof m.group==='string'?m.group:old.group||'Other',meaning:typeof m.meaning==='string'?m.meaning:old.meaning||'',
     aliases:[...new Set([...(old.aliases||[]),...(Array.isArray(m.aliases)?m.aliases.filter(a=>typeof a==='string'&&a.trim()):[])])]});
