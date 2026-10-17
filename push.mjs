@@ -165,4 +165,4 @@ export async function tick(now=Date.now(),send=deliver){
  return list.length+alist.length;
 }
 // The scheduler reads every member's plans and appointments, so it runs as the system actor.
-export function start(){setInterval(()=>runAs(SYSTEM,()=>tick()).catch(e=>console.error('push tick',e.message)),30000).unref?.()}
+// The timer that calls tick() lives in scheduler.mjs (Node timer or Workers Cron Trigger).
