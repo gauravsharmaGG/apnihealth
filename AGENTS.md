@@ -42,10 +42,12 @@ every instance keeps its health data in git-ignored folders on its own server. S
 - `log.mjs`, `events.mjs` (episodes, entries, record inbox), `medicines.mjs`, `appointments.mjs`, `push.mjs`
   (Web Push with built-in crypto, reminder scheduler): data modules on top of `store.mjs`
   (uploaded files stay under `private/profiles/<id>/uploads/`).
-- `plain_data.py` + `redesign.py` (`build.py`): generate `public/data.js`, `public/reports-data.js`,
+- `labs.mjs`: lab reports per member, the marker catalog (`config/markers.default.json` + `private/markers.json`)
+  and the explorer series served by `/api/labs`; `public/labs.js` is the "Add results" form.
+- `redesign.py` (`build.py`): generates `public/reports-data.js`,
   `public/data-child.js` and `public/index.html` from `templates/index.template.html` and `private/`.
 - `public/`: the PWA (vanilla JS/CSS, service worker, manifest, icons). Views declare which members they are
-  for with `data-for` (`all`, `adult`, `child`, `labs`, `starter`); `profiles.js` builds each member's tabs.
+  for with `data-for` (`all`, `adult`, `child`, `labs` = the adult with the report library, `starter` = other adults); `profiles.js` builds each member's tabs.
 - `config/`: example and default configuration. `scripts/preview/`: fictional-data preview mode.
 - `test-*`: unit, end-to-end and browser smoke tests, all on fictional data.
 

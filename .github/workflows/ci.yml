@@ -42,6 +42,7 @@ jobs:
         run: |
           node test-db.mjs
           node test-import.mjs
+          node test-labs.mjs
           node test-members.mjs
           node test-medicines.mjs
           node test-push.mjs
@@ -49,7 +50,6 @@ jobs:
           node test-access.mjs
           node test-ahparse.mjs
           node test-preview.mjs
-          python3 test-lab-values.py
           python3 test-build-index.py
 
       - name: Server end-to-end (preview seed)

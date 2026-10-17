@@ -50,6 +50,19 @@ try{
  assert.equal((await post('/api/events?profile=sam',{episodeId:ep.id,date:'2000-01-01',time:'08:00',kind:'note',note:'Example note'})).status,201);
  assert.equal((await post('/api/log?profile=sam',{entries:[{metric:'steps',date:new Date().toISOString().slice(0,10),value:1234}]})).status,200);
  assert.equal((await (await get('/api/log?profile=sam')).json()).entries.length,1);
+ // lab results: per member, through the API
+ const labsOf=async p=>(await get('/api/labs?profile='+p)).json();
+ const la=await labsOf('alex');assert(la.measurements.length>10&&la.reports.length===4&&la.pending.length===1);
+ const ls=await labsOf('sam');assert.deepEqual(ls.measurements.map(m=>m.points.length).sort(),[1,2],'a second adult has their own lab results');assert(ls.measurements.every(m=>m.points.every(p=>p.source===null)));
+ assert.equal((await labsOf('mia')).measurements.length,0);
+ const cat=await (await get('/api/labs/catalog')).json();assert(cat.markers.length>50&&cat.markers.every(m=>m.name&&m.group&&Array.isArray(m.aliases)));
+ const lr=await post('/api/labs?profile=mia',{date:'2000-01-01',values:[{name:'Hemoglobin',value:'12',unit:'g/dL'}]});assert.equal(lr.status,201,'any member can hold lab results');
+ const added=await lr.json();assert.equal(added.measurements.length,1);
+ assert.equal((await post('/api/labs?profile=mia',{date:'2000-01-01',values:[{name:'Not a real marker',value:'1'}]})).status,400);
+ const delOther=await fetch(base+'/api/labs/'+added.id+'?profile=alex',{method:'DELETE',headers:{...H,Origin:base}});assert.equal(delOther.status,404,'cannot delete another member\'s report');
+ assert.equal((await fetch(base+'/api/labs/'+added.id+'?profile=mia',{method:'DELETE',headers:{...H,Origin:'https://evil.example'}})).status,403);
+ const delOwn=await fetch(base+'/api/labs/'+added.id+'?profile=mia',{method:'DELETE',headers:{...H,Origin:base}});assert.equal(delOwn.status,200);assert.equal((await delOwn.json()).measurements.length,0);
+ assert.equal((await get('/data.js')).status,404,'lab data is no longer a static build output');
  assert(existsSync(join(dir,'private/apnihealth.db'))&&!existsSync(join(dir,'private/health-log.json'))&&!existsSync(join(dir,'private/profiles/sam/episodes.json')),'data is stored in the database, not JSON files');
- console.log('PASS server: auth fail-closed, host check, config/members endpoints, member isolation (reads and writes, stored in SQLite), ics/ingest use instance settings.');
+ console.log('PASS server: auth fail-closed, host check, config/members endpoints, member isolation (reads and writes, stored in SQLite), lab results API, ics/ingest use instance settings.');
 }finally{srv?.kill();rmSync(dir,{recursive:true,force:true})}

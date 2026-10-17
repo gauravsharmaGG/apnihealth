@@ -9,10 +9,12 @@ import * as meds from './medicines.mjs';
 import * as push from './push.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
+import * as labs from './labs.mjs';
 import {PORT,APP_HOST,APP_NAME,TIME_ZONE,publicOrigin} from './env.mjs';
 const root=fileURLToPath(new URL('.',import.meta.url));
 const pub=resolve(root,'public'),port=PORT;
 members.load(); // fail fast at startup when the database has no members (the error says how to add them)
+labs.catalog(); // and when the marker catalog (config/markers.default.json + private/markers.json) is invalid
 const headers={'Cache-Control':'private, no-store, max-age=0','X-Robots-Tag':'noindex, nofollow, noarchive','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",'Permissions-Policy':'camera=(), microphone=(), geolocation=()'};
 const frameHeaders={...headers,'X-Frame-Options':'SAMEORIGIN','Content-Security-Policy':headers['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'")};
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.pdf':'application/pdf','.md':'text/plain; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.webmanifest':'application/manifest+json'};
@@ -103,6 +105,21 @@ const server=http.createServer(async(req,res)=>{try{
    if(b.action==='test'){const s=push.subs().find(x=>x.endpoint===ep);if(!s)throw Error('Not subscribed');const r=await push.deliver(s,{title:'Reminders are on',body:'You will get a notification when a medicine is due.',tag:'meds-test',url:'/?p='+qProfile+'#episodes'},{ttl:300});return json(res,r.status>=200&&r.status<300?200:502,{ok:r.status>=200&&r.status<300,status:r.status})}
    throw Error('Unknown action');
   }catch(e){return json(res,400,{error:e.message})}
+ }
+ // Lab results: catalog of known markers (names, groups, aliases), and per-member reports.
+ if(path==='/api/labs/catalog'&&req.method==='GET')return json(res,200,{markers:labs.catalog().markers.map(({name,group,aliases})=>({name,group,aliases}))});
+ if(path==='/api/labs'||path.startsWith('/api/labs/')){
+  const id=path.split('/')[3];
+  try{
+   const view=()=>({...labs.series(qProfile),reports:labs.listReports(qProfile).map(({values,pending,...r})=>({...r,count:values.length,pendingCount:pending.length}))});
+   if(req.method==='GET'&&!id)return json(res,200,view());
+   if(!['POST','DELETE'].includes(req.method))return json(res,405,{error:'Method not allowed'});
+   if(!sameOrigin(req))return json(res,403,{error:'Origin rejected'});
+   if(limited('labs',120,600000))return json(res,429,{error:'Too many requests'});
+   if(req.method==='POST'&&!id){const r=labs.addReport(qProfile,JSON.parse(await readBody(req,262144)));return json(res,201,{id:r.id,...view()})}
+   if(req.method==='DELETE'&&id)return labs.deleteReport(qProfile,id)?json(res,200,{removed:true,...view()}):json(res,404,{error:'Report not found'});
+   return json(res,404,{error:'Not found'});
+  }catch(e){return json(res,400,{error:e.message||'Invalid request'})}
  }
  if(path==='/api/log'){
   if(req.method==='GET')return json(res,200,{metrics:hlog.METRICS,entries:hlog.list(qProfile)});

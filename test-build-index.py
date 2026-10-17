@@ -68,12 +68,11 @@ def in_root(root,fn):
  try:return fn()
  finally:subprocess.run=real;redesign.R=realR;redesign.OUT=realOUT
 
-sys.modules['plain_data']=types.SimpleNamespace(make=lambda root=None:[],make_with_pending=lambda root=None:([],[]),data_js=lambda d:'window.HEALTH_DATA='+json.dumps(d)+';')
 # staging build writes exactly the generated files and never a notes.js
 root=private_dir(Path(tempfile.mkdtemp()));stage=tempfile.mkdtemp();os.environ['BUILD_OUT_DIR']=stage
 try:in_root(root,redesign.main)
 finally:del os.environ['BUILD_OUT_DIR']
-assert sorted(os.listdir(stage))==['data-child.js','data.js','index.html','reports-data.js'],'staging build writes exactly the generated files, no temp leftovers, no notes.js'
+assert sorted(os.listdir(stage))==['data-child.js','index.html','reports-data.js'],'staging build writes exactly the generated files, no temp leftovers, no notes.js'
 assert open(stage+'/index.html',encoding='utf-8').read()==redesign.render_index([tuple(r) for r in json.loads((CFG/'reports.example.json').read_text())],OV)
 # a notes.js that already exists is never overwritten; a missing one is stubbed
 def twice():
@@ -84,7 +83,7 @@ in_root(root,twice)
 d=tempfile.mkdtemp();f=os.path.join(d,'x.js');redesign.atomic_write(f,'a');redesign.atomic_write(f,'b')
 assert open(f).read()=='b' and os.listdir(d)==['x.js']
 
-OUTS=('data.js','data-child.js','reports-data.js','index.html')
+OUTS=('data-child.js','reports-data.js','index.html')
 def old_outputs(r):
  for n in OUTS:(r/'public'/n).write_text('OLD')
 def untouched(r):return all((r/'public'/n).read_text()=='OLD' for n in OUTS)

@@ -20,7 +20,8 @@ Per household member (adults and children; set up from a `members.json` file, se
 - **Appointments**: a shared calendar with reminders and `.ics` export.
 - **Daily log**: weight, steps, resting heart rate, blood pressure, sleep and body fat, by hand or from Apple Health
   (Health Auto Export app, Apple Shortcuts, or an `export.zip` import).
-- **Lab results** (adults): a results explorer with plain-language meanings and trends, built from your reports.
+- **Lab results** (every adult): add a dated report with its values in the app; a results explorer shows
+  plain-language meanings and trends.
   Marker names are matched through a generic catalog (`config/markers.default.json`); add your lab's own names,
   in any language, as aliases.
 - **Child record**: growth, check-ups and vaccinations.
@@ -44,15 +45,16 @@ cp .env.example .env                                     # then edit; export the
 # optional:
 cp config/overview.example.json private/overview.json    # overview page text (generic defaults otherwise)
 cp config/reports.example.json private/reports.json      # report library (PDFs go in public/records/)
-cp config/lab-values.example.json private/lab-values.json  # lab results (see plain_data.py for the format)
-cp config/markers.example.json private/markers.json      # extra marker names/aliases
+cp config/markers.example.json private/markers.json      # extra marker names/aliases (restart the server after changes)
 # per child member: private/profiles/<id>/child-record.json (shape: config/child-record.example.json)
 python3 build.py                                         # writes the git-ignored public/index.html and data files
 ```
 
 Member ids are lowercase letters, digits and dashes; they are also folder names under `private/profiles/`.
-One adult member can be marked `"labs": true` to get the lab-results views (lab results are a single-member
-feature for now).
+Every adult gets the Trends and Results views; lab results are entered there ("Add results"). One adult can be
+marked `"labs": true`: that member's overview page shows the text from `overview.json` and the PDF report library.
+An old `private/lab-values.json` (shape: `config/lab-values.example.json`) is imported into that member by
+`scripts/import-json.mjs`.
 
 ## Run
 
@@ -93,10 +95,10 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
-python3 test-lab-values.py && python3 test-build-index.py
+python3 test-build-index.py
 node test-server.mjs                 # end to end on preview data
 node test-browser-smoke.mjs          # needs Chrome (CHROME_BIN)
 # or: npm test && npm run test:browser
@@ -108,7 +110,7 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 
 - Built-in accounts (passkeys, email links), sign-up, households and invites, roles.
 - SQLite storage with per-member isolation enforced in one place (in progress); export and account deletion.
-- Lab results for every member, entered in the app.
+- Lab results: CSV import, and lab views for children.
 - Docker image and self-hosting guide.
 - A refreshed dashboard design.
 

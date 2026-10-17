@@ -10,10 +10,10 @@ const TABS=[['weight','Weight'],['steps','Steps'],['resting_hr','Heart rate'],['
 let M={},E=[],tab='weight',days=30;
 
 const P=()=>window.PROFILE;
-const MEM=()=>window.PROFILES?.[P()]||{},isLabs=()=>!!MEM().labs,isStarter=()=>MEM().kind==='adult'&&!MEM().labs;
+const MEM=()=>window.PROFILES?.[P()]||{},isLabs=()=>!!MEM().labs,isStarter=()=>MEM().kind==='adult'&&!MEM().labs,hasLabResults=()=>MEM().kind==='adult';
 const withP=u=>u+(u.includes('?')?'&':'?')+'profile='+P();
 async function api(path,opt){const r=await fetch(path.startsWith('/api/log')||path.startsWith('/api/sync-info')?withP(path):path,{credentials:'same-origin',...opt});const j=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(Error(j.error||'Request failed'),{status:r.status});return j}
-async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(isLabs())window.mergeLog?.(E,M);renderAll()}
+async function refresh(){const j=await api('/api/log');M=j.metrics;E=j.entries;if(hasLabResults())window.mergeLog?.(E,M);renderAll()}
 
 // Newest value per day for a metric (later entries on the same day win).
 function series(metric){const byDay=new Map();for(const e of E)if(e.metric===metric)byDay.set(e.date,e);return [...byDay.values()].sort((a,b)=>a.date<b.date?-1:1)}
@@ -47,7 +47,7 @@ function renderTiles(){
 function renderTabs(){$('#log-tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${k===tab}" data-tab="${k}" class="${k===tab?'selected':''}">${l}</button>`).join('')}
 
 const LABMAP={weight:'Weight',resting_hr:'Resting heart rate',body_fat:'Estimated body fat: percentage'};
-function labPts(metric){if(!isLabs())return [];const m=(window.HEALTH_DATA||[]).find(x=>x.name===LABMAP[metric]);return m?m.points.filter(p=>!p.logged&&Number.isFinite(p.n)).map(p=>({date:p.date,value:p.n,lab:true})):[]}
+function labPts(metric){if(!hasLabResults())return [];const m=(window.HEALTH_DATA||[]).find(x=>x.name===LABMAP[metric]);return m?m.points.filter(p=>!p.logged&&Number.isFinite(p.n)).map(p=>({date:p.date,value:p.n,lab:true})):[]}
 function lineChart(sets,{bars=false,unit=''}){
   const narrow=innerWidth<700,W=narrow?360:640,H=narrow?250:300,L=narrow?44:52,R=18,T=24,B=40;
   const cutoff=Date.now()-days*864e5;
@@ -113,6 +113,5 @@ document.addEventListener('click',async ev=>{
 });
 addEventListener('layoutchange',renderChart);
 addEventListener('profilechange',()=>{E=[];renderAll();refresh().catch(()=>{})});
-addEventListener('profilechange',()=>{if(!isLabs()&&window.mergeLog)window.mergeLog([],M)});
 refresh().catch(()=>{$('#today-strip').innerHTML='';$('#log-tiles').innerHTML='<div class="empty-tiles"><strong>Could not load your daily numbers</strong><span>Refresh the page to try again.</span></div>'});
 })();

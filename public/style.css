@@ -394,3 +394,12 @@ body.docpage{margin:0;height:100dvh;display:flex;flex-direction:column;backgroun
 
 .mt-hint{color:var(--amber)!important;font-size:12px!important;line-height:1.35;margin-top:3px}.mt-plus{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:1px}
 .med-dialog .set-check{margin-top:14px}
+
+/* Lab results entered in the app */
+.lab-reports{margin-top:22px}.lab-reports .section-head .ghost{margin:0}
+.lab-report-list{list-style:none;margin:12px 0 0;padding:0}.lab-report-list li{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.lab-report-list li span{min-width:0;overflow-wrap:anywhere}.lab-report-list small{display:block;color:var(--muted)}
+.lab-sheet{max-height:calc(100dvh - 28px);overflow:auto}
+.lab-check{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px}.lab-check input{min-height:0;width:18px;height:18px}
+.lab-row{border:1px solid var(--line);border-radius:12px;padding:4px 14px 10px;margin:14px 0 0;min-width:0}.lab-row legend{font-size:12px;font-weight:600;color:var(--muted);padding:0 4px}
+.lab-row .field input,.lab-row .field select{width:100%}

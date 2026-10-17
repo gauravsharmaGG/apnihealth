@@ -89,5 +89,43 @@ CREATE TABLE push_sent(
  key TEXT PRIMARY KEY,
  ts INTEGER NOT NULL
 );
+`},
+ {version:2,name:'lab reports entered in the app',sql:`
+CREATE TABLE lab_reports(
+ member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+ id TEXT NOT NULL,
+ date TEXT NOT NULL CHECK(date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+ reported TEXT,
+ title TEXT,
+ source TEXT,
+ screening INTEGER NOT NULL DEFAULT 0,
+ preliminary INTEGER NOT NULL DEFAULT 0,
+ created_at TEXT NOT NULL,
+ PRIMARY KEY(member_id,id)
+);
+CREATE INDEX lab_reports_date ON lab_reports(member_id,date);
+CREATE TABLE lab_values(
+ member_id TEXT NOT NULL,
+ report_id TEXT NOT NULL,
+ pos INTEGER NOT NULL,
+ name TEXT NOT NULL,
+ value TEXT NOT NULL,
+ num REAL NOT NULL,
+ unit TEXT,
+ reference TEXT,
+ flag TEXT CHECK(flag IN ('high','low')),
+ page INTEGER,
+ PRIMARY KEY(member_id,report_id,pos),
+ FOREIGN KEY(member_id,report_id) REFERENCES lab_reports(member_id,id) ON DELETE CASCADE
+);
+CREATE TABLE lab_pending(
+ member_id TEXT NOT NULL,
+ report_id TEXT NOT NULL,
+ pos INTEGER NOT NULL,
+ name TEXT NOT NULL,
+ note TEXT,
+ PRIMARY KEY(member_id,report_id,pos),
+ FOREIGN KEY(member_id,report_id) REFERENCES lab_reports(member_id,id) ON DELETE CASCADE
+);
 `}
 ];
