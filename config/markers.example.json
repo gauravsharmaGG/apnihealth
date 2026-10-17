@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy to private/markers.json to add aliases (e.g. your lab's names in another language) or extra markers. Merged over config/markers.default.json.",
+  "markers": [
+    {"name": "Ferritin: iron stores", "aliases": ["Ferritin (serum)"]},
+    {"name": "Example custom marker", "group": "Other", "meaning": "Plain-language explanation of a marker that is not in the default catalog.", "aliases": ["EXM"]}
+  ]
+}

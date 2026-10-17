@@ -1,0 +1,791 @@
+{
+ "_comment": "Generic marker catalog: English display name, body-system group, plain-language meaning and aliases. Report values are matched by name or alias (case-insensitive). Add your lab's own names (any language) as aliases in private/markers.json, which is merged over this file.",
+ "markers": [
+  {
+   "name": "Blood pressure: top number (left)",
+   "group": "Heart & cholesterol",
+   "meaning": "The pressure in your arteries when your heart squeezes. A single reading cannot diagnose high blood pressure.",
+   "aliases": []
+  },
+  {
+   "name": "Blood pressure: bottom number (left)",
+   "group": "Heart & cholesterol",
+   "meaning": "The pressure in your arteries between heartbeats. It is read together with the top number.",
+   "aliases": []
+  },
+  {
+   "name": "Blood pressure: top number (right)",
+   "group": "Heart & cholesterol",
+   "meaning": "The pressure in your arteries when your heart squeezes. A single reading cannot diagnose high blood pressure.",
+   "aliases": []
+  },
+  {
+   "name": "Blood pressure: bottom number (right)",
+   "group": "Heart & cholesterol",
+   "meaning": "The pressure in your arteries between heartbeats. It is read together with the top number.",
+   "aliases": []
+  },
+  {
+   "name": "Pulse pressure (left)",
+   "group": "Heart & cholesterol",
+   "meaning": "The difference between the top and bottom blood-pressure numbers. It is not your heart rate.",
+   "aliases": []
+  },
+  {
+   "name": "Pulse pressure (right)",
+   "group": "Heart & cholesterol",
+   "meaning": "The difference between the top and bottom blood-pressure numbers. It is not your heart rate.",
+   "aliases": []
+  },
+  {
+   "name": "Average artery pressure",
+   "group": "Heart & cholesterol",
+   "meaning": "An estimate of the average pressure driving blood through your arteries during a heartbeat.",
+   "aliases": []
+  },
+  {
+   "name": "Ankle-to-arm pressure ratio",
+   "group": "Heart & cholesterol",
+   "meaning": "Compares blood pressure at your ankle with your arm to screen circulation in the legs.",
+   "aliases": []
+  },
+  {
+   "name": "Resting heart rate",
+   "group": "Heart & cholesterol",
+   "meaning": "How many times your heart beats each minute while resting. Stress, illness and activity affect it.",
+   "aliases": [
+    "Resting HR"
+   ]
+  },
+  {
+   "name": "Pulse wave speed",
+   "group": "Heart & cholesterol",
+   "meaning": "How quickly a pressure wave moves along an artery. It is a screening estimate related to artery stiffness; device and age matter.",
+   "aliases": []
+  },
+  {
+   "name": "Screening blood sugar",
+   "group": "Blood sugar",
+   "meaning": "Sugar in your blood at a screening check-up where fasting status may be unknown. It is kept separate from fasting laboratory results.",
+   "aliases": []
+  },
+  {
+   "name": "Triglycerides",
+   "group": "Heart & cholesterol",
+   "meaning": "A type of fat carried in the blood. Meals and fasting status can affect the result.",
+   "aliases": []
+  },
+  {
+   "name": "Total cholesterol",
+   "group": "Heart & cholesterol",
+   "meaning": "The total cholesterol carried by different particles in your blood. LDL and HDL help explain this total.",
+   "aliases": [
+    "Cholesterol"
+   ]
+  },
+  {
+   "name": "LDL cholesterol",
+   "group": "Heart & cholesterol",
+   "meaning": "Cholesterol in particles that can build up in artery walls. Your ideal level depends on overall cardiovascular risk.",
+   "aliases": [
+    "LDL"
+   ]
+  },
+  {
+   "name": "HDL cholesterol",
+   "group": "Heart & cholesterol",
+   "meaning": "Cholesterol in particles involved in moving cholesterol back to the liver. It is one part of the heart-risk picture.",
+   "aliases": [
+    "HDL"
+   ]
+  },
+  {
+   "name": "ALT: liver-related enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme mainly found in liver cells. A raised result can indicate irritation or injury, but does not tell you the cause.",
+   "aliases": [
+    "ALT"
+   ]
+  },
+  {
+   "name": "AST: liver and muscle enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme found in the liver and muscles. It helps interpret other enzyme results, rather than diagnosing a cause alone.",
+   "aliases": [
+    "AST"
+   ]
+  },
+  {
+   "name": "GGT: liver and bile-duct enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme that helps assess the liver and bile ducts. Medicines and alcohol can also affect it.",
+   "aliases": [
+    "GGT"
+   ]
+  },
+  {
+   "name": "Blood oxygen level",
+   "group": "Lungs",
+   "meaning": "An estimate of the percentage of hemoglobin carrying oxygen, measured by a sensor.",
+   "aliases": [
+    "SpO2",
+    "Oxygen saturation"
+   ]
+  },
+  {
+   "name": "Air blown out: % of expected (FVC)",
+   "group": "Lungs",
+   "meaning": "The total air you can forcefully blow out, compared with an expected value for someone of your size and age. This alone cannot diagnose lung disease.",
+   "aliases": []
+  },
+  {
+   "name": "Air blown out: volume (FVC)",
+   "group": "Lungs",
+   "meaning": "Liters of air you forcefully blow out after a deep breath. This is not your total lung capacity.",
+   "aliases": []
+  },
+  {
+   "name": "First-second breathing: % of expected (FEV1)",
+   "group": "Lungs",
+   "meaning": "How much air you blow out in the first second, compared with an expected value. Effort and technique matter.",
+   "aliases": []
+  },
+  {
+   "name": "First-second breathing: volume (FEV1)",
+   "group": "Lungs",
+   "meaning": "Liters of air blown out in the first second of a forced breath.",
+   "aliases": []
+  },
+  {
+   "name": "First-second share of breath (FEV1/FVC)",
+   "group": "Lungs",
+   "meaning": "The percentage of a full forced breath that comes out in the first second. It helps assess airflow narrowing.",
+   "aliases": []
+  },
+  {
+   "name": "Peak airflow: % of expected",
+   "group": "Lungs",
+   "meaning": "Your fastest breathing-out speed compared with an expected value. It is especially sensitive to effort.",
+   "aliases": []
+  },
+  {
+   "name": "Peak airflow: speed",
+   "group": "Lungs",
+   "meaning": "The fastest speed of air during a forceful breath out, in liters per second.",
+   "aliases": []
+  },
+  {
+   "name": "Mid-breath airflow: % of expected",
+   "group": "Lungs",
+   "meaning": "Average airflow through the middle of a forced breath. It varies with technique and is not diagnostic on its own.",
+   "aliases": []
+  },
+  {
+   "name": "Weight",
+   "group": "Body composition",
+   "meaning": "Your body weight on the day it was measured. Older measurements do not show your current weight.",
+   "aliases": []
+  },
+  {
+   "name": "Body mass index (BMI)",
+   "group": "Body composition",
+   "meaning": "Weight relative to height. It is a broad screening measure and does not distinguish muscle from fat.",
+   "aliases": [
+    "BMI"
+   ]
+  },
+  {
+   "name": "Estimated resting energy use",
+   "group": "Body composition",
+   "meaning": "A device estimate of energy used at rest each day. It is not a recommended daily food allowance.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body water",
+   "group": "Body composition",
+   "meaning": "The device-estimated proportion of your weight that is water. Hydration affects this estimate.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated bone mineral mass",
+   "group": "Body composition",
+   "meaning": "A body-composition device estimate of bone minerals. It is not a bone-density scan or an osteoporosis test.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body fat: weight",
+   "group": "Body composition",
+   "meaning": "The estimated total weight of body fat. This is a device estimate, not a direct measurement.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body fat: percentage",
+   "group": "Body composition",
+   "meaning": "The estimated share of your body weight that is fat. Device and hydration differences affect comparisons.",
+   "aliases": []
+  },
+  {
+   "name": "Internal abdominal fat rating",
+   "group": "Body composition",
+   "meaning": "A device-specific rating of fat around abdominal organs. It is a score, not kilograms or a percentage.",
+   "aliases": []
+  },
+  {
+   "name": "Reported fat-free mass",
+   "group": "Body composition",
+   "meaning": "The report’s estimate of non-fat tissue. Devices define this differently, so compare only results from the same method.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body fat: trunk",
+   "group": "Body composition",
+   "meaning": "The device-estimated fat percentage in your trunk. It is useful only with the method and other body-composition results in mind.",
+   "aliases": []
+  },
+  {
+   "name": "Reported lean mass: trunk",
+   "group": "Body composition",
+   "meaning": "The report’s estimated non-fat tissue in your trunk. Regional values are device-dependent and may not add up to a whole-body total.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body fat: arms",
+   "group": "Body composition",
+   "meaning": "The device-estimated fat percentage in your arms. It is useful only with the method and other body-composition results in mind.",
+   "aliases": []
+  },
+  {
+   "name": "Reported lean mass: arms",
+   "group": "Body composition",
+   "meaning": "The report’s estimated non-fat tissue in your arms. Regional values are device-dependent and may not add up to a whole-body total.",
+   "aliases": []
+  },
+  {
+   "name": "Estimated body fat: legs",
+   "group": "Body composition",
+   "meaning": "The device-estimated fat percentage in your legs. It is useful only with the method and other body-composition results in mind.",
+   "aliases": []
+  },
+  {
+   "name": "Reported lean mass: legs",
+   "group": "Body composition",
+   "meaning": "The report’s estimated non-fat tissue in your legs. Regional values are device-dependent and may not add up to a whole-body total.",
+   "aliases": []
+  },
+  {
+   "name": "Hemoglobin: oxygen-carrying protein",
+   "group": "Blood cells",
+   "meaning": "The protein in red blood cells that carries oxygen. A low result means anemia; other tests help explain why.",
+   "aliases": [
+    "Hemoglobin"
+   ]
+  },
+  {
+   "name": "Red blood cell size (MCV)",
+   "group": "Blood cells",
+   "meaning": "The average size of your red blood cells. Smaller or larger cells can point to different causes and are read with the rest of the blood count.",
+   "aliases": [
+    "MCV"
+   ]
+  },
+  {
+   "name": "Red blood cell count",
+   "group": "Blood cells",
+   "meaning": "The number of oxygen-carrying red blood cells. A high count does not necessarily mean hemoglobin is adequate.",
+   "aliases": [
+    "RBC"
+   ]
+  },
+  {
+   "name": "Hemoglobin per red cell (MCH)",
+   "group": "Blood cells",
+   "meaning": "The average amount of oxygen-carrying protein inside each red blood cell.",
+   "aliases": [
+    "MCH"
+   ]
+  },
+  {
+   "name": "Hemoglobin concentration in red cells",
+   "group": "Blood cells",
+   "meaning": "How concentrated the oxygen-carrying protein is inside your red blood cells.",
+   "aliases": [
+    "MCHC"
+   ]
+  },
+  {
+   "name": "Blood volume occupied by red cells",
+   "group": "Blood cells",
+   "meaning": "The percentage of your blood volume made up of red blood cells.",
+   "aliases": [
+    "Hematocrit"
+   ]
+  },
+  {
+   "name": "White blood cell count",
+   "group": "Blood cells",
+   "meaning": "The number of immune cells in your blood. A result in range does not exclude an infection.",
+   "aliases": [
+    "White cells"
+   ]
+  },
+  {
+   "name": "Platelet count",
+   "group": "Blood cells",
+   "meaning": "Small blood components that help stop bleeding by forming clots.",
+   "aliases": [
+    "Platelets"
+   ]
+  },
+  {
+   "name": "Variation in red blood cell size",
+   "group": "Blood cells",
+   "meaning": "How much your red cells differ in size. A raised result means there is a wider mix of sizes.",
+   "aliases": [
+    "RDW-CV"
+   ]
+  },
+  {
+   "name": "Red cells with low hemoglobin concentration",
+   "group": "Blood cells",
+   "meaning": "The percentage of red cells with a low concentration of hemoglobin.",
+   "aliases": [
+    "Hypochromic erythrocytes"
+   ]
+  },
+  {
+   "name": "Red cells with high hemoglobin concentration",
+   "group": "Blood cells",
+   "meaning": "The percentage of red cells with a high concentration of hemoglobin; interpreted alongside the full blood count.",
+   "aliases": [
+    "Hyperchromic erythrocytes"
+   ]
+  },
+  {
+   "name": "CRP: inflammation marker",
+   "group": "Inflammation",
+   "meaning": "A protein that rises with inflammation. It does not identify the cause or the location on its own.",
+   "aliases": [
+    "CRP"
+   ]
+  },
+  {
+   "name": "Procalcitonin: infection-related marker",
+   "group": "Inflammation",
+   "meaning": "A marker used in assessing some bacterial illnesses. A low result cannot rule out a localized infection.",
+   "aliases": [
+    "Procalcitonin"
+   ]
+  },
+  {
+   "name": "Creatinine: kidney blood marker",
+   "group": "Kidneys & minerals",
+   "meaning": "A waste product from normal muscle activity. The kidneys filter it from the blood.",
+   "aliases": [
+    "Creatinine"
+   ]
+  },
+  {
+   "name": "Estimated kidney filtering ability",
+   "group": "Kidneys & minerals",
+   "meaning": "An estimate of kidney filtration based on blood creatinine. It is an estimate, not a percentage of kidney function.",
+   "aliases": [
+    "eGFR"
+   ]
+  },
+  {
+   "name": "Urea: protein-breakdown waste",
+   "group": "Kidneys & minerals",
+   "meaning": "Waste formed when your body processes protein. Kidney function, hydration and diet can influence it.",
+   "aliases": [
+    "Urea"
+   ]
+  },
+  {
+   "name": "Uric acid",
+   "group": "Kidneys & minerals",
+   "meaning": "Waste from breaking down substances called purines. High levels can contribute to gout in some people.",
+   "aliases": []
+  },
+  {
+   "name": "Iron circulating in blood",
+   "group": "Blood cells",
+   "meaning": "Iron available in the bloodstream at that moment. It does not measure iron stores.",
+   "aliases": [
+    "Iron"
+   ]
+  },
+  {
+   "name": "Ferritin: iron stores",
+   "group": "Blood cells",
+   "meaning": "A protein that stores iron inside cells. The blood level is the usual marker of the body’s iron stores, though inflammation can raise it.",
+   "aliases": [
+    "Ferritin"
+   ]
+  },
+  {
+   "name": "Soluble transferrin receptor (sTfR)",
+   "group": "Blood cells",
+   "meaning": "A protein that rises when cells need more iron. It is less affected by inflammation than ferritin and is read alongside it.",
+   "aliases": []
+  },
+  {
+   "name": "Potassium",
+   "group": "Kidneys & minerals",
+   "meaning": "An electrolyte that helps nerves, muscles and the heart work normally. The kidneys keep it in balance.",
+   "aliases": []
+  },
+  {
+   "name": "Sodium",
+   "group": "Kidneys & minerals",
+   "meaning": "An electrolyte that helps control fluid balance in the body. It reflects water balance as much as salt intake.",
+   "aliases": []
+  },
+  {
+   "name": "Folate (vitamin B9)",
+   "group": "Vitamins & thyroid",
+   "meaning": "A vitamin needed to make DNA and healthy red blood cells. Diet and some medicines affect the level.",
+   "aliases": []
+  },
+  {
+   "name": "Iron transport protein",
+   "group": "Blood cells",
+   "meaning": "A protein that carries iron through the bloodstream.",
+   "aliases": [
+    "Transferrin"
+   ]
+  },
+  {
+   "name": "Iron transport capacity in use",
+   "group": "Blood cells",
+   "meaning": "The percentage of transferrin’s iron-carrying sites that are filled. It is interpreted with iron stores and inflammation.",
+   "aliases": [
+    "Transferrin saturation"
+   ]
+  },
+  {
+   "name": "Fasting blood sugar",
+   "group": "Blood sugar",
+   "meaning": "Blood sugar measured after fasting. Kept separate from screening results whose fasting status is unclear.",
+   "aliases": [
+    "Fasting glucose",
+    "Glucose (fasting)"
+   ]
+  },
+  {
+   "name": "Average blood sugar (HbA1c)",
+   "group": "Blood sugar",
+   "meaning": "Reflects blood sugar over roughly the previous two to three months. Some red-cell conditions affect its reliability.",
+   "aliases": [
+    "HbA1c"
+   ]
+  },
+  {
+   "name": "Average blood sugar: alternate units",
+   "group": "Blood sugar",
+   "meaning": "The same HbA1c test expressed in mmol/mol rather than percent. This is not a separate measurement.",
+   "aliases": [
+    "HbA1c IFCC"
+   ]
+  },
+  {
+   "name": "Total bilirubin",
+   "group": "Liver & muscles",
+   "meaning": "A substance produced when red blood cells break down, then processed by the liver. A rise has several possible explanations.",
+   "aliases": []
+  },
+  {
+   "name": "Processed bilirubin",
+   "group": "Liver & muscles",
+   "meaning": "The part of bilirubin already processed by the liver. It helps interpret total bilirubin.",
+   "aliases": [
+    "Direct bilirubin"
+   ]
+  },
+  {
+   "name": "ALP: bile-duct and bone enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme linked to the bile ducts and bones. Other tests help identify the source of a change.",
+   "aliases": [
+    "Alkaline phosphatase"
+   ]
+  },
+  {
+   "name": "Lipase: digestive enzyme",
+   "group": "Digestion & proteins",
+   "meaning": "An enzyme involved in digesting fats, mainly made by the pancreas.",
+   "aliases": [
+    "Lipase"
+   ]
+  },
+  {
+   "name": "Amylase: digestive enzyme",
+   "group": "Digestion & proteins",
+   "meaning": "An enzyme that helps digest starch, made by the pancreas and salivary glands.",
+   "aliases": [
+    "Amylase"
+   ]
+  },
+  {
+   "name": "CK: muscle enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme released from muscles. Exercise, muscle injury and medicines can raise it.",
+   "aliases": [
+    "CK"
+   ]
+  },
+  {
+   "name": "CK-MB: muscle enzyme subtype",
+   "group": "Liver & muscles",
+   "meaning": "A subtype of CK used in some assessments of muscle or heart injury. It cannot establish or exclude a heart problem alone.",
+   "aliases": [
+    "CK-MB mass"
+   ]
+  },
+  {
+   "name": "LDH: general tissue enzyme",
+   "group": "Liver & muscles",
+   "meaning": "An enzyme found in many tissues. Changes are nonspecific and require context.",
+   "aliases": [
+    "LDH"
+   ]
+  },
+  {
+   "name": "Non-HDL cholesterol",
+   "group": "Heart & cholesterol",
+   "meaning": "Total cholesterol minus HDL. It captures cholesterol in several particles associated with artery risk.",
+   "aliases": [
+    "Non-HDL"
+   ]
+  },
+  {
+   "name": "Total blood protein",
+   "group": "Digestion & proteins",
+   "meaning": "The combined amount of albumin and globulins in your blood.",
+   "aliases": [
+    "Total protein"
+   ]
+  },
+  {
+   "name": "Albumin: main blood protein",
+   "group": "Digestion & proteins",
+   "meaning": "A protein made by the liver that carries substances and helps keep fluid in the bloodstream.",
+   "aliases": [
+    "Albumin"
+   ]
+  },
+  {
+   "name": "Albumin share of blood proteins",
+   "group": "Digestion & proteins",
+   "meaning": "Albumin expressed as a percentage of proteins in a protein-separation test.",
+   "aliases": [
+    "Albumin fraction"
+   ]
+  },
+  {
+   "name": "Calcium",
+   "group": "Kidneys & minerals",
+   "meaning": "A mineral important for bones, nerves and muscles. Blood calcium is not a measure of bone density.",
+   "aliases": []
+  },
+  {
+   "name": "Magnesium",
+   "group": "Kidneys & minerals",
+   "meaning": "A mineral involved in muscle, nerve and many enzyme functions.",
+   "aliases": []
+  },
+  {
+   "name": "Chloride",
+   "group": "Kidneys & minerals",
+   "meaning": "An electrolyte involved in fluid and acid-base balance.",
+   "aliases": []
+  },
+  {
+   "name": "Phosphate",
+   "group": "Kidneys & minerals",
+   "meaning": "A mineral involved in bones and cellular energy.",
+   "aliases": []
+  },
+  {
+   "name": "Vitamin B12",
+   "group": "Vitamins & thyroid",
+   "meaning": "A vitamin needed for nerves and blood-cell production. Low levels can matter even when the blood count looks normal.",
+   "aliases": []
+  },
+  {
+   "name": "Vitamin D",
+   "group": "Vitamins & thyroid",
+   "meaning": "The usual blood marker of vitamin D status, which helps regulate calcium and support bone health.",
+   "aliases": [
+    "25-OH vitamin D"
+   ]
+  },
+  {
+   "name": "Active thyroid hormone (free T3)",
+   "group": "Vitamins & thyroid",
+   "meaning": "The freely available form of one thyroid hormone. It helps regulate metabolism.",
+   "aliases": [
+    "Free T3"
+   ]
+  },
+  {
+   "name": "Thyroid hormone supply (free T4)",
+   "group": "Vitamins & thyroid",
+   "meaning": "The freely available form of a hormone made by the thyroid. The body converts some of it to T3.",
+   "aliases": [
+    "Free T4"
+   ]
+  },
+  {
+   "name": "Thyroid control signal (TSH)",
+   "group": "Vitamins & thyroid",
+   "meaning": "The pituitary gland’s signal telling the thyroid how much hormone to make.",
+   "aliases": [
+    "TSH"
+   ]
+  },
+  {
+   "name": "Neutrophils: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Immune cells that respond to infections and inflammation. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Neutrophils"
+   ]
+  },
+  {
+   "name": "Neutrophils: actual count",
+   "group": "Blood cells",
+   "meaning": "Immune cells that respond to infections and inflammation. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Neutrophils absolute"
+   ]
+  },
+  {
+   "name": "Lymphocytes: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Immune cells involved in antibody production and targeted immune responses. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Lymphocytes"
+   ]
+  },
+  {
+   "name": "Lymphocytes: actual count",
+   "group": "Blood cells",
+   "meaning": "Immune cells involved in antibody production and targeted immune responses. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Lymphocytes absolute"
+   ]
+  },
+  {
+   "name": "Monocytes: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Immune cells that help remove damaged tissue and respond to infection. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Monocytes"
+   ]
+  },
+  {
+   "name": "Monocytes: actual count",
+   "group": "Blood cells",
+   "meaning": "Immune cells that help remove damaged tissue and respond to infection. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Monocytes absolute"
+   ]
+  },
+  {
+   "name": "Eosinophils: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Immune cells often involved in allergy responses and some parasite infections. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Eosinophils"
+   ]
+  },
+  {
+   "name": "Eosinophils: actual count",
+   "group": "Blood cells",
+   "meaning": "Immune cells often involved in allergy responses and some parasite infections. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Eosinophils absolute"
+   ]
+  },
+  {
+   "name": "Basophils: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Immune cells involved in allergic and inflammatory signaling. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Basophils"
+   ]
+  },
+  {
+   "name": "Basophils: actual count",
+   "group": "Blood cells",
+   "meaning": "Immune cells involved in allergic and inflammatory signaling. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Basophils absolute"
+   ]
+  },
+  {
+   "name": "Immature granulocytes: share of white cells",
+   "group": "Blood cells",
+   "meaning": "Young immune cells recently released into the blood. This result is a percentage; the absolute count adds context.",
+   "aliases": [
+    "Immature granulocytes"
+   ]
+  },
+  {
+   "name": "Immature granulocytes: actual count",
+   "group": "Blood cells",
+   "meaning": "Young immune cells recently released into the blood. This is the number of cells, rather than their percentage.",
+   "aliases": [
+    "Immature granulocytes absolute"
+   ]
+  },
+  {
+   "name": "Alpha-1 globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Alpha-1 globulin"
+   ]
+  },
+  {
+   "name": "Alpha-2 globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Alpha-2 globulin"
+   ]
+  },
+  {
+   "name": "Beta globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Beta globulin"
+   ]
+  },
+  {
+   "name": "Beta-1 globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Beta-1 globulin"
+   ]
+  },
+  {
+   "name": "Beta-2 globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Beta-2 globulin"
+   ]
+  },
+  {
+   "name": "Gamma globulin protein fraction",
+   "group": "Digestion & proteins",
+   "meaning": "One group of proteins separated by a blood-protein test. These proteins have transport or immune roles; the pattern matters more than a small isolated change. This is not a hemoglobin test.",
+   "aliases": [
+    "Gamma globulin"
+   ]
+  }
+ ]
+}

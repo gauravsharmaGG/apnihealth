@@ -1,0 +1,5 @@
+[
+  {"id": "alex", "name": "Alex", "kind": "adult", "labs": true, "color": "#157667"},
+  {"id": "sam", "name": "Sam", "kind": "adult", "color": "#8a4f7d"},
+  {"id": "mia", "name": "Mia", "kind": "child", "color": "#3b6ea5"}
+]

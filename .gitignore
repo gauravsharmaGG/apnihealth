@@ -1,0 +1,45 @@
+# Health data, records and secrets: never commit
+private/
+source/
+uploads/
+public/records/
+public/data.js
+public/data-child.js
+public/reports-data.js
+public/notes.js
+public/index.html
+public/.*.tmp
+public/*-cover.*
+*.pdf
+*.heic
+*.sqlite
+*.sqlite3
+*.db
+*.ics
+*.json
+!public/manifest.webmanifest
+!config/*.example.json
+!config/markers.default.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+vapid*.json
+ingest-token*
+
+# Logs, backups
+logs/
+*.log
+backups/
+*.bak
+*.bak-*
+
+# Tooling
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+._*

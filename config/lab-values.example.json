@@ -1,0 +1,22 @@
+[
+  {
+    "file": "example-labs-a.pdf",
+    "iso": "2000-01-01",
+    "reported": "2000-01-02",
+    "preliminary": true,
+    "values": [
+      {"name": "Ferritin", "value": "45 ng/mL", "unit": "ng/mL", "reference": "30-300", "page": 1},
+      {"name": "Sodium", "value": "131 mmol/L ↓", "unit": "mmol/L", "reference": "135-145", "page": 2}
+    ],
+    "pending": [{"name": "Soluble transferrin receptor (sTfR)", "note": "Example pending result."}]
+  },
+  {
+    "file": "example-checkup.pdf",
+    "iso": "2000-02-01",
+    "screening": true,
+    "values": [
+      {"name": "Resting heart rate", "value": "62 bpm", "page": 2},
+      {"name": "Weight", "value": "70 kg", "page": 2}
+    ]
+  }
+]

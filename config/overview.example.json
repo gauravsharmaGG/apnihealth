@@ -1,0 +1,11 @@
+{
+  "takeaways": [
+    "<button class=\"takeaway\" data-measurement=\"Example measurement A\"><h3>Example takeaway one</h3><p>Replace this with a short plain-language summary of one of your own results.</p></button>",
+    "<button class=\"takeaway\" data-measurement=\"Example measurement B\"><h3>Example takeaway two</h3><p>Replace this with a short plain-language summary of one of your own results.</p></button>",
+    "<button class=\"takeaway\" data-measurement=\"Example measurement C\"><h3>Example takeaway three</h3><p>Replace this with a short plain-language summary of one of your own results.</p></button>",
+    "<button class=\"takeaway\" data-measurement=\"Example measurement D\"><h3>Example takeaway four</h3><p>Replace this with a short plain-language summary of one of your own results.</p></button>"
+  ],
+  "records_summary": "<span class=\"dot\"></span> Records summary<br><small>Not a live health assessment</small>",
+  "urgent_help": "<summary>When symptoms need urgent attention</summary><p>Example text: describe in your own words when to seek urgent care and which emergency numbers apply where you live.</p>",
+  "about_dates": "<summary>About dates, units and the original reports</summary><p>Example text: notes about how dates and units are shown in your own reports.</p>"
+}

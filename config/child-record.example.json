@@ -1,0 +1,61 @@
+{
+  "profile": {
+    "name": "Mia",
+    "recordLabel": "Personal health record",
+    "firstRecordDate": "2025-01-01",
+    "latestRecordDate": "2025-06-01"
+  },
+  "uExams": [
+    {
+      "id": "U1",
+      "stage": "Birth",
+      "date": "2025-01-01",
+      "displayDate": "1 Jan 2025",
+      "measurements": {
+        "weight": {
+          "value": 3.4,
+          "unit": "kg"
+        },
+        "length": {
+          "value": 50,
+          "unit": "cm"
+        },
+        "headCircumference": {
+          "value": 35,
+          "unit": "cm"
+        }
+      },
+      "note": "Example",
+      "sourceUrl": ""
+    }
+  ],
+  "vaccineProducts": {
+    "ExampleVax": {
+      "name": "ExampleVax",
+      "protectsAgainst": "Example",
+      "informationUrl": ""
+    }
+  },
+  "vaccinations": [
+    {
+      "id": "v1",
+      "date": "2025-03-01",
+      "displayDate": "1 Mar 2025",
+      "products": [
+        "ExampleVax"
+      ],
+      "coverage": [
+        "Example"
+      ]
+    }
+  ],
+  "recommendationReference": {
+    "title": "Example schedule",
+    "jurisdiction": "DE",
+    "updated": "2025",
+    "url": ""
+  },
+  "recommendations": [],
+  "sourceRecords": [],
+  "appointments": []
+}
