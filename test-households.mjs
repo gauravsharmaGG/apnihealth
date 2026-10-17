@@ -101,7 +101,7 @@ try{
  assert.equal((await req({path:'/api/episodes?profile='+kidId,token:T('owner-a@example.com')})).status,400,'deleted with its records');
  assert.match((await post('owner-a@example.com','/api/household/members/remove',{id:'ann',confirm:'Ann'})).json.error,/at least one profile/);
  // someone without a household starts one (from the no-household page form)
- assert.match((await req({path:'/',token:T('lonely@example.com')})).body,/Start a household/);
+ assert.equal((await req({path:'/',token:T('lonely@example.com')})).headers.location,'/welcome','people without a household go to onboarding');
  const st=await req({method:'POST',path:'/api/households',token:T('lonely@example.com'),form:{name:'Example Home'}});assert.equal(st.status,303);
  const lh=(await req({path:'/api/household',token:T('lonely@example.com')})).json;assert.equal(lh.household.name,'Example Home');assert.equal(lh.household.role,'owner');assert.equal(lh.members.length,1);assert.match(lh.members[0].id,/^lonely-[0-9a-f]{4}$/);
  assert.equal((await req({path:'/api/log?profile=ann',token:T('lonely@example.com')})).status,400,'a new household sees nothing of the others');

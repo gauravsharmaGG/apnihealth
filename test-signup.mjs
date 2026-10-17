@@ -32,7 +32,7 @@ try{
  assert.equal((await S.req({path:'/',cookie:n.cookie})).headers.location,'/consent','the health data notice comes first');
  const ver=(await S.req({path:'/consent',cookie:n.cookie})).body.match(/name="version" value="([^"]+)"/)[1];
  assert.equal((await S.req({method:'POST',path:'/consent',cookie:n.cookie,form:{disclaimer:'yes',consent:'yes',version:ver}})).status,303);
- const home=await S.req({path:'/',cookie:n.cookie});assert.match(home.body,/Start a household/,'a new account starts without a household');
+ const home=await S.req({path:'/',cookie:n.cookie});assert.equal(home.headers.location,'/welcome','a new account starts without a household, in onboarding');
  assert.equal((await S.req({path:'/api/log?profile=ann',cookie:n.cookie})).status,403,'and sees nothing of existing households');
  // same answer for known and unknown addresses
  const a=await S.req({method:'POST',path:'/auth/email',form:{email:'owner-a@example.com'}}),b=await S.req({method:'POST',path:'/auth/email',form:{email:'someone-else@example.com'}});

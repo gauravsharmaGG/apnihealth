@@ -86,7 +86,7 @@ try{
  assert.equal((await req(port,{method:'POST',path:'/logout',headers:{Cookie:A.cookie,Origin:'https://evil.example'}})).status,403,'no cross-site sign-out');
  // no household yet
  const L=await signIn('lonely@example.com');
- assert.match((await as(L,'/')).body,/not part of a household/);assert.equal((await as(L,'/api/log')).status,403);
+ assert.equal((await as(L,'/')).headers.location,'/welcome');assert.equal((await as(L,'/api/log')).status,403);
  // sign out ends the session
  const out1=await req(port,{method:'POST',path:'/logout',headers:{Cookie:A.cookie,Origin:O}});assert.equal(out1.status,303);assert.match(out1.headers['set-cookie'][0],/Max-Age=0/);
  assert.equal((await as(A,'/api/me')).status,401);

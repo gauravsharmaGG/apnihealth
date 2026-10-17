@@ -93,9 +93,10 @@ export function docs(table){
 
 // ---- households and members (instance-wide) ----
 const ID=/^[a-z][a-z0-9-]{0,31}$/,COLOR=/^#[0-9a-f]{6}$/i;
-export function createHousehold(name='Household'){
+// Households made by scripts and imports count as set up; people creating one in the app go through onboarding.
+export function createHousehold(name='Household',{onboarded=true}={}){
  const h={id:randomUUID(),name:String(name).trim().slice(0,80)||'Household',created_at:new Date().toISOString()};
- db().prepare('INSERT INTO households(id,name,created_at) VALUES($id,$name,$created_at)').run(h);return h;
+ db().prepare('INSERT INTO households(id,name,created_at,onboarded_at) VALUES($id,$name,$created_at,$ob)').run({...h,ob:onboarded?h.created_at:null});return h;
 }
 export const households=()=>db().prepare('SELECT id,name,created_at FROM households ORDER BY created_at,rowid').all();
 export function cleanMember(m,where='member'){

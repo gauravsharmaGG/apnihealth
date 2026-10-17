@@ -8,7 +8,8 @@ import * as meds from './medicines.mjs';
 import * as appts from './appointments.mjs';
 import * as members from './members.mjs';
 import {system,transaction,listMembers,runAs,SYSTEM} from './store.mjs';
-import {TIME_ZONE,publicOrigin} from './env.mjs';
+import {zone,inZone,publicOrigin} from './env.mjs';
+import {zoneOfMember} from './settings.mjs';
 const dir=new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('base64url'),unb64=s=>Buffer.from(s,'base64url');
 const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
 const wr=(n,v)=>{mkdirSync(dir,{recursive:true,mode:0o700});const f=new URL(n,dir),t=new URL(n+'.tmp',dir);writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600});renameSync(t,f)};
@@ -91,41 +92,41 @@ export function status(endpoint,profile,userId=null){const r=own(subs(),endpoint
 // ---- Scheduler ----
 const LATE=30*6e4,WINDOW=3*36e5;
 // Pure: which reminders are due now? state = {sentKey:timestamp}. Returns [{endpoint,profile,keys:[...],items:[{plan,slot,late}]}].
-export function due(now,subscriptions,plansOf,state){
+export function due(now,subscriptions,plansOf,state,zoneOf=()=>null){
  const out=[];
  for(const s of subscriptions)for(const [profile,info] of Object.entries(s.profiles||{})){
   const items=[];
-  for(const p of plansOf(profile)){if((s.muted||[]).includes(p.id))continue;const eff=meds.effective(p);
+  inZone(zoneOf(profile),()=>{for(const p of plansOf(profile)){if((s.muted||[]).includes(p.id))continue;const eff=meds.effective(p);
    for(const sl of meds.slots(p)){const ms=meds.targetMs(p,sl,eff);
     if(p.logs[sl.key]||ms<info.since-5*6e4||now<ms||now>ms+WINDOW)continue;
     const kind=now>=ms+LATE?'late':'due',key=[s.endpoint.slice(-24),p.id,sl.key,kind].join('|');
     if(state[key])continue;items.push({p,sl,ms,kind,key});}
-  }
+  }});
   if(items.length)out.push({endpoint:s.endpoint,keys:s.keys,profile,items});
  }
  return out;
 }
 // Pure: appointment reminders due now. state keys: endpoint|appt id|kind
-export function dueAppts(now,subscriptions,apptsOf,state){
+export function dueAppts(now,subscriptions,apptsOf,state,zoneOf=()=>null){
  const out=[];
  for(const s of subscriptions)for(const [profile,info] of Object.entries(s.appt||{})){
   const items=[];
-  for(const a of apptsOf(profile)){if(a.status!=='scheduled')continue;const start=appts.startMs(a);
+  inZone(zoneOf(profile),()=>{for(const a of apptsOf(profile)){if(a.status!=='scheduled')continue;const start=appts.startMs(a);
    for(const r of appts.reminders(a)){
     if(now<r.at||now>r.at+WINDOW||now>=start+(a.time?0:864e5))continue;
     if(r.at<Math.max(info.since,a.createdAt||0)-5*6e4)continue;
-    const key=[s.endpoint.slice(-24),'appt',a.id,r.kind].join('|');if(state[key])continue;items.push({a,kind:r.kind,key,start})}}
+    const key=[s.endpoint.slice(-24),'appt',a.id,r.kind].join('|');if(state[key])continue;items.push({a,kind:r.kind,key,start})}}});
   if(items.length)out.push({endpoint:s.endpoint,keys:s.keys,profile,items});
  }
  return out;
 }
-const dm=t=>new Date(t).toLocaleDateString('en-GB',{timeZone:TIME_ZONE,weekday:'short',day:'numeric',month:'short'});
+const dm=t=>new Date(t).toLocaleDateString('en-GB',{timeZone:zone(),weekday:'short',day:'numeric',month:'short'});
 export function apptMessage(n){
  const who=whoPrefix(n.profile),i=n.items[0],more=n.items.length>1?' (+'+(n.items.length-1)+' more)':'';
  const when=i.a.time?hm(i.start):'all day',tomorrow=i.kind==='eve';
  return {title:tomorrow?'Appointment tomorrow':i.a.time?'Appointment in 2 hours':'Appointment today',body:who+i.a.title+more+' · '+(tomorrow?dm(i.start)+' · ':'')+when+(i.a.place?' · '+i.a.place:''),tag:'appt-'+n.profile,url:'/?p='+n.profile+'#calendar'};
 }
-const hm=t=>new Date(t).toLocaleTimeString('en-GB',{timeZone:TIME_ZONE,hour:'2-digit',minute:'2-digit'});
+const hm=t=>new Date(t).toLocaleTimeString('en-GB',{timeZone:zone(),hour:'2-digit',minute:'2-digit'});
 // With several members, say whose reminder it is.
 const whoPrefix=p=>members.list().length>1?members.name(p)+': ':'';
 export function message(n){
@@ -143,17 +144,17 @@ export async function tick(now=Date.now(),send=deliver){
  let state=readState();
  const live=new Map();const plansOf=pr=>{if(!live.has(pr)){const eps=listEpisodes(pr);live.set(pr,meds.list(pr).filter(p=>eps.some(e=>e.id===p.episodeId)))}return live.get(pr)};
  const current=reachable(subs());
- const list=due(now,current,plansOf,state);let changed=false,gone=[];
+ const list=due(now,current,plansOf,state,zoneOfMember);let changed=false,gone=[];
  const apptsLive=new Map();const apptsOf=pr=>{if(!apptsLive.has(pr))apptsLive.set(pr,appts.list(pr));return apptsLive.get(pr)};
- const alist=dueAppts(now,current,apptsOf,state);
+ const alist=dueAppts(now,current,apptsOf,state,zoneOfMember);
  for(const n of list){
-  const r=await send({endpoint:n.endpoint,keys:n.keys},message(n),{ttl:n.items.every(i=>i.kind==='late')?900:1800});
+  const r=await send({endpoint:n.endpoint,keys:n.keys},inZone(zoneOfMember(n.profile),()=>message(n)),{ttl:n.items.every(i=>i.kind==='late')?900:1800});
   if(r.gone)gone.push(n.endpoint);
   else if(r.status>=200&&r.status<300||r.status===201){for(const i of n.items){state[i.key]=now;if(i.kind==='late')state[i.key.replace(/\|late$/,'|due')]??=now}changed=true}
   else console.error('push failed',r.status,r.error||'');
  }
  for(const n of alist){
-  const r=await send({endpoint:n.endpoint,keys:n.keys},apptMessage(n),{ttl:3600});
+  const r=await send({endpoint:n.endpoint,keys:n.keys},inZone(zoneOfMember(n.profile),()=>apptMessage(n)),{ttl:3600});
   if(r.gone)gone.push(n.endpoint);
   else if(r.status>=200&&r.status<300){for(const i of n.items)state[i.key]=now;changed=true}
   else console.error('push failed',r.status,r.error||'');

@@ -29,6 +29,7 @@ function household(){
  const own=H.household.role==='owner',dis=S.busy?' disabled':'';
  let h='<section class="set-card" id="hh-card"><h2>Household</h2>';
  h+=own?'<form class="hh-form" data-form="rename"><label class="field">Name<input name="name" maxlength="80" required value="'+esc(H.household.name)+'"></label><button type="submit"'+dis+'>Rename</button></form>':'<p><strong>'+esc(H.household.name)+'</strong></p>';
+ if(own&&H.settings)h+='<p class="muted">Tracking '+esc(H.settings.metrics.length)+' measurements · '+esc(H.settings.timeZone)+' · '+esc(H.settings.units.weight)+', °'+esc(H.settings.units.temperature)+' · <a href="/welcome" id="hh-setup">Change setup</a></p>';
  if(H.households.length>1)h+='<label class="field">Switch household<select id="hh-switch"'+dis+'>'+H.households.map(x=>opt(x.id,H.household.id,x.name+' ('+x.role+')')).join('')+'</select></label>';
  h+='<div class="set-actions"><button type="button" class="ghost" id="hh-new"'+dis+'>Start another household</button>'+(own?'':'<button type="button" class="ghost" id="hh-leave"'+dis+'>Leave this household</button>')+'</div>';
  // people with a login
