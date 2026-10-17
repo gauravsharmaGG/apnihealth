@@ -108,8 +108,14 @@ node server.mjs
   its own profile. An existing `private/ingest-token.txt` key keeps working as a shared household key until you
   revoke it there.
 - **Notifications** are per device and belong to the person who turned them on.
-- Deleting a profile deletes its records from the database; uploaded files under `private/profiles/<id>/` stay on
-  disk for you to remove. Every state-changing request must come from the app's own
+- Deleting a profile deletes its records from the database and its uploaded files under `private/profiles/<id>/`.
+- **Your data** (Settings): anyone signed in can download everything they can see as one ZIP: `data.json` with their
+  account, every household they belong to, its profiles and all records, plus every uploaded file. **Delete my
+  account** (confirm by typing your email) removes the login, passkeys, sessions and consent records, and every
+  household the person is the only owner of, with all its profiles, records, Apple Health keys and files (people
+  who shared that household lose access; households with another owner stay). Backups are yours to rotate. With
+  `AUTH_MODE=trusted-proxy`, an allowed email gets a fresh account on the next visit, so also remove it from
+  `CF_ACCESS_EMAIL`. Every state-changing request must come from the app's own
 origin (CSRF protection), and the sign-in endpoints are rate limited.
 
 The server listens on `127.0.0.1` only. Put it behind your proxy or tunnel with TLS, and run it with your
@@ -143,7 +149,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-datarights.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py

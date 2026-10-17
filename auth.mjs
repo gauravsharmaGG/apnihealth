@@ -72,6 +72,7 @@ export function page(title,body,status=200){
 }
 const sendPage=(res,[status,html],extra)=>send(res,status,html,extra);
 const jsonWith=(res,status,obj,extra)=>send(res,status,JSON.stringify(obj),{'Content-Type':'application/json; charset=utf-8',...extra});
+export const clearSession=req=>sessionCookie(req,'',0);
 const startSession=(req,userId)=>({'Set-Cookie':sessionCookie(req,A.createSession(userId),A.SESSION_DAYS*86400)});
 // WebAuthn relying party: this request's own origin and host name (APP_HOST behind TLS, or localhost in development).
 const relyingParty=req=>{const origin=requestOrigin(req);return {origin,rpId:new URL(origin).hostname}};

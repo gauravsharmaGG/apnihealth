@@ -108,6 +108,10 @@ try{
  await until(async()=>await ev2("location.pathname==='/'&&!!window.APP_CONFIG"),8000,'viewer signed in');
  assert.equal(await ev2('APP_CONFIG.user.role'),'viewer');
  for(const sel of ['#add-event','#new-episode','#lab-add','#log-form'])assert.equal(await ev2(`getComputedStyle(document.querySelector('${sel}')).display`),'none',sel+' hidden for viewers');
+ // the small per-item controls (delete, edit, mark taken, ...) are hidden too; the server refuses them anyway
+ await go2(base+'/#log');await sleep(1200);
+ const small=await ev2("(()=>{const els=[...document.querySelectorAll('[data-del],[data-lab-del],[data-epedit],[data-epdel],[data-edit],[data-delev],[data-addto],[data-ap-new],[data-ap-edit],[data-dose],[data-newmed],.mt-take,.mt-more,#ah-import')];return {n:els.length,shown:els.filter(e=>getComputedStyle(e).display!=='none').map(e=>e.outerHTML.slice(0,60))}})()");
+ assert(small.n>0,'per-item controls rendered');assert.deepEqual(small.shown,[],'no write controls shown to viewers');
  await go2(base+'/#settings');await until(()=>ev2("!!document.getElementById('hh-card')"),5000,'viewer household card');
  assert.equal(await ev2("!!document.querySelector('form[data-form=invite]')"),false,'viewers cannot invite');
  assert(await ev2("document.getElementById('hh-people').textContent.includes('new-viewer@example.com')"));
