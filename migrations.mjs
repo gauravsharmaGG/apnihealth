@@ -214,5 +214,8 @@ CREATE TABLE ingest_tokens(
 CREATE INDEX ingest_tokens_member ON ingest_tokens(member_id);
 -- Devices subscribed before accounts have no user until someone subscribes from them again.
 ALTER TABLE push_subscriptions ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+`},
+ {version:7,name:'open sign-up: passkey prompt shown once',sql:`
+ALTER TABLE users ADD COLUMN passkey_prompted_at TEXT;
 `}
 ];

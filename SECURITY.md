@@ -29,7 +29,9 @@ The project is in an early stage; only the latest commit on `main` is supported.
   member's household (owner/editor: read and write, viewer: read only). Members of other households look unknown.
   Household administration (profiles, invites, roles) is owner-only and also checked on the server.
 - Invite tokens are random 256-bit values stored as SHA-256 hashes, single use, valid 7 days, optionally bound to
-  one email address. Without a valid invite, built-in sign-in never creates accounts.
+  one email address. With `SIGNUP_MODE=invite`, built-in sign-in never creates
+  accounts without a valid invite; with `open` (default), only after the email link is used. The sign-in form answers
+  the same for known and unknown addresses.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Every state-changing request must be same-origin.
 - Data is kept in a SQLite database and upload files under `private/`, with owner-only permissions. Encrypt the
   disk and back it up. All member data access goes through one access check (`store.mjs`).

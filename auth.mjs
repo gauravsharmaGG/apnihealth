@@ -23,6 +23,14 @@ export function authMode(env=process.env){
  return m;
 }
 export const MODE=authMode();
+// Who may create an account with built-in sign-in: anyone with a verified email (open, the default) or only people
+// holding an invite (invite). Invites work in both modes.
+export function signupMode(env=process.env){
+ const m=env.SIGNUP_MODE||'open';
+ if(m!=='open'&&m!=='invite')throw Error('SIGNUP_MODE must be "open" or "invite"');
+ return m;
+}
+export const SIGNUP=signupMode();
 
 // ---- cookies ----
 const cookieName=req=>secureRequest(req)?'__Host-apni_session':'apni_session';
@@ -56,7 +64,7 @@ export async function authenticate(req){
 }
 
 // Paths a signed-out browser may load in builtin mode (the sign-in page and what it needs).
-export const PUBLIC_PATHS=new Set(['/login','/login.js','/style.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/manifest.webmanifest']);
+export const PUBLIC_PATHS=new Set(['/login','/login.js','/passkey-prompt.js','/style.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/manifest.webmanifest']);
 
 // ---- pages ----
 export function page(title,body,status=200){
@@ -72,7 +80,7 @@ function loginPage(msg='',error=''){
  return page('Sign in',`<h1>Sign in</h1>${msg?`<p class="auth-msg" role="status">${esc(msg)}</p>`:''}${error?`<p class="auth-error" role="alert">${esc(error)}</p>`:''}
 <form method="post" action="/auth/email" class="auth-form"><label class="field">Email<input type="email" name="email" autocomplete="username email" required maxlength="254"></label><button class="primary" type="submit">Email me a sign-in link</button></form>
 <div class="auth-passkey" id="passkey-area" hidden><p class="auth-or"><span>or</span></p><button class="ghost" type="button" id="passkey-login">Sign in with a passkey</button><p class="auth-error" id="passkey-msg" role="alert" hidden></p></div>
-<p class="muted">The link works once and expires in ${A.LINK_MINUTES} minutes. No account? Ask the person who runs this app for an invite.</p><script src="/login.js" defer></script>`);
+<p class="muted">The link works once and expires in ${A.LINK_MINUTES} minutes. ${SIGNUP==='open'?'New here? Enter your email: the link creates your account.':'No account? Ask the person who runs this app for an invite.'}</p><script src="/login.js" defer></script>`);
 }
 
 // Handles the sign-in routes; returns true when it answered the request.
@@ -94,11 +102,14 @@ export async function handle(req,res,path,url){
   let email;try{email=A.cleanEmail(f.email)}catch{return sendPage(res,loginPage('','Enter a valid email address.')),true}
   const inv=f.invite?A.inviteFor(String(f.invite)):null;
   if(limited('auth-email',60,9e5)||limited('auth-email:'+email,5,9e5))return send(res,303,'',{Location:'/login?e=busy'}),true;
-  // Known people get a link; so does a new address holding an invite it may accept (sign-up by invite only).
-  if(A.userByEmail(email)||A.inviteAllows(inv,email)){
+  // Known people get a link; so does a new address when sign-up is open, or when it holds an invite it may accept.
+  // The answer is the same either way, so the form does not reveal who has an account.
+  const known=!!A.userByEmail(email);
+  if(known||SIGNUP==='open'||A.inviteAllows(inv,email)){
    const link=requestOrigin(req)+'/auth/verify?token='+A.createLoginToken(email)+(inv?'&invite='+encodeURIComponent(f.invite):'');
+   const [subject,intro]=known?['Sign in to '+APP_NAME,`Sign in to ${APP_NAME}:`]:['Create your '+APP_NAME+' account',`Someone (hopefully you) asked to create a ${APP_NAME} account for this address. Open this link to confirm it:`];
    if(mailConfigured()){
-    sendMail({to:email,subject:'Sign in to '+APP_NAME,text:`Sign in to ${APP_NAME}:\n\n${link}\n\nThe link works once and expires in ${A.LINK_MINUTES} minutes. If you did not ask for it, you can ignore this email.\n`})
+    sendMail({to:email,subject,text:`${intro}\n\n${link}\n\nThe link works once and expires in ${A.LINK_MINUTES} minutes. If you did not ask for it, you can ignore this email.\n`})
      .catch(e=>console.error('sign-in email could not be sent:',e.message));
    }else console.log(`[auth] SMTP is not configured; sign-in link for ${email}: ${link}`);
   }
@@ -121,8 +132,12 @@ export async function handle(req,res,path,url){
     A.acceptInvite(t,user);
    })}catch{if(!user)return sendPage(res,page('Invite',`<h1>This invite cannot be used</h1><p>It has expired or was already used. Ask for a new one.</p>`,410)),true}
   }
+  // Open sign-up: the emailed link proved the address, so the account is created now.
+  if(email&&!user&&SIGNUP==='open')user=A.userByEmail(email)||A.createUser(email);
   if(!user)return send(res,303,'',{Location:'/login?e=expired'}),true;
-  return send(res,303,'',{Location:'/',...startSession(req,user.id)}),true;
+  // Offer a passkey once, to people who have none yet.
+  const next=!user.passkeyPromptedAt&&!A.passkeysOf(user.id).length?'/welcome/passkey':'/';
+  return send(res,303,'',{Location:next,...startSession(req,user.id)}),true;
  }
  // Passkey sign-in (discoverable credentials, so no email is asked for first).
  if(path==='/auth/passkey/options'&&req.method==='POST'){
@@ -173,6 +188,12 @@ async function invite(req,res,path,url){
 
 // Account routes for a signed-in user that do not depend on a household (passkeys). True when answered.
 export async function account(req,res,path,user){
+ if(path==='/welcome/passkey'&&req.method==='GET'){
+  if(MODE!=='builtin')return send(res,303,'',{Location:'/'}),true;
+  A.markPasskeyPrompted(user.id);
+  return sendPage(res,page('Add a passkey',`<h1>Sign in faster next time</h1><p>Add a passkey and sign in with Face ID, Touch ID or your device PIN instead of waiting for an email. You can do this later in Settings.</p>
+<div class="auth-form"><button class="primary" type="button" id="pk-prompt-add" hidden>Add a passkey</button><p class="auth-msg" id="pk-prompt-msg" role="status" hidden></p><a class="ghost button-link" href="/" id="pk-prompt-skip">Not now</a></div><script src="/passkey-prompt.js" defer></script>`)),true;
+ }
  if(!path.startsWith('/api/passkeys'))return false;
  if(MODE!=='builtin')return json(res,404,{error:'Passkeys are managed by your sign-in proxy'}),true;
  const view=p=>({id:p.id,name:p.name,createdAt:p.createdAt,lastUsedAt:p.lastUsedAt});

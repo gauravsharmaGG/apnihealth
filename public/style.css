@@ -423,3 +423,4 @@ body.docpage{margin:0;height:100dvh;display:flex;flex-direction:column;backgroun
 .pk-list select{max-width:8rem}
 /* Viewers can look but not change: hide the main write controls (the server refuses writes anyway). */
 html[data-role=viewer] :is(#add-event,#new-episode,#lab-add,#log-form,#sync,.mt-add,.add-inline,.add-entry,[data-inbox]){display:none!important}
+.button-link{display:inline-block;text-align:center;text-decoration:none;padding:.6rem 1rem}

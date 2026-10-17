@@ -47,6 +47,8 @@ const server=http.createServer(async(req,res)=>{try{
   if(auth.MODE==='builtin')return send(res,303,'',{Location:'/login'});
   return send(res,403,'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Sign-in required</title><h1>Sign-in required</h1><p><a href="/">Open your private health record</a></p></html>');
  }
+ // The sign-in page's assets (styles, icons, scripts) also serve signed-in people without a household yet.
+ if(auth.PUBLIC_PATHS.has(path)&&path!=='/login'&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,path);
  if(await auth.account(req,res,path,user))return;
  if(await household.handleAnywhere(req,res,path,user))return;
  const hh=A.activeHousehold(user);

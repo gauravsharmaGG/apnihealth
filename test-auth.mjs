@@ -8,7 +8,7 @@ import {fakeSmtp,until,startServer} from './testlib.mjs';
 const src=new URL('.',import.meta.url).pathname,dir=mkdtempSync(join(tmpdir(),'apni-auth-'));
 const skip=new Set(['.git','private','node_modules']);
 cpSync(src,dir,{recursive:true,filter:p=>!skip.has(p.slice(src.length).split('/')[0])});
-const DB=join(dir,'private/test.db'),env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:DB,AUTH_MODE:'builtin',APP_HOST:'health.example.com'};
+const DB=join(dir,'private/test.db'),env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:DB,AUTH_MODE:'builtin',SIGNUP_MODE:'invite',APP_HOST:'health.example.com'};
 // two households with members, users and a little data
 writeFileSync(join(dir,'setup.mjs'),`
 const S=await import('./store.mjs'),A=await import('./accounts.mjs'),log=await import('./log.mjs');S.enterAs(S.SYSTEM);
@@ -37,7 +37,7 @@ try{
   await until(()=>links(email).length>before,5000,'new link');
   const link=new URL(await linkFor(email)),token=link.searchParams.get('token');
   const page=await req(port,{path:link.pathname+link.search});assert.equal(page.status,200);assert(page.body.includes('value="'+token+'"'),'confirmation page carries the token');
-  const v=await req(port,{method:'POST',path:'/auth/verify',headers:FORM,body:form({token})});assert.equal(v.status,303,v.body);assert.equal(v.headers.location,'/');
+  const v=await req(port,{method:'POST',path:'/auth/verify',headers:FORM,body:form({token})});assert.equal(v.status,303,v.body);assert.equal(v.headers.location,'/welcome/passkey','first sign-in offers a passkey');
   const c=v.headers['set-cookie'][0];return {cookie:c.split(';')[0],raw:c,token};
  }
  const as=(c,path,o={})=>req(port,{path,...o,headers:{Cookie:c.cookie,...(o.method&&o.method!=='GET'?{Origin:O,'Content-Type':'application/json'}:{}),...(o.headers||{})}});

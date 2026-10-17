@@ -16,7 +16,8 @@ export function cleanEmail(e){
  if(v.length>254||!EMAIL.test(v))throw Error('Enter a valid email address');
  return v;
 }
-const rowToUser=r=>r&&{id:r.id,email:r.email,name:r.name||null,activeHousehold:r.active_household_id||null};
+const rowToUser=r=>r&&{id:r.id,email:r.email,name:r.name||null,activeHousehold:r.active_household_id||null,passkeyPromptedAt:r.passkey_prompted_at||null};
+export const markPasskeyPrompted=id=>db().prepare('UPDATE users SET passkey_prompted_at=? WHERE id=?').run(new Date().toISOString(),id);
 export const userById=id=>rowToUser(db().prepare('SELECT * FROM users WHERE id=?').get(String(id)));
 export const userByEmail=email=>{try{return rowToUser(db().prepare('SELECT * FROM users WHERE email=?').get(cleanEmail(email)))}catch{return null}};
 export function createUser(email,{name}={}){

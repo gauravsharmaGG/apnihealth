@@ -45,6 +45,8 @@ try{
  await ev("document.querySelector('input[name=email]').value='preview@example.com';document.querySelector('form.auth-form').requestSubmit()");
  const link=await until(()=>(log.match(/sign-in link for preview@example\.com: (\S+)/)||[])[1],5000,'sign-in link');
  await go(link.replace(/^https?:\/\/[^/]+/,base));await ev("document.querySelector('form.auth-form').requestSubmit()");
+ await until(()=>ev("location.pathname==='/welcome/passkey'&&!document.getElementById('pk-prompt-add').hidden"),8000,'passkey prompt');
+ await ev("document.getElementById('pk-prompt-skip').click()");
  await until(async()=>await ev("location.pathname==='/'&&!!window.APP_CONFIG"),8000,'signed in');
  // 2. add a passkey in Settings
  await go(base+'/#settings');
@@ -97,6 +99,7 @@ try{
  await ev2("const f=document.querySelector('form.auth-form');f.email.value='new-viewer@example.com';f.requestSubmit()");
  const vl=await until(()=>(log.match(/sign-in link for new-viewer@example\.com: (\S+)/)||[])[1],5000,'viewer sign-in link');
  await go2(vl.replace(/^https?:\/\/[^/]+/,base));await ev2("document.querySelector('form.auth-form').requestSubmit()");
+ await until(()=>ev2("location.pathname==='/welcome/passkey'"),8000,'viewer passkey prompt');await ev2("document.getElementById('pk-prompt-skip').click()");
  await until(async()=>await ev2("location.pathname==='/'&&!!window.APP_CONFIG"),8000,'viewer signed in');
  assert.equal(await ev2('APP_CONFIG.user.role'),'viewer');
  for(const sel of ['#add-event','#new-episode','#lab-add','#log-form'])assert.equal(await ev2(`getComputedStyle(document.querySelector('${sel}')).display`),'none',sel+' hidden for viewers');
