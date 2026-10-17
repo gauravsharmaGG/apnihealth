@@ -28,4 +28,6 @@ Send the token as the `X-Preview-Auth` header (for example with a browser extens
 `node scripts/preview/screenshots.mjs <out dir> [name=profile#view@WIDTHxHEIGHT ...]` seeds the same fictional data
 in a temporary copy of the repo, starts the preview server and saves PNGs with headless Chrome (`CHROME_BIN`).
 Without job arguments it writes `desktop.png` (Home, 1280x800) and `phone.png` (Home, 390x844). Add `full` after
-the size for a full-page capture, e.g. `home-long=alex#home@390x844full`.
+the size for a full-page capture, e.g. `home-long=alex#home@390x844full`. Screenshots use reduced motion, so
+nothing is caught mid-animation. Sign-in and onboarding screens come from the onboarding browser test:
+`SHOTS=<dir> node test-browser-onboarding.mjs` saves `login.png`, `passkey-offer.png`, `consent.png` and `ob1`–`ob5`.

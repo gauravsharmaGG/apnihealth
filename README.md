@@ -14,6 +14,9 @@ A self-hosted, mobile-first health record for you and your household. Open sourc
 
 Per household member (adults and children; set up from a `members.json` file, see below):
 
+- **Home dashboard**: a greeting, a card per tracked measurement (latest value, 14-day sparkline, this week vs last
+  week), today's doses, appointments and ongoing episodes on one timeline, and simple rule-based insights that
+  describe your own records (never advice). Light glass look, sidebar on desktop, bottom tabs on phones.
 - **Episodes**: group symptoms, temperatures, medicines, visits and test results of one illness or injury,
   from start to recovery, with attachments.
 - **Medicines**: courses with fixed times or intervals, dose check-off, late-dose spacing hints and web-push reminders.
