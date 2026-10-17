@@ -441,3 +441,75 @@ button.danger{background:#9b3b27;color:#fff;border:0;border-radius:10px;min-heig
 button.ghost.danger{background:transparent;color:#9b3b27;border:1px solid #e0b4a7}
 /* viewers can only look: hide every control that would change something (the server refuses those anyway) */
 html[data-role=viewer] :is(#ah-import,[data-del],[data-lab-del],[data-delbox],[data-delev],[data-epdel],[data-edit],[data-epedit],[data-resolve],[data-reopen],[data-addto],[data-ap-new],[data-ap-del],[data-ap-done],[data-ap-edit],[data-ap-reopen],[data-dose],[data-newmed],[data-mededit],.mt-take,.mt-undo,.mt-more,[data-revoke-key]){display:none!important}
+
+/* ===== Phase 4: design tokens and light glass theme =====
+   Tokens first; everything below builds on them. Text colours meet WCAG AA (4.5:1) on --surface-solid and --bg
+   (checked by test-theme.mjs). Glass (translucent surfaces + blur) is decoration only: with reduced transparency,
+   data saver or a low-memory device (html.lite, set by splash.js) surfaces turn solid and blur is off. */
+:root{
+ --font:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+ --bg:#f3f5f7;--surface-solid:#ffffff;--surface:rgba(255,255,255,.74);--surface-2:rgba(255,255,255,.56);--surface-hover:rgba(255,255,255,.9);
+ --border:rgba(20,33,43,.09);--border-strong:#d9e0e5;--glass-edge:rgba(255,255,255,.75);
+ --ink:#14212b;--ink-2:#2c3b46;--muted:#56656f;--faint:#5f6d77;
+ --accent:#0f6e60;--accent-strong:#0b574c;--accent-soft:#e2f2ee;--on-accent:#ffffff;
+ --good:#2b6b3f;--good-soft:#e4f3e8;--warn:#875519;--warn-soft:#fbf0dd;--bad:#9b3b27;--bad-soft:#fbe9e3;--info:#2f5f96;--info-soft:#e7eefa;
+ --tint-green:linear-gradient(155deg,#e3f4e6 0%,#f4faf2 60%,#fbfdf9 100%);
+ --tint-peach:linear-gradient(155deg,#fde9db 0%,#fdf3ea 60%,#fffaf6 100%);
+ --tint-rose:linear-gradient(155deg,#fbe4e6 0%,#fdf1f1 60%,#fffafa 100%);
+ --tint-sky:linear-gradient(155deg,#e2eefb 0%,#f0f6fd 60%,#fafcff 100%);
+ --tint-lilac:linear-gradient(155deg,#ece7fb 0%,#f5f2fd 60%,#fcfbff 100%);
+ --tint-sand:linear-gradient(155deg,#f6f0e2 0%,#faf7ef 60%,#fdfcf8 100%);
+ --radius:20px;--radius-md:14px;--radius-sm:10px;--radius-pill:999px;
+ --shadow-1:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.05);--shadow-2:0 2px 6px rgba(16,24,40,.05),0 16px 40px rgba(16,24,40,.08);
+ --blur:16px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;
+ --sidebar-w:248px;--appbar-h:64px;--tabbar-h:64px;
+ /* the earlier names, now aliases of the tokens */
+ --paper:var(--bg);--line:var(--border-strong);--teal:var(--accent);--teal-dark:var(--accent-strong);--tint:var(--accent-soft);--teal-soft:var(--accent-soft);--amber:var(--warn);
+ color-scheme:light;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+/* soft colour wash behind everything: one fixed layer, painted once (no background-attachment:fixed) */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+ background:radial-gradient(60vmax 50vmax at 8% -10%,rgba(198,234,214,.55),transparent 60%),radial-gradient(50vmax 40vmax at 105% 0%,rgba(252,221,200,.45),transparent 60%),radial-gradient(60vmax 50vmax at 60% 110%,rgba(214,226,250,.5),transparent 60%),var(--bg)}
+h1,h2,h3{color:var(--ink);letter-spacing:-.01em}
+a{color:var(--accent)}a:hover{color:var(--accent-strong)}
+:is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+::selection{background:#cdeae2}
+.muted,.footnote,.tile-sub,.field{color:var(--muted)}
+/* glass surfaces */
+.glass,.panel,.tile,.takeaway,.measurement,.record,.set-card,.episode-card,.ep-card,.cal-card,.start-card,.auth-card,.preview,.exam,.vax,.mt-course,.medicine-tracker,.lab-reports,.trend-menu{
+ background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-1);
+ -webkit-backdrop-filter:blur(var(--blur)) saturate(1.15);backdrop-filter:blur(var(--blur)) saturate(1.15)}
+.panel,.set-card{padding:var(--space-5)}
+dialog,.sheet,.med-dialog{background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-2);color:var(--ink)}
+dialog::backdrop{background:rgba(20,33,43,.28);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+/* controls */
+input,select,textarea{color:var(--ink);background:var(--surface-solid);border:1px solid var(--border-strong);border-radius:var(--radius-sm)}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+button.primary{background:var(--accent);color:var(--on-accent);border-radius:var(--radius-md);box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 6px 16px rgba(15,110,96,.18)}
+button.primary:hover{background:var(--accent-strong)}
+button.ghost{background:var(--surface-solid);border-color:var(--border-strong);color:var(--accent);border-radius:var(--radius-md)}
+button.ghost:hover{background:var(--accent-soft)}
+.tabs button,.range-pick button{background:var(--surface);border-color:var(--border-strong);color:var(--ink-2)}
+.tabs button.selected,.range-pick button.selected{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip{background:#eef2f5;color:#46555f}
+.form-msg.bad,.med-error{color:var(--bad)}.form-msg.good,.muted.ok{color:var(--good)}
+.eyebrow{color:var(--muted);letter-spacing:.08em}
+/* low-power and reduced-transparency: solid surfaces, no blur, no colour wash */
+html.lite body::before{background:var(--bg)}
+html.lite :is(.glass,.panel,.tile,.takeaway,.measurement,.record,.set-card,.episode-card,.ep-card,.cal-card,.start-card,.auth-card,.preview,.exam,.vax,.mt-course,.medicine-tracker,.lab-reports,.trend-menu,dialog::backdrop,.topbar,.appbar,.sidebar,.tabbar){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html.lite :is(.glass,.panel,.tile,.takeaway,.measurement,.record,.set-card,.episode-card,.ep-card,.cal-card,.start-card,.auth-card,.preview,.exam,.vax,.mt-course,.medicine-tracker,.lab-reports,.trend-menu){background:var(--surface-solid)}
+@media (prefers-reduced-transparency:reduce){body::before{background:var(--bg)}:is(.glass,.panel,.tile,.takeaway,.measurement,.record,.set-card,.episode-card,.ep-card,.cal-card,.start-card,.auth-card,.preview,.exam,.vax,.mt-course,.medicine-tracker,.lab-reports,.trend-menu){background:var(--surface-solid);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important}
+/* sign-in, notice and setup pages */
+.auth-page{background:transparent}
+.auth-card{padding:32px;border-radius:24px;box-shadow:var(--shadow-2)}
+.auth-card .eyebrow{display:flex;align-items:center;gap:8px;font-weight:650;color:var(--ink-2);letter-spacing:.02em;text-transform:none}
+.auth-card h1{font-size:1.7rem;line-height:1.15;letter-spacing:-.02em}
+/* splash: light, matches the theme */
+#splash{background:var(--bg)}
+#splash{background:var(--bg);color:var(--ink);animation:spOut .4s ease 1.2s forwards}
+.sp-ring circle,.sp-pulse path{stroke:var(--accent)}
+.sp-logo{background:var(--accent);color:#fff;box-shadow:var(--shadow-2)}
+.lite #splash{display:none}

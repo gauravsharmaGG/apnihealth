@@ -51,6 +51,9 @@ every instance keeps its health data in git-ignored folders on its own server. S
   `public/data-child.js` and `public/index.html` from `templates/index.template.html` and `private/`.
 - `public/`: the PWA (vanilla JS/CSS, service worker, manifest, icons). Views declare which members they are
   for with `data-for` (`all`, `adult`, `child`, `labs` = the adult with the report library, `starter` = other adults); `profiles.js` builds each member's tabs.
+- Look and feel: design tokens at the top of the Phase 4 section of `public/style.css` (`--bg`, `--surface`, `--ink`,
+  `--muted`, `--accent`, card tints...). Use tokens, not new hex colours; text colours must stay WCAG AA
+  (`test-theme.mjs`). Glass is decoration only: `html.lite` (set by `splash.js`) and reduced transparency turn it off.
 - `config/`: example and default configuration. `scripts/preview/`: fictional-data preview mode.
 - `test-*`: unit, end-to-end and browser smoke tests, all on fictional data.
 
