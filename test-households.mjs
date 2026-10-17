@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {mkdtempSync,cpSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';import http from 'node:http';
-import {until} from './testlib.mjs';
+import {until,startServer} from './testlib.mjs';
 const src=new URL('.',import.meta.url).pathname,dir=mkdtempSync(join(tmpdir(),'apni-hh-'));
 cpSync(src,dir,{recursive:true,filter:p=>!new Set(['.git','private','node_modules']).has(p.slice(src.length).split('/')[0])});
 const env={PATH:process.env.PATH,NO_PUSH:'1',DB_FILE:join(dir,'private/test.db'),AUTH_MODE:'builtin'};
@@ -19,14 +19,12 @@ log.add([{metric:'steps',date:'2000-01-01',value:2222}],'manual','bob');
 console.log(JSON.stringify(out));`);
 const r=spawnSync(process.execPath,['setup.mjs'],{cwd:dir,env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);
 const U=JSON.parse(r.stdout.trim().split('\n').at(-1));
-const port=5700+Math.floor(Math.random()*300),O=`http://localhost:${port}`;
-const p=spawn(process.execPath,['server.mjs'],{cwd:dir,env:{...env,PORT:String(port)},stdio:['ignore','pipe','pipe']});let log='';p.stdout.on('data',d=>log+=d);p.stderr.on('data',d=>log+=d);
+let log='';const {p,port}=await startServer({cwd:dir,env,onData:d=>log+=d}),O=`http://localhost:${port}`;
 const req=({method='GET',path,token,body,form})=>new Promise((ok,no)=>{const q=http.request({host:'127.0.0.1',port,method,path,headers:{Host:`localhost:${port}`,...(token?{Cookie:'apni_session='+token}:{}),...(method!=='GET'?{'Content-Type':form?'application/x-www-form-urlencoded':'application/json',Origin:O}:{})}},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{let j;try{j=JSON.parse(b)}catch{}ok({status:res.statusCode,headers:res.headers,body:b,json:j})})});q.on('error',no);q.end(form?new URLSearchParams(form).toString():body?JSON.stringify(body):undefined)});
 const T=e=>U[e].token,post=(e,path,body)=>req({method:'POST',path,token:T(e),body});
 const cookieOf=res=>res.headers['set-cookie'][0].split(';')[0].split('=')[1];
 const linkFor=async email=>{const l=await until(()=>log.split('\n').filter(x=>x.includes('sign-in link for '+email+': ')).at(-1),5000,'link for '+email);return new URL(l.split(': ').pop().trim())};
 try{
- await until(()=>/listening/.test(log),8000,'server');
  // overview
  const ov=(await req({path:'/api/household',token:T('owner-a@example.com')})).json;
  assert.equal(ov.household.name,'Household A');assert.equal(ov.people.length,3);assert.deepEqual(ov.members.map(m=>m.id),['ann']);assert.deepEqual(ov.invites,[]);

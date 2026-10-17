@@ -33,6 +33,10 @@ The project is in an early stage; only the latest commit on `main` is supported.
 - Only the hostname in `APP_HOST` (and localhost) is accepted. Every state-changing request must be same-origin.
 - Data is kept in a SQLite database and upload files under `private/`, with owner-only permissions. Encrypt the
   disk and back it up. All member data access goes through one access check (`store.mjs`).
-- The Apple Health ingest key only allows adding measurements. Treat it like a password and rotate it by
-  deleting `private/ingest-token.txt` if it leaks.
+- Apple Health ingest keys are per profile: each only adds measurements to its own profile, is shown once and
+  stored as a SHA-256 hash. Revoke a leaked key in the app (Log → Sync from Apple Health). The single shared key of
+  older versions (`private/ingest-token.txt`) is registered once as a household-wide key and keeps working until
+  revoked; a revoked key is never registered again.
+- Push notification devices belong to the user who turned them on. Others cannot see or change them, and reminders
+  stop for profiles the device's user can no longer access.
 - Responses send a strict Content-Security-Policy, `no-store` caching and `noindex` headers.

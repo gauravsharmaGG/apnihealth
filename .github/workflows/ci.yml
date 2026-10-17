@@ -47,6 +47,7 @@ jobs:
           node test-auth.mjs
           node test-passkeys.mjs
           node test-households.mjs
+          node test-ingest-push.mjs
           node test-members.mjs
           node test-medicines.mjs
           node test-push.mjs

@@ -58,3 +58,17 @@ export function softAuthenticator({alg=-7,counter=true}={}){
   }
  };
 }
+
+// Starts server.mjs on a random free-looking port, retrying if the port turns out to be taken.
+// onData gets every stdout/stderr chunk from the start. Returns {p, port}.
+import {spawn} from 'node:child_process';
+export async function startServer({cwd,env,onData=()=>{},args=['server.mjs']}){
+ for(let attempt=0;;attempt++){
+  const port=20000+Math.floor(Math.random()*20000);
+  const p=spawn(process.execPath,args,{cwd,env:{...env,PORT:String(port)},stdio:['ignore','pipe','pipe']});
+  let out='',exited=false;const on=d=>{out+=d;onData(String(d))};p.stdout.on('data',on);p.stderr.on('data',on);p.on('exit',()=>exited=true);
+  try{await until(()=>/listening/.test(out)||exited,10000,'server start')}catch{p.kill();throw Error('server did not start:\n'+out)}
+  if(!exited)return {p,port};
+  if(attempt>=4||!/EADDRINUSE/.test(out))throw Error('server exited:\n'+out);
+ }
+}

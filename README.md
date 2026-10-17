@@ -89,6 +89,10 @@ node server.mjs
 - Owners invite from Settings → Household: an invite link (anyone holding it can join once) or an invite for one
   email address (emailed when SMTP is set up). Invites expire after 7 days. In `AUTH_MODE=builtin` an invite is
   the only way for a new address to get an account.
+- **Apple Health sync** uses one key per profile (Log → Sync from Apple Health), so a phone can only add numbers to
+  its own profile. An existing `private/ingest-token.txt` key keeps working as a shared household key until you
+  revoke it there.
+- **Notifications** are per device and belong to the person who turned them on.
 - Deleting a profile deletes its records from the database; uploaded files under `private/profiles/<id>/` stay on
   disk for you to remove. Every state-changing request must come from the app's own
 origin (CSRF protection), and the sign-in endpoints are rate limited.
@@ -124,7 +128,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs && node test-households.mjs
+node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-build-index.py

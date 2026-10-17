@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {mkdtempSync,cpSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';import http from 'node:http';
-import {fakeSmtp,until} from './testlib.mjs';
+import {fakeSmtp,until,startServer} from './testlib.mjs';
 const src=new URL('.',import.meta.url).pathname,dir=mkdtempSync(join(tmpdir(),'apni-auth-'));
 const skip=new Set(['.git','private','node_modules']);
 cpSync(src,dir,{recursive:true,filter:p=>!skip.has(p.slice(src.length).split('/')[0])});
@@ -21,9 +21,8 @@ log.add([{metric:'steps',date:'2000-01-01',value:1111}],'manual','ann');log.add(
 let r=spawnSync(process.execPath,['setup.mjs'],{cwd:dir,env,encoding:'utf8'});assert.equal(r.status,0,r.stderr);
 const procs=[];let out='';
 async function start(extra={}){
- const port=4300+Math.floor(Math.random()*600),p=spawn(process.execPath,['server.mjs'],{cwd:dir,env:{...env,PORT:String(port),...extra},stdio:['ignore','pipe','pipe']});procs.push(p);
- let o='';p.stdout.on('data',d=>{o+=d;out+=d});p.stderr.on('data',d=>{o+=d});
- await until(()=>/listening/.test(o),8000,'server start');return {port,base:`http://127.0.0.1:${port}`,output:()=>o};
+ let o='';const {p,port}=await startServer({cwd:dir,env:{...env,...extra},onData:d=>{o+=d;out+=d}});procs.push(p);
+ return {port,base:`http://127.0.0.1:${port}`,output:()=>o};
 }
 // raw request (fetch cannot set Host or Origin freely)
 const req=(port,{method='GET',path='/',headers={},body}={})=>new Promise((ok,no)=>{const q=http.request({host:'127.0.0.1',port,method,path,headers:{Host:`127.0.0.1:${port}`,...headers}},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>ok({status:res.statusCode,headers:res.headers,body:b}))});q.on('error',no);if(body)q.write(body);q.end()});
