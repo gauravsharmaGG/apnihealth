@@ -20,6 +20,7 @@ public/*-cover.*
 !public/manifest.webmanifest
 !config/*.example.json
 !config/markers.default.json
+!package.json
 .env
 .env.*
 !.env.example

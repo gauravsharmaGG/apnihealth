@@ -29,7 +29,7 @@ Per household member (configured in `private/members.json`; adults and children)
 
 ## Requirements
 
-- Node.js 20 or newer (no npm dependencies) and Python 3 for the build script.
+- Node.js 22.13 or newer (uses the built-in `node:sqlite`; no npm dependencies) and Python 3 for the build script.
 - An authenticating reverse proxy. For now the server only accepts requests carrying a valid
   [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/) JWT for one of the allowed
   identities, and rejects everything else (fail closed). See "Roadmap".
@@ -67,6 +67,20 @@ service manager of choice (systemd, launchd, ...). Re-run `python3 build.py` aft
 All health data lives in git-ignored `private/` and `public/records/`. Back these folders up and keep them
 encrypted at rest; the server keeps them in plain JSON files with owner-only permissions.
 
+### Storage (moving to SQLite)
+
+ApniHealth is moving from JSON files to a SQLite database (`private/apnihealth.db`, or `DB_FILE`), created
+with owner-only permissions and migrated automatically on start. Every query on member data goes through one
+access check (`store.mjs`). To copy an existing JSON `private/` folder into the database (stop the server first):
+
+```bash
+node scripts/import-json.mjs --dry-run      # validate and print counts only; writes nothing
+node scripts/import-json.mjs                # import; the JSON files and uploads are left untouched
+```
+
+The import runs only into an empty database and prints counts, never values. Keep the JSON files as a backup
+until you have checked the app.
+
 ## Try it with fictional data
 
 See [docs/preview.md](docs/preview.md).
@@ -74,11 +88,13 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
+node test-db.mjs && node test-import.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs
 python3 test-lab-values.py && python3 test-build-index.py
 node test-server.mjs                 # end to end on preview data
-node test-browser-smoke.mjs          # needs Chrome (CHROME_BIN) and Node 22+
+node test-browser-smoke.mjs          # needs Chrome (CHROME_BIN)
+# or: npm test && npm run test:browser
 ```
 
 All tests use fictional data. Never add real health data to code, tests, fixtures, issues or screenshots.
@@ -86,7 +102,7 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 ## Roadmap
 
 - Built-in accounts (passkeys, email links), sign-up, households and invites, roles.
-- SQLite storage with per-member isolation enforced in one place; export and account deletion.
+- SQLite storage with per-member isolation enforced in one place (in progress); export and account deletion.
 - Lab results for every member, entered in the app.
 - Docker image and self-hosting guide.
 - A refreshed dashboard design.
