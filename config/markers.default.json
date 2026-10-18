@@ -1,5 +1,5 @@
 {
- "_comment": "Generic marker catalog: English display name, body-system group, plain-language meaning and aliases. Report values are matched by name or alias (case-insensitive). Add your lab's own names (any language) as aliases in private/markers.json, which is merged over this file.",
+ "_comment": "Generic marker catalog: English display name, body-system group, plain-language meaning and aliases (English, German, a few Hindi). Report values are matched by name or alias (case-insensitive). unit: the preferred display unit. units: other accepted units, where value in unit = value x factor, each with its source (src). plausible: [min, max] in the preferred unit, sanity bounds that catch reading errors such as a lost decimal point; they are NOT medical reference ranges. alt: the paired marker for the same test in other units (share vs count, HbA1c % vs mmol/mol); the unit on a report decides between them. Add your lab's own names (any language) as aliases in private/markers.json, which is merged over this file.",
  "markers": [
   {
    "name": "Blood pressure: top number (left)",
@@ -73,14 +73,52 @@
    "name": "Triglycerides",
    "group": "Heart & cholesterol",
    "meaning": "A type of fat carried in the blood. Meals and fasting status can affect the result.",
-   "aliases": []
+   "aliases": [
+    "Triglyceride",
+    "Triglyzeride",
+    "TG",
+    "Serum triglycerides",
+    "Triglycerides, serum",
+    "ट्राइग्लिसराइड"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 88.54,
+     "src": "triglycerides are reported as triolein, molar mass 885.4 g/mol: 1 mmol/L = 88.54 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5497163"
+    }
+   ],
+   "plausible": [
+    5,
+    10000
+   ]
   },
   {
    "name": "Total cholesterol",
    "group": "Heart & cholesterol",
    "meaning": "The total cholesterol carried by different particles in your blood. LDL and HDL help explain this total.",
    "aliases": [
-    "Cholesterol"
+    "Cholesterol",
+    "Cholesterin",
+    "Gesamtcholesterin",
+    "Cholesterin gesamt",
+    "Cholesterol, total",
+    "Total cholesterol, serum",
+    "Serum cholesterol",
+    "कोलेस्ट्रॉल"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 38.665,
+     "src": "cholesterol molar mass 386.65 g/mol: 1 mmol/L = 38.665 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5997"
+    }
+   ],
+   "plausible": [
+    30,
+    1500
    ]
   },
   {
@@ -88,7 +126,24 @@
    "group": "Heart & cholesterol",
    "meaning": "Cholesterol in particles that can build up in artery walls. Your ideal level depends on overall cardiovascular risk.",
    "aliases": [
-    "LDL"
+    "LDL",
+    "LDL-Cholesterin",
+    "LDL-C",
+    "LDL cholesterol, direct",
+    "LDL cholesterol, calculated",
+    "LDL-Cholesterol"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 38.665,
+     "src": "cholesterol molar mass 386.65 g/mol: 1 mmol/L = 38.665 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5997"
+    }
+   ],
+   "plausible": [
+    5,
+    1000
    ]
   },
   {
@@ -96,7 +151,23 @@
    "group": "Heart & cholesterol",
    "meaning": "Cholesterol in particles involved in moving cholesterol back to the liver. It is one part of the heart-risk picture.",
    "aliases": [
-    "HDL"
+    "HDL",
+    "HDL-Cholesterin",
+    "HDL-C",
+    "HDL cholesterol, direct",
+    "HDL-Cholesterol"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 38.665,
+     "src": "cholesterol molar mass 386.65 g/mol: 1 mmol/L = 38.665 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5997"
+    }
+   ],
+   "plausible": [
+    3,
+    300
    ]
   },
   {
@@ -104,7 +175,26 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme mainly found in liver cells. A raised result can indicate irritation or injury, but does not tell you the cause.",
    "aliases": [
-    "ALT"
+    "ALT",
+    "GPT",
+    "ALAT",
+    "SGPT",
+    "ALT (GPT)",
+    "GPT (ALAT)",
+    "Alanine aminotransferase",
+    "Alanin-Aminotransferase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    20000
    ]
   },
   {
@@ -112,7 +202,26 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme found in the liver and muscles. It helps interpret other enzyme results, rather than diagnosing a cause alone.",
    "aliases": [
-    "AST"
+    "AST",
+    "GOT",
+    "ASAT",
+    "SGOT",
+    "AST (GOT)",
+    "GOT (ASAT)",
+    "Aspartate aminotransferase",
+    "Aspartat-Aminotransferase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    20000
    ]
   },
   {
@@ -120,7 +229,25 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme that helps assess the liver and bile ducts. Medicines and alcohol can also affect it.",
    "aliases": [
-    "GGT"
+    "GGT",
+    "Gamma-GT",
+    "γ-GT",
+    "GGTP",
+    "Gamma glutamyl transferase",
+    "Gamma-Glutamyltransferase",
+    "Gamma-Glutamyl-Transferase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    10000
    ]
   },
   {
@@ -130,6 +257,11 @@
    "aliases": [
     "SpO2",
     "Oxygen saturation"
+   ],
+   "unit": "%",
+   "plausible": [
+    30,
+    100
    ]
   },
   {
@@ -277,7 +409,30 @@
    "group": "Blood cells",
    "meaning": "The protein in red blood cells that carries oxygen. A low result means anemia; other tests help explain why.",
    "aliases": [
-    "Hemoglobin"
+    "Hemoglobin",
+    "Hämoglobin",
+    "Haemoglobin",
+    "Hb",
+    "HGB",
+    "Hemoglobin (Hb)",
+    "हीमोग्लोबिन"
+   ],
+   "unit": "g/dL",
+   "units": [
+    {
+     "unit": "g/L",
+     "factor": 0.1,
+     "src": "SI prefixes: 1 g/L = 0.1 g/dL (1 dL = 0.1 L)."
+    },
+    {
+     "unit": "mmol/L",
+     "factor": 1.6114,
+     "src": "hemoglobin per heme subunit, molar mass 16,114 g/mol (the SI convention behind mmol/L reports): 1 mmol/L = 1.6114 g/dL. ICSH/IFCC, Clin Chim Acta 1979;96:183-8 (doi:10.1016/0009-8981(79)90071-0)."
+    }
+   ],
+   "plausible": [
+    2,
+    25
    ]
   },
   {
@@ -285,7 +440,14 @@
    "group": "Blood cells",
    "meaning": "The average size of your red blood cells. Smaller or larger cells can point to different causes and are read with the rest of the blood count.",
    "aliases": [
-    "MCV"
+    "MCV",
+    "Mean corpuscular volume",
+    "Mittleres Erythrozytenvolumen"
+   ],
+   "unit": "fL",
+   "plausible": [
+    40,
+    160
    ]
   },
   {
@@ -293,7 +455,19 @@
    "group": "Blood cells",
    "meaning": "The number of oxygen-carrying red blood cells. A high count does not necessarily mean hemoglobin is adequate.",
    "aliases": [
-    "RBC"
+    "RBC",
+    "Erythrozyten",
+    "Ery",
+    "Erys",
+    "RBC count",
+    "Total RBC count",
+    "Red cell count",
+    "Red blood cells"
+   ],
+   "unit": "10⁶/µL",
+   "plausible": [
+    0.5,
+    10
    ]
   },
   {
@@ -301,7 +475,13 @@
    "group": "Blood cells",
    "meaning": "The average amount of oxygen-carrying protein inside each red blood cell.",
    "aliases": [
-    "MCH"
+    "MCH",
+    "Mean corpuscular hemoglobin"
+   ],
+   "unit": "pg",
+   "plausible": [
+    10,
+    50
    ]
   },
   {
@@ -309,7 +489,25 @@
    "group": "Blood cells",
    "meaning": "How concentrated the oxygen-carrying protein is inside your red blood cells.",
    "aliases": [
-    "MCHC"
+    "MCHC",
+    "Mean corpuscular hemoglobin concentration"
+   ],
+   "unit": "g/dL",
+   "units": [
+    {
+     "unit": "g/L",
+     "factor": 0.1,
+     "src": "SI prefixes: 1 g/L = 0.1 g/dL (1 dL = 0.1 L)."
+    },
+    {
+     "unit": "mmol/L",
+     "factor": 1.6114,
+     "src": "hemoglobin per heme subunit, molar mass 16,114 g/mol (the SI convention behind mmol/L reports): 1 mmol/L = 1.6114 g/dL. ICSH/IFCC, Clin Chim Acta 1979;96:183-8 (doi:10.1016/0009-8981(79)90071-0)."
+    }
+   ],
+   "plausible": [
+    20,
+    45
    ]
   },
   {
@@ -317,7 +515,26 @@
    "group": "Blood cells",
    "meaning": "The percentage of your blood volume made up of red blood cells.",
    "aliases": [
-    "Hematocrit"
+    "Hematocrit",
+    "Hämatokrit",
+    "Haematokrit",
+    "HKT",
+    "Hct",
+    "PCV",
+    "Packed cell volume",
+    "Haematocrit"
+   ],
+   "unit": "%",
+   "units": [
+    {
+     "unit": "L/L",
+     "factor": 100,
+     "src": "a fraction of 1: 1 L/L = 100 %."
+    }
+   ],
+   "plausible": [
+    10,
+    75
    ]
   },
   {
@@ -325,7 +542,27 @@
    "group": "Blood cells",
    "meaning": "The number of immune cells in your blood. A result in range does not exclude an infection.",
    "aliases": [
-    "White cells"
+    "White cells",
+    "Leukozyten",
+    "Leukos",
+    "WBC",
+    "WBC count",
+    "Total leucocyte count",
+    "Total leukocyte count",
+    "TLC",
+    "Total WBC count"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0.1,
+    500
    ]
   },
   {
@@ -333,7 +570,29 @@
    "group": "Blood cells",
    "meaning": "Small blood components that help stop bleeding by forming clots.",
    "aliases": [
-    "Platelets"
+    "Platelets",
+    "Thrombozyten",
+    "Thrombos",
+    "PLT",
+    "Platelets count",
+    "प्लेटलेट्स"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    },
+    {
+     "unit": "lakh/µL",
+     "factor": 100,
+     "src": "1 lakh = 100,000: 1 lakh/µL = 100 × 10³/µL."
+    }
+   ],
+   "plausible": [
+    1,
+    3000
    ]
   },
   {
@@ -341,7 +600,15 @@
    "group": "Blood cells",
    "meaning": "How much your red cells differ in size. A raised result means there is a wider mix of sizes.",
    "aliases": [
-    "RDW-CV"
+    "RDW-CV",
+    "RDW",
+    "RDW (CV)",
+    "Erythrozytenverteilungsbreite"
+   ],
+   "unit": "%",
+   "plausible": [
+    5,
+    40
    ]
   },
   {
@@ -365,7 +632,22 @@
    "group": "Inflammation",
    "meaning": "A protein that rises with inflammation. It does not identify the cause or the location on its own.",
    "aliases": [
-    "CRP"
+    "CRP",
+    "C-reaktives Protein",
+    "C-reactive protein",
+    "CRP, quantitative"
+   ],
+   "unit": "mg/L",
+   "units": [
+    {
+     "unit": "mg/dL",
+     "factor": 10,
+     "src": "SI prefixes: 1 mg/dL = 10 mg/L (1 dL = 0.1 L)."
+    }
+   ],
+   "plausible": [
+    0,
+    1000
    ]
   },
   {
@@ -373,7 +655,13 @@
    "group": "Inflammation",
    "meaning": "A marker used in assessing some bacterial illnesses. A low result cannot rule out a localized infection.",
    "aliases": [
-    "Procalcitonin"
+    "Procalcitonin",
+    "PCT"
+   ],
+   "unit": "ng/mL",
+   "plausible": [
+    0,
+    1000
    ]
   },
   {
@@ -381,7 +669,23 @@
    "group": "Kidneys & minerals",
    "meaning": "A waste product from normal muscle activity. The kidneys filter it from the blood.",
    "aliases": [
-    "Creatinine"
+    "Creatinine",
+    "Kreatinin",
+    "Serum creatinine",
+    "Creatinine, serum",
+    "क्रिएटिनिन"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "µmol/L",
+     "factor": 0.01131,
+     "src": "creatinine molar mass 113.12 g/mol: 1 mg/dL = 88.42 µmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/588"
+    }
+   ],
+   "plausible": [
+    0.05,
+    30
    ]
   },
   {
@@ -389,7 +693,18 @@
    "group": "Kidneys & minerals",
    "meaning": "An estimate of kidney filtration based on blood creatinine. It is an estimate, not a percentage of kidney function.",
    "aliases": [
-    "eGFR"
+    "eGFR",
+    "eGFR (CKD-EPI)",
+    "GFR (CKD-EPI)",
+    "eGFR CKD-EPI",
+    "Estimated GFR",
+    "GFR, geschätzt",
+    "eGFR nach CKD-EPI"
+   ],
+   "unit": "mL/min/1.73 m²",
+   "plausible": [
+    1,
+    250
    ]
   },
   {
@@ -397,21 +712,93 @@
    "group": "Kidneys & minerals",
    "meaning": "Waste formed when your body processes protein. Kidney function, hydration and diet can influence it.",
    "aliases": [
-    "Urea"
+    "Urea",
+    "Harnstoff",
+    "Blood urea",
+    "Serum urea"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 6.006,
+     "src": "urea molar mass 60.06 g/mol: 1 mmol/L = 6.006 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/1176"
+    }
+   ],
+   "plausible": [
+    1,
+    600
+   ]
+  },
+  {
+   "name": "Blood urea nitrogen (BUN)",
+   "group": "Kidneys & minerals",
+   "meaning": "The nitrogen part of urea, a waste product the kidneys clear. It is a different number from urea (urea is about 2.14 times BUN), so the two are kept apart.",
+   "aliases": [
+    "BUN",
+    "Blood urea nitrogen",
+    "Urea nitrogen",
+    "Harnstoff-N",
+    "Harnstoff-Stickstoff"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 2.801,
+     "src": "urea carries two nitrogen atoms (2 × 14.007 g/mol): 1 mmol/L urea = 2.801 mg/dL urea nitrogen. https://pubchem.ncbi.nlm.nih.gov/compound/1176"
+    }
+   ],
+   "plausible": [
+    0.5,
+    300
    ]
   },
   {
    "name": "Uric acid",
    "group": "Kidneys & minerals",
    "meaning": "Waste from breaking down substances called purines. High levels can contribute to gout in some people.",
-   "aliases": []
+   "aliases": [
+    "Harnsäure",
+    "Serum uric acid",
+    "Urate",
+    "Uric acid, serum",
+    "यूरिक एसिड"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "µmol/L",
+     "factor": 0.016812,
+     "src": "uric acid molar mass 168.11 g/mol: 1 mg/dL = 59.48 µmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/1175"
+    }
+   ],
+   "plausible": [
+    0.5,
+    30
+   ]
   },
   {
    "name": "Iron circulating in blood",
    "group": "Blood cells",
    "meaning": "Iron available in the bloodstream at that moment. It does not measure iron stores.",
    "aliases": [
-    "Iron"
+    "Iron",
+    "Eisen",
+    "Serum iron",
+    "Fe"
+   ],
+   "unit": "µg/dL",
+   "units": [
+    {
+     "unit": "µmol/L",
+     "factor": 5.585,
+     "src": "iron atomic weight 55.845: 1 µmol/L = 5.585 µg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/23925"
+    }
+   ],
+   "plausible": [
+    5,
+    1000
    ]
   },
   {
@@ -419,32 +806,96 @@
    "group": "Blood cells",
    "meaning": "A protein that stores iron inside cells. The blood level is the usual marker of the body’s iron stores, though inflammation can raise it.",
    "aliases": [
-    "Ferritin"
+    "Ferritin",
+    "Serum ferritin"
+   ],
+   "unit": "ng/mL",
+   "plausible": [
+    1,
+    100000
    ]
   },
   {
    "name": "Soluble transferrin receptor (sTfR)",
    "group": "Blood cells",
    "meaning": "A protein that rises when cells need more iron. It is less affected by inflammation than ferritin and is read alongside it.",
-   "aliases": []
+   "aliases": [
+    "sTfR",
+    "Löslicher Transferrinrezeptor"
+   ],
+   "unit": "mg/L",
+   "plausible": [
+    0.1,
+    100
+   ]
   },
   {
    "name": "Potassium",
    "group": "Kidneys & minerals",
    "meaning": "An electrolyte that helps nerves, muscles and the heart work normally. The kidneys keep it in balance.",
-   "aliases": []
+   "aliases": [
+    "Kalium",
+    "K+",
+    "Serum potassium"
+   ],
+   "unit": "mmol/L",
+   "units": [
+    {
+     "unit": "mEq/L",
+     "factor": 1,
+     "src": "monovalent ions: 1 mEq/L = 1 mmol/L."
+    }
+   ],
+   "plausible": [
+    1,
+    10
+   ]
   },
   {
    "name": "Sodium",
    "group": "Kidneys & minerals",
    "meaning": "An electrolyte that helps control fluid balance in the body. It reflects water balance as much as salt intake.",
-   "aliases": []
+   "aliases": [
+    "Natrium",
+    "Na+",
+    "Serum sodium"
+   ],
+   "unit": "mmol/L",
+   "units": [
+    {
+     "unit": "mEq/L",
+     "factor": 1,
+     "src": "monovalent ions: 1 mEq/L = 1 mmol/L."
+    }
+   ],
+   "plausible": [
+    100,
+    180
+   ]
   },
   {
    "name": "Folate (vitamin B9)",
    "group": "Vitamins & thyroid",
    "meaning": "A vitamin needed to make DNA and healthy red blood cells. Diet and some medicines affect the level.",
-   "aliases": []
+   "aliases": [
+    "Folsäure",
+    "Folat",
+    "Folic acid",
+    "Serum folate",
+    "Folate"
+   ],
+   "unit": "ng/mL",
+   "units": [
+    {
+     "unit": "nmol/L",
+     "factor": 0.4414,
+     "src": "folic acid molar mass 441.4 g/mol: 1 ng/mL = 2.266 nmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/135398658"
+    }
+   ],
+   "plausible": [
+    0.1,
+    100
+   ]
   },
   {
    "name": "Iron transport protein",
@@ -452,6 +903,18 @@
    "meaning": "A protein that carries iron through the bloodstream.",
    "aliases": [
     "Transferrin"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "g/L",
+     "factor": 100,
+     "src": "SI prefixes: 1 g/L = 100 mg/dL (1 dL = 0.1 L)."
+    }
+   ],
+   "plausible": [
+    20,
+    1000
    ]
   },
   {
@@ -459,7 +922,14 @@
    "group": "Blood cells",
    "meaning": "The percentage of transferrin’s iron-carrying sites that are filled. It is interpreted with iron stores and inflammation.",
    "aliases": [
-    "Transferrin saturation"
+    "Transferrin saturation",
+    "Transferrinsättigung",
+    "TSAT"
+   ],
+   "unit": "%",
+   "plausible": [
+    1,
+    100
    ]
   },
   {
@@ -468,7 +938,30 @@
    "meaning": "Blood sugar measured after fasting. Kept separate from screening results whose fasting status is unclear.",
    "aliases": [
     "Fasting glucose",
-    "Glucose (fasting)"
+    "Glucose (fasting)",
+    "Glucose nüchtern",
+    "Glukose nüchtern",
+    "Nüchternglukose",
+    "Nüchtern-Glucose",
+    "Fasting Blood Sugar",
+    "FBS",
+    "Fasting plasma glucose",
+    "FPG",
+    "Blood sugar fasting",
+    "Glucose, fasting",
+    "शुगर (खाली पेट)"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 18.016,
+     "src": "glucose molar mass 180.16 g/mol: 1 mmol/L = 18.016 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5793"
+    }
+   ],
+   "plausible": [
+    10,
+    2000
    ]
   },
   {
@@ -476,29 +969,84 @@
    "group": "Blood sugar",
    "meaning": "Reflects blood sugar over roughly the previous two to three months. Some red-cell conditions affect its reliability.",
    "aliases": [
-    "HbA1c"
-   ]
+    "HbA1c",
+    "Glycated haemoglobin",
+    "Glycated hemoglobin",
+    "Glycosylated hemoglobin",
+    "Glycosylated haemoglobin",
+    "HbA1c (NGSP)",
+    "HbA1c (DCCT)",
+    "Hämoglobin A1c",
+    "A1c"
+   ],
+   "unit": "%",
+   "plausible": [
+    2,
+    25
+   ],
+   "alt": "Average blood sugar: alternate units"
   },
   {
    "name": "Average blood sugar: alternate units",
    "group": "Blood sugar",
    "meaning": "The same HbA1c test expressed in mmol/mol rather than percent. This is not a separate measurement.",
    "aliases": [
-    "HbA1c IFCC"
-   ]
+    "HbA1c IFCC",
+    "HbA1c (IFCC)"
+   ],
+   "unit": "mmol/mol",
+   "plausible": [
+    5,
+    250
+   ],
+   "alt": "Average blood sugar (HbA1c)"
   },
   {
    "name": "Total bilirubin",
    "group": "Liver & muscles",
    "meaning": "A substance produced when red blood cells break down, then processed by the liver. A rise has several possible explanations.",
-   "aliases": []
+   "aliases": [
+    "Bilirubin gesamt",
+    "Gesamtbilirubin",
+    "Bilirubin, total",
+    "Bilirubin total",
+    "Serum bilirubin total"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "µmol/L",
+     "factor": 0.05848,
+     "src": "bilirubin molar mass 584.66 g/mol: 1 mg/dL = 17.10 µmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5280352"
+    }
+   ],
+   "plausible": [
+    0.05,
+    50
+   ]
   },
   {
    "name": "Processed bilirubin",
    "group": "Liver & muscles",
    "meaning": "The part of bilirubin already processed by the liver. It helps interpret total bilirubin.",
    "aliases": [
-    "Direct bilirubin"
+    "Direct bilirubin",
+    "Bilirubin direkt",
+    "Conjugated bilirubin",
+    "Bilirubin, direct",
+    "Bilirubin direct"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "µmol/L",
+     "factor": 0.05848,
+     "src": "bilirubin molar mass 584.66 g/mol: 1 mg/dL = 17.10 µmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5280352"
+    }
+   ],
+   "plausible": [
+    0,
+    40
    ]
   },
   {
@@ -506,7 +1054,23 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme linked to the bile ducts and bones. Other tests help identify the source of a change.",
    "aliases": [
-    "Alkaline phosphatase"
+    "Alkaline phosphatase",
+    "AP",
+    "ALP",
+    "Alkalische Phosphatase",
+    "Alk. Phosphatase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    10000
    ]
   },
   {
@@ -514,7 +1078,20 @@
    "group": "Digestion & proteins",
    "meaning": "An enzyme involved in digesting fats, mainly made by the pancreas.",
    "aliases": [
-    "Lipase"
+    "Lipase",
+    "Serum lipase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    20000
    ]
   },
   {
@@ -522,7 +1099,21 @@
    "group": "Digestion & proteins",
    "meaning": "An enzyme that helps digest starch, made by the pancreas and salivary glands.",
    "aliases": [
-    "Amylase"
+    "Amylase",
+    "Alpha-Amylase",
+    "Serum amylase"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    20000
    ]
   },
   {
@@ -530,7 +1121,24 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme released from muscles. Exercise, muscle injury and medicines can raise it.",
    "aliases": [
-    "CK"
+    "CK",
+    "Creatinkinase",
+    "CK gesamt",
+    "Creatine kinase",
+    "CPK",
+    "Creatine kinase, total"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    500000
    ]
   },
   {
@@ -538,7 +1146,13 @@
    "group": "Liver & muscles",
    "meaning": "A subtype of CK used in some assessments of muscle or heart injury. It cannot establish or exclude a heart problem alone.",
    "aliases": [
-    "CK-MB mass"
+    "CK-MB mass",
+    "CK-MB (mass)"
+   ],
+   "unit": "ng/mL",
+   "plausible": [
+    0,
+    1000
    ]
   },
   {
@@ -546,7 +1160,22 @@
    "group": "Liver & muscles",
    "meaning": "An enzyme found in many tissues. Changes are nonspecific and require context.",
    "aliases": [
-    "LDH"
+    "LDH",
+    "Laktatdehydrogenase",
+    "Lactate dehydrogenase",
+    "LD"
+   ],
+   "unit": "U/L",
+   "units": [
+    {
+     "unit": "µkat/L",
+     "factor": 60,
+     "src": "SI enzyme units: 1 U = 1 µmol/min and 1 kat = 1 mol/s, so 1 µkat/L = 60 U/L."
+    }
+   ],
+   "plausible": [
+    1,
+    50000
    ]
   },
   {
@@ -554,7 +1183,22 @@
    "group": "Heart & cholesterol",
    "meaning": "Total cholesterol minus HDL. It captures cholesterol in several particles associated with artery risk.",
    "aliases": [
-    "Non-HDL"
+    "Non-HDL",
+    "Non-HDL-Cholesterin",
+    "Non-HDL-C",
+    "Non-HDL-Cholesterol"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 38.665,
+     "src": "cholesterol molar mass 386.65 g/mol: 1 mmol/L = 38.665 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5997"
+    }
+   ],
+   "plausible": [
+    5,
+    1500
    ]
   },
   {
@@ -562,7 +1206,25 @@
    "group": "Digestion & proteins",
    "meaning": "The combined amount of albumin and globulins in your blood.",
    "aliases": [
-    "Total protein"
+    "Total protein",
+    "Gesamteiweiß",
+    "Gesamteiweiss",
+    "Gesamtprotein",
+    "Eiweiß gesamt",
+    "Serum total protein",
+    "Protein, total"
+   ],
+   "unit": "g/dL",
+   "units": [
+    {
+     "unit": "g/L",
+     "factor": 0.1,
+     "src": "SI prefixes: 1 g/L = 0.1 g/dL (1 dL = 0.1 L)."
+    }
+   ],
+   "plausible": [
+    1,
+    15
    ]
   },
   {
@@ -570,7 +1232,20 @@
    "group": "Digestion & proteins",
    "meaning": "A protein made by the liver that carries substances and helps keep fluid in the bloodstream.",
    "aliases": [
-    "Albumin"
+    "Albumin",
+    "Serum albumin"
+   ],
+   "unit": "g/dL",
+   "units": [
+    {
+     "unit": "g/L",
+     "factor": 0.1,
+     "src": "SI prefixes: 1 g/L = 0.1 g/dL (1 dL = 0.1 L)."
+    }
+   ],
+   "plausible": [
+    0.5,
+    8
    ]
   },
   {
@@ -578,45 +1253,167 @@
    "group": "Digestion & proteins",
    "meaning": "Albumin expressed as a percentage of proteins in a protein-separation test.",
    "aliases": [
-    "Albumin fraction"
+    "Albumin fraction",
+    "Albumin (Elektrophorese)"
+   ],
+   "unit": "%",
+   "plausible": [
+    10,
+    90
    ]
   },
   {
    "name": "Calcium",
    "group": "Kidneys & minerals",
    "meaning": "A mineral important for bones, nerves and muscles. Blood calcium is not a measure of bone density.",
-   "aliases": []
+   "aliases": [
+    "Kalzium",
+    "Calcium gesamt",
+    "Serum calcium",
+    "Calcium, total",
+    "Ca"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 4.008,
+     "src": "calcium atomic weight 40.078: 1 mmol/L = 4.008 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5460341"
+    },
+    {
+     "unit": "mEq/L",
+     "factor": 2.004,
+     "src": "calcium is divalent: 1 mEq/L = 0.5 mmol/L = 2.004 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5460341"
+    }
+   ],
+   "plausible": [
+    2,
+    25
+   ]
   },
   {
    "name": "Magnesium",
    "group": "Kidneys & minerals",
    "meaning": "A mineral involved in muscle, nerve and many enzyme functions.",
-   "aliases": []
+   "aliases": [
+    "Serum magnesium",
+    "Mg"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 2.4305,
+     "src": "magnesium atomic weight 24.305: 1 mmol/L = 2.4305 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5462224"
+    },
+    {
+     "unit": "mEq/L",
+     "factor": 1.21525,
+     "src": "magnesium is divalent: 1 mEq/L = 0.5 mmol/L = 1.2153 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5462224"
+    }
+   ],
+   "plausible": [
+    0.2,
+    15
+   ]
   },
   {
    "name": "Chloride",
    "group": "Kidneys & minerals",
    "meaning": "An electrolyte involved in fluid and acid-base balance.",
-   "aliases": []
+   "aliases": [
+    "Chlorid",
+    "Cl-",
+    "Serum chloride"
+   ],
+   "unit": "mmol/L",
+   "units": [
+    {
+     "unit": "mEq/L",
+     "factor": 1,
+     "src": "monovalent ions: 1 mEq/L = 1 mmol/L."
+    }
+   ],
+   "plausible": [
+    60,
+    150
+   ]
   },
   {
    "name": "Phosphate",
    "group": "Kidneys & minerals",
    "meaning": "A mineral involved in bones and cellular energy.",
-   "aliases": []
+   "aliases": [
+    "Phosphat",
+    "Phosphorus",
+    "Anorganisches Phosphat",
+    "Inorganic phosphorus",
+    "Phosphorus, inorganic"
+   ],
+   "unit": "mg/dL",
+   "units": [
+    {
+     "unit": "mmol/L",
+     "factor": 3.097,
+     "src": "phosphate is reported as phosphorus, atomic weight 30.974: 1 mmol/L = 3.097 mg/dL. https://pubchem.ncbi.nlm.nih.gov/compound/5462309"
+    }
+   ],
+   "plausible": [
+    0.3,
+    20
+   ]
   },
   {
    "name": "Vitamin B12",
    "group": "Vitamins & thyroid",
    "meaning": "A vitamin needed for nerves and blood-cell production. Low levels can matter even when the blood count looks normal.",
-   "aliases": []
+   "aliases": [
+    "Cobalamin",
+    "Vitamin B12 (Cobalamin)",
+    "Vit. B12",
+    "Vit B12"
+   ],
+   "unit": "pg/mL",
+   "units": [
+    {
+     "unit": "pmol/L",
+     "factor": 1.3554,
+     "src": "cobalamin (cyanocobalamin) molar mass 1355.4 g/mol: 1 pg/mL = 0.7378 pmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5311498"
+    }
+   ],
+   "plausible": [
+    10,
+    20000
+   ]
   },
   {
    "name": "Vitamin D",
    "group": "Vitamins & thyroid",
    "meaning": "The usual blood marker of vitamin D status, which helps regulate calcium and support bone health.",
    "aliases": [
-    "25-OH vitamin D"
+    "25-OH vitamin D",
+    "25-OH-Vitamin D",
+    "25-OH-Vitamin D3",
+    "Vitamin D3 (25-OH)",
+    "25-Hydroxy vitamin D",
+    "25-hydroxyvitamin D",
+    "Vitamin D (25-OH)",
+    "Vitamin D, 25-hydroxy",
+    "Vitamin D total",
+    "25(OH)D",
+    "Calcidiol"
+   ],
+   "unit": "ng/mL",
+   "units": [
+    {
+     "unit": "nmol/L",
+     "factor": 0.4006,
+     "src": "25-hydroxyvitamin D3 (calcifediol) molar mass 400.6 g/mol: 1 ng/mL = 2.496 nmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5283731"
+    }
+   ],
+   "plausible": [
+    1,
+    300
    ]
   },
   {
@@ -624,7 +1421,24 @@
    "group": "Vitamins & thyroid",
    "meaning": "The freely available form of one thyroid hormone. It helps regulate metabolism.",
    "aliases": [
-    "Free T3"
+    "Free T3",
+    "fT3",
+    "FT3",
+    "freies T3",
+    "Freies Trijodthyronin",
+    "Free triiodothyronine"
+   ],
+   "unit": "pg/mL",
+   "units": [
+    {
+     "unit": "pmol/L",
+     "factor": 0.65097,
+     "src": "triiodothyronine molar mass 650.97 g/mol: 1 pg/mL = 1.536 pmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5920"
+    }
+   ],
+   "plausible": [
+    0.2,
+    50
    ]
   },
   {
@@ -632,7 +1446,24 @@
    "group": "Vitamins & thyroid",
    "meaning": "The freely available form of a hormone made by the thyroid. The body converts some of it to T3.",
    "aliases": [
-    "Free T4"
+    "Free T4",
+    "fT4",
+    "FT4",
+    "freies T4",
+    "Freies Thyroxin",
+    "Free thyroxine"
+   ],
+   "unit": "ng/dL",
+   "units": [
+    {
+     "unit": "pmol/L",
+     "factor": 0.077687,
+     "src": "thyroxine molar mass 776.87 g/mol: 1 ng/dL = 12.87 pmol/L. https://pubchem.ncbi.nlm.nih.gov/compound/5819"
+    }
+   ],
+   "plausible": [
+    0.05,
+    15
    ]
   },
   {
@@ -640,7 +1471,17 @@
    "group": "Vitamins & thyroid",
    "meaning": "The pituitary gland’s signal telling the thyroid how much hormone to make.",
    "aliases": [
-    "TSH"
+    "TSH",
+    "TSH basal",
+    "TSH, 3rd generation",
+    "TSH (ultrasensitive)",
+    "Thyreotropin",
+    "Thyroid stimulating hormone"
+   ],
+   "unit": "mIU/L",
+   "plausible": [
+    0.001,
+    1000
    ]
   },
   {
@@ -648,96 +1489,245 @@
    "group": "Blood cells",
    "meaning": "Immune cells that respond to infections and inflammation. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Neutrophils"
-   ]
+    "Neutrophils",
+    "Neutrophile",
+    "Neutrophile Granulozyten",
+    "Segmentkernige",
+    "Polymorphs",
+    "Neutrophils %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Neutrophils: actual count"
   },
   {
    "name": "Neutrophils: actual count",
    "group": "Blood cells",
    "meaning": "Immune cells that respond to infections and inflammation. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Neutrophils absolute"
-   ]
+    "Neutrophils absolute",
+    "Neutrophile absolut",
+    "Neutrophils, absolute",
+    "Absolute neutrophil count",
+    "ANC"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Neutrophils: share of white cells"
   },
   {
    "name": "Lymphocytes: share of white cells",
    "group": "Blood cells",
    "meaning": "Immune cells involved in antibody production and targeted immune responses. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Lymphocytes"
-   ]
+    "Lymphocytes",
+    "Lymphozyten",
+    "Lymphocytes %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Lymphocytes: actual count"
   },
   {
    "name": "Lymphocytes: actual count",
    "group": "Blood cells",
    "meaning": "Immune cells involved in antibody production and targeted immune responses. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Lymphocytes absolute"
-   ]
+    "Lymphocytes absolute",
+    "Lymphozyten absolut",
+    "Lymphocytes, absolute",
+    "Absolute lymphocyte count"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Lymphocytes: share of white cells"
   },
   {
    "name": "Monocytes: share of white cells",
    "group": "Blood cells",
    "meaning": "Immune cells that help remove damaged tissue and respond to infection. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Monocytes"
-   ]
+    "Monocytes",
+    "Monozyten",
+    "Monocytes %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Monocytes: actual count"
   },
   {
    "name": "Monocytes: actual count",
    "group": "Blood cells",
    "meaning": "Immune cells that help remove damaged tissue and respond to infection. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Monocytes absolute"
-   ]
+    "Monocytes absolute",
+    "Monozyten absolut",
+    "Monocytes, absolute",
+    "Absolute monocyte count"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Monocytes: share of white cells"
   },
   {
    "name": "Eosinophils: share of white cells",
    "group": "Blood cells",
    "meaning": "Immune cells often involved in allergy responses and some parasite infections. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Eosinophils"
-   ]
+    "Eosinophils",
+    "Eosinophile",
+    "Eosinophils %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Eosinophils: actual count"
   },
   {
    "name": "Eosinophils: actual count",
    "group": "Blood cells",
    "meaning": "Immune cells often involved in allergy responses and some parasite infections. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Eosinophils absolute"
-   ]
+    "Eosinophils absolute",
+    "Eosinophile absolut",
+    "Eosinophils, absolute",
+    "Absolute eosinophil count",
+    "AEC"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Eosinophils: share of white cells"
   },
   {
    "name": "Basophils: share of white cells",
    "group": "Blood cells",
    "meaning": "Immune cells involved in allergic and inflammatory signaling. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Basophils"
-   ]
+    "Basophils",
+    "Basophile",
+    "Basophils %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Basophils: actual count"
   },
   {
    "name": "Basophils: actual count",
    "group": "Blood cells",
    "meaning": "Immune cells involved in allergic and inflammatory signaling. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Basophils absolute"
-   ]
+    "Basophils absolute",
+    "Basophile absolut",
+    "Basophils, absolute",
+    "Absolute basophil count"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Basophils: share of white cells"
   },
   {
    "name": "Immature granulocytes: share of white cells",
    "group": "Blood cells",
    "meaning": "Young immune cells recently released into the blood. This result is a percentage; the absolute count adds context.",
    "aliases": [
-    "Immature granulocytes"
-   ]
+    "Immature granulocytes",
+    "Unreife Granulozyten",
+    "IG %"
+   ],
+   "unit": "%",
+   "plausible": [
+    0,
+    100
+   ],
+   "alt": "Immature granulocytes: actual count"
   },
   {
    "name": "Immature granulocytes: actual count",
    "group": "Blood cells",
    "meaning": "Young immune cells recently released into the blood. This is the number of cells, rather than their percentage.",
    "aliases": [
-    "Immature granulocytes absolute"
-   ]
+    "Immature granulocytes absolute",
+    "Unreife Granulozyten absolut",
+    "IG absolute",
+    "IG #"
+   ],
+   "unit": "10³/µL",
+   "units": [
+    {
+     "unit": "/µL",
+     "factor": 0.001,
+     "src": "SI prefixes: 1 µL = 10⁻⁶ L, so 1/µL = 0.001 × 10³/µL (= 10⁹/L)."
+    }
+   ],
+   "plausible": [
+    0,
+    200
+   ],
+   "alt": "Immature granulocytes: share of white cells"
   },
   {
    "name": "Alpha-1 globulin protein fraction",

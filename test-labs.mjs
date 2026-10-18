@@ -12,6 +12,17 @@ try{
  const cat=L.catalog(priv);assert.equal(cat.lookup('ferritin (example lab)').name,'Ferritin: iron stores');assert.equal(cat.lookup('ex').group,'Example group');
  assert(cat.lookup('Ferritin'),'default aliases are kept when private/markers.json extends an entry');
  writeFileSync(dir+'/bad.json','{');mkdirSync(dir+'/badp');writeFileSync(dir+'/badp/markers.json','{');assert.throws(()=>L.catalog(dir+'/badp'),/not valid JSON/);
+ // catalog v2: units, factors, plausible bounds and alt pairs survive the merge; bad values fail at load time
+ const glu=def.lookup('Nüchternglukose');assert.equal(glu?.name,'Fasting blood sugar');assert.equal(glu.unit,'mg/dL');assert.equal(glu.units[0].unit,'mmol/L');assert.deepEqual(glu.plausible,[10,2000]);
+ assert.equal(def.lookup('GPT').name,'ALT: liver-related enzyme');assert.equal(def.lookup('GOT').name,'AST: liver and muscle enzyme');assert.equal(def.lookup('SGPT').name,'ALT: liver-related enzyme');
+ assert.equal(def.lookup('हीमोग्लोबिन').name,'Hemoglobin: oxygen-carrying protein');assert.equal(def.lookup('Neutrophile').alt,'Neutrophils: actual count');
+ const seen=new Map();for(const m of def.markers)for(const k of [m.name,...m.aliases]){const key=k.trim().toLowerCase(),was=seen.get(key);assert(!was||was===m.name,`"${k}" names both ${was} and ${m.name}`);seen.set(key,m.name)}
+ for(const [bad,re] of [[{name:'X',unit:'mg/furlong'},/unknown unit/],[{name:'X',unit:'mg/dL',units:[{unit:'mmol/L',factor:18}]},/needs a source/],[{name:'X',unit:'mg/dL',units:[{unit:'mmol/L',factor:-1,src:'a long enough source'}]},/positive/],
+  [{name:'X',units:[{unit:'mmol/L',factor:1,src:'a long enough source'}]},/preferred unit/],[{name:'X',unit:'mg/dL',plausible:[5,1]},/plausible/],[{name:'X',alt:'Nope'},/unknown marker/],[{name:'X',unit:'mg/dL',units:[{unit:'mg/100ml',factor:1,src:'a long enough source'}]},/preferred unit/]]){
+  const p=dir+'/v2-'+Math.random().toString(36).slice(2);mkdirSync(p);writeFileSync(p+'/markers.json',JSON.stringify({markers:[bad]}));assert.throws(()=>L.catalog(p),re,JSON.stringify(bad));
+ }
+ const pv=dir+'/v2ok';mkdirSync(pv);writeFileSync(pv+'/markers.json',JSON.stringify({markers:[{name:'Ferritin: iron stores',aliases:['Ferritin (example lab)']}]}));
+ assert.equal(L.catalog(pv).lookup('Ferritin (example lab)').unit,'ng/mL','private additions keep the default unit data');
  const h=S.createHousehold('Example household');for(const m of [{id:'alex',name:'Alex'},{id:'sam',name:'Sam'},{id:'mia',name:'Mia',kind:'child'}])S.addMember(h.id,m);
  const opts={privateDir:priv};
  // validation
@@ -46,5 +57,5 @@ try{
  // removing a member removes its lab data
  D.db().prepare("DELETE FROM members WHERE id='sam'").run();assert.equal(D.db().prepare("SELECT COUNT(*) n FROM lab_reports WHERE member_id='sam'").get().n,0);
  assert(r2.id);
- console.log('PASS labs: catalog + aliases + private markers, validation, flags/units, per-member storage and isolation, series, pending, delete cascade.');
+ console.log('PASS labs: catalog + aliases + private markers, catalog v2 units/factors/plausible/alt validation, unique aliases, validation, flags/units, per-member storage and isolation, series, pending, delete cascade.');
 }finally{D.close();rmSync(dir,{recursive:true,force:true})}

@@ -202,7 +202,7 @@ async function app(req,res,reqUrl,path,user,hh,hs){
   }catch(e){return fail(res,e)}
  }
  // Lab results: catalog of known markers (names, groups, aliases), and per-member reports.
- if(path==='/api/labs/catalog'&&req.method==='GET')return json(res,200,{markers:labs.catalog().markers.map(({name,group,aliases})=>({name,group,aliases}))});
+ if(path==='/api/labs/catalog'&&req.method==='GET')return json(res,200,{markers:labs.catalog().markers.map(({name,group,aliases,unit,units,plausible,alt})=>({name,group,aliases,unit,units,plausible,alt}))});
  if(path==='/api/labs'||path.startsWith('/api/labs/')){
   const id=path.split('/')[3];
   try{

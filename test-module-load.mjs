@@ -12,6 +12,8 @@ process.env.DB_FILE=join(dir,'never-opened.db');process.env.NO_PUSH='1';
 try{
  cpSync(new URL('config/',here),join(dir,'config'),{recursive:true});
  for(const f of readdirSync(here).filter(f=>f.endsWith('.mjs')))writeFileSync(join(dir,f),readFileSync(new URL(f,here),'utf8').replaceAll('import.meta.url','undefined'));
+ // shared browser modules the server imports too (public/*.mjs)
+ mkdirSync(join(dir,'public'));for(const f of readdirSync(new URL('public/',here)).filter(f=>f.endsWith('.mjs')))writeFileSync(join(dir,'public',f),readFileSync(new URL('public/'+f,here),'utf8').replaceAll('import.meta.url','undefined'));
  const failed=[];
  for(const f of mods){try{await import(pathToFileURL(join(dir,f)))}catch(e){failed.push(f+': '+e.message)}}
  assert.deepEqual(failed,[],'modules that fail to load without import.meta.url');

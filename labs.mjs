@@ -7,6 +7,7 @@ import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import {forMember} from './store.mjs';
+import {knownUnit,sameUnit} from './public/labunits.mjs';
 // The default catalog is bundled as a module (no file read at runtime, so it also works without a filesystem).
 import DEFAULT_MARKERS from './config/markers.default.json' with {type:'json'};
 const defaultPrivateDir=()=>import.meta.url?join(fileURLToPath(new URL('.',import.meta.url)),'private'):null;
@@ -29,15 +30,42 @@ export function catalog(privateDir=defaultPrivateDir()){
    if(!m||typeof m.name!=='string'||!m.name.trim())throw Error(name+': every marker needs a "name"');
    const old=entries.get(m.name)||{};
    entries.set(m.name,{name:m.name,group:typeof m.group==='string'?m.group:old.group||'Other',meaning:typeof m.meaning==='string'?m.meaning:old.meaning||'',
-    aliases:[...new Set([...(old.aliases||[]),...(Array.isArray(m.aliases)?m.aliases.filter(a=>typeof a==='string'&&a.trim()):[])])]});
+    aliases:[...new Set([...(old.aliases||[]),...(Array.isArray(m.aliases)?m.aliases.filter(a=>typeof a==='string'&&a.trim()):[])])],
+    ...unitFields(m,old,name)});
   }
  }
+ for(const e of entries.values())if(e.alt&&!entries.has(e.alt))throw Error(e.name+': alt names an unknown marker ('+e.alt+')');
  const index=new Map();
  for(const e of entries.values())for(const k of [e.name,...e.aliases])index.set(k.trim().toLowerCase(),e);
  const c={markers:[...entries.values()],lookup:name=>typeof name==='string'?index.get(name.trim().toLowerCase()):undefined};
  cache.set(privateDir,c);return c;
 }
 export const resetCatalog=()=>cache.clear();
+// Catalog v2 fields, validated so a typo cannot silently convert values: unit (preferred display unit), units
+// (other accepted units, value in unit = value x factor, each with its source), plausible ([min,max] sanity
+// bounds in the preferred unit, not reference ranges) and alt (the paired marker in other units).
+function unitFields(m,old,file){
+ const bad=what=>Error(file+': '+m.name+': '+what),out={};
+ const unit=m.unit??old.unit;
+ if(unit!==undefined){if(typeof unit!=='string'||!knownUnit(unit))throw bad('unknown unit "'+unit+'"');out.unit=unit}
+ const units=m.units??old.units;
+ if(units!==undefined){
+  if(!Array.isArray(units))throw bad('units must be a list');if(!out.unit&&units.length)throw bad('units need a preferred unit');
+  out.units=units.map(x=>{
+   if(!x||typeof x.unit!=='string'||!knownUnit(x.unit))throw bad('unknown unit "'+x?.unit+'"');
+   if(sameUnit(x.unit,out.unit))throw bad(x.unit+' is the preferred unit');
+   if(typeof x.factor!=='number'||!Number.isFinite(x.factor)||x.factor<=0)throw bad('factor for '+x.unit+' must be a positive number');
+   if(typeof x.src!=='string'||x.src.trim().length<10)throw bad('factor for '+x.unit+' needs a source (src)');
+   return {unit:x.unit,factor:x.factor,src:x.src};
+  });
+  if(new Set(out.units.map(x=>x.unit.toLowerCase())).size!==out.units.length)throw bad('a unit is listed twice');
+ }
+ const pl=m.plausible??old.plausible;
+ if(pl!==undefined){if(!Array.isArray(pl)||pl.length!==2||!pl.every(Number.isFinite)||!(pl[0]<pl[1]))throw bad('plausible must be [min, max]');out.plausible=[pl[0],pl[1]]}
+ const alt=m.alt??old.alt;
+ if(alt!==undefined){if(typeof alt!=='string'||!alt.trim()||alt===m.name)throw bad('alt must name another marker');out.alt=alt}
+ return out;
+}
 
 // ---- validation ----
 const dayOk=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&new Date(d+'T12:00Z').toISOString().slice(0,10)===d;

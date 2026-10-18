@@ -44,6 +44,7 @@ jobs:
           node test-db.mjs
           node test-sqladapter.mjs
           node test-import.mjs
+          node test-labunits.mjs
           node test-labs.mjs
           node test-mailer.mjs
           node test-auth.mjs
