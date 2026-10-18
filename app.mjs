@@ -22,6 +22,7 @@ import {blobs} from './blobs.mjs';
 import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {APP_HOST,APP_NAME,TIME_ZONE,DEMO_NOTICE,publicOrigin} from './env.mjs';
+import {landingPage} from './landing.mjs';
 import {headers,frameHeaders,appHeaders,vendorHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 
 // Static files come from a source with open(path) -> null | {size, read() -> Promise<Buffer>, stream() -> Readable}.
@@ -68,6 +69,11 @@ export async function handler(req,res){try{
  if(await auth.handle(req,res,path,reqUrl))return;
  const user=await auth.authenticate(req);
  if(!user){
+  // Built-in sign-in: signed-out visitors get the public landing page (indexable, unlike the rest of the app).
+  if(auth.MODE==='builtin'&&path==='/'&&(req.method==='GET'||req.method==='HEAD')){
+   const html=landingPage({appName:APP_NAME,demoNotice:DEMO_NOTICE,signup:auth.SIGNUP}),{'X-Robots-Tag':_,...h}=headers;
+   res.writeHead(200,{...h,'Content-Type':mime['.html'],'Content-Length':Buffer.byteLength(html)});return res.end(req.method==='HEAD'?undefined:html);
+  }
   if(auth.MODE==='builtin'&&auth.PUBLIC_PATHS.has(path)&&(req.method==='GET'||req.method==='HEAD'))return serveStatic(req,res,path);
   if(path.startsWith('/api/'))return json(res,401,{error:'Sign in first'});
   if(auth.MODE==='builtin')return send(res,303,'',{Location:'/login'});
