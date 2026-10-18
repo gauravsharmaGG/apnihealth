@@ -46,10 +46,22 @@ try{
   assert.match(await ev('document.querySelector("h1").textContent'),/health/i);
   assert.equal(await ev('!!document.querySelector("header")&&!!document.querySelector("main")&&!!document.querySelector("footer")'),true,'landmarks');
   assert.match(await ev('document.querySelector(".demo-notice").textContent'),/Demo instance/,'demo notice');
-  assert.equal(await ev('document.querySelectorAll(".lp-stage svg path").length>3'),true,name+': figure');
+  const img=await ev('(()=>{const i=document.querySelector(".lp-stage picture img");return {w:i.naturalWidth,src:i.currentSrc,alt:i.getAttribute("alt"),eager:i.loading,w2:i.getAttribute("width"),h2:i.getAttribute("height")}})()');
+  assert(img.w>0&&/\.webp$/.test(img.src),name+': figure image loads as webp: '+JSON.stringify(img));
+  assert.equal(img.alt,'');assert.equal(img.eager,'eager');assert.equal(img.w2,'1280');assert.equal(img.h2,'720');
+  assert.equal(await ev('document.querySelector(".lp-stage").getAttribute("role")'),'img');
+  assert.equal(await ev('document.querySelectorAll(".lp-call").length'),4,name+': four callouts');
+  assert.equal(await ev('document.querySelectorAll(".lp-dot").length'),4);
+  assert.equal(await ev('(()=>{const c=document.querySelector(".lp-chip").getBoundingClientRect();return c.width>0&&c.left>=0&&c.right<=innerWidth})()'),true,name+': Sample data chip visible');
+  assert.equal(await ev('[...document.querySelectorAll(".lp-call")].every(e=>getComputedStyle(e).whiteSpace==="nowrap"&&[...e.children].every(k=>k.getBoundingClientRect().height<=32))'),true,name+': each callout line is a single line');
+  assert.equal(await ev('[...document.querySelectorAll(".lp-call")].every(e=>e.children.length===2&&e.getBoundingClientRect().height<=76)'),true,name+': callouts at most two lines');
+  assert.equal(await ev('(()=>{const r=[...document.querySelectorAll(".lp-call")].map(e=>e.getBoundingClientRect());return r.every((a,i)=>r.every((b,j)=>i>=j||a.right<=b.left+0.5||b.right<=a.left+0.5||a.bottom<=b.top+0.5||b.bottom<=a.top+0.5))})()'),true,name+': callouts do not overlap');
+  // dots sit inside the image box; callouts keep clear of the face (image x 44-62%, y 18-62% of the cropped stage)
+  assert.equal(await ev('(()=>{const f=document.querySelector(".lp-fig").getBoundingClientRect();return [...document.querySelectorAll(".lp-dot")].every(d=>{const r=d.getBoundingClientRect(),x=(r.left+r.width/2-f.left)/f.width,y=(r.top+r.height/2-f.top)/f.height;return x>.4&&x<.65&&y>.25&&y<.9})})()'),true,name+': dots on the figure');
+  assert.equal(await ev('(()=>{const f=document.querySelector(".lp-fig").getBoundingClientRect(),X0=f.left+f.width*.38,X1=f.left+f.width*.64,Y0=f.top+f.height*.15,Y1=f.top+f.height*.55;return [...document.querySelectorAll(".lp-call")].every(e=>{const r=e.getBoundingClientRect();return r.right<=X0||r.left>=X1||r.bottom<=Y0||r.top>=Y1})})()'),true,name+': callouts do not cover the face');
   assert.match(await ev('document.querySelector(".lp-stage").getAttribute("aria-label")'),/not real data/,'aria says sample');
   assert.equal(await ev('document.querySelector(".lp-chip").textContent'),'Sample data');
-  assert.deepEqual(await ev('[...document.querySelectorAll(".lp-call-label")].map(e=>e.textContent)'),['Heart','Body temp','Breathing','SpO₂']);
+  assert.deepEqual(await ev('[...document.querySelectorAll(".lp-call-label")].map(e=>e.textContent)'),['Body temp','Breathing','Heart','SpO₂']);
   assert.equal(await ev('[...document.querySelectorAll(".lp-call")].every(e=>{const r=e.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth})'),true,name+': callouts inside the viewport');
   assert.equal(await ev('document.querySelectorAll(".lp-card").length'),9,name+': feature cards');
   assert.equal(await ev('[...document.querySelectorAll(".lp-card h3")].map(e=>e.textContent).join("|")'),'Episodes|Medicines & reminders|Appointments|Lab trends|Reports|Apple Health import|Households|Privacy & EU hosting|Open source');
@@ -57,13 +69,14 @@ try{
   assert(links.filter(l=>l[0]==='Create account').length>=2&&links.filter(l=>l[0]==='Sign in').length>=2&&links.every(l=>l[1]==='/login'),name+': CTAs go to /login');
   assert.equal(await ev('[...document.querySelectorAll("a.lp-btn")].every(a=>a.getBoundingClientRect().height>=44)'),true,'touch targets 44px');
   assert.match(await ev('document.querySelector("footer a").href'),/github\.com\/gauravsharmaGG\/apnihealth/);
-  assert.equal(await ev('getComputedStyle(document.querySelector(".lp-breathe")).animationName!=="none"'),true,name+': animated by default');
+  assert.equal(await ev('getComputedStyle(document.querySelector(".lp-photo")).animationName!=="none"'),true,name+': animated by default');
   await shot('landing-'+name,false);if(name==='phone')await shot('landing-phone-full',true);
   // reduced motion
   await load(`http://localhost:${open.port}/`,w,h,'reduce');
-  assert.equal(await ev('[...document.querySelectorAll(".lp-breathe,.lp-dot .ring,.lp-ecg,.lp-call,.lp-halo")].every(e=>getComputedStyle(e).animationName==="none")'),true,name+': reduced motion: no animation');
+  assert.equal(await ev('[...document.querySelectorAll(".lp-photo,.lp-dot .ring,.lp-call")].every(e=>getComputedStyle(e).animationName==="none")'),true,name+': reduced motion: no animation');
   assert.equal(await ev('document.documentElement.scrollWidth<=innerWidth'),true,name+': no horizontal scroll (reduced motion)');
  }
+ {const h=await fetch(`http://localhost:${open.port}/hero-figure.webp`);assert.equal(h.status,200);assert.equal(h.headers.get('content-type'),'image/webp');assert.equal((await fetch(`http://localhost:${open.port}/hero-figure.jpg`)).status,200)}
  // headers: indexable landing, no CSP violations were logged
  const r=await fetch(`http://localhost:${open.port}/`);assert.equal(r.headers.get('x-robots-tag'),null);assert.match(r.headers.get('content-security-policy'),/script-src 'self'/);
  assert.match(await r.text(),/<meta name="description"/);

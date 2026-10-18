@@ -25,21 +25,28 @@
 .lp-cta{display:flex;flex-wrap:wrap;gap:12px}
 .lp-cta .lp-btn{flex:1 1 150px}
 .lp-note{margin:14px 0 0;color:var(--muted);font-size:14px}
-/* figure */
-.lp-stage{position:relative;width:100%;max-width:640px;margin-inline:auto;aspect-ratio:560/520}
-.lp-figure{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.lp-body{filter:drop-shadow(0 18px 30px rgba(47,95,150,.12))}
-.lp-breathe{transform-box:fill-box;transform-origin:50% 30%}
-.lp-dot .core{fill:#fff;stroke:var(--accent);stroke-width:3}
-.lp-dot .ring{fill:none;stroke:var(--accent);stroke-width:1.5;opacity:0;transform-box:fill-box;transform-origin:center}
-.lp-ecg{stroke-dasharray:1;stroke-dashoffset:0}
-.lp-call{position:absolute;display:flex;flex-direction:column;gap:1px;padding:6px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--glass-edge);box-shadow:var(--shadow-1);-webkit-backdrop-filter:blur(var(--blur));backdrop-filter:blur(var(--blur));line-height:1.2}
+/* figure: .lp-fig is the cropped photo (x 16-86%, y 2-100% of the 1280x720 image); dots and lines are placed in % of it
+   (the same numbers as VITALS in landing.mjs), so they stay on the same body part at every width */
+.lp-stage{position:relative;width:100%;max-width:640px;margin-inline:auto}
+.lp-fig{position:relative;width:100%;aspect-ratio:896/706;overflow:hidden}
+.lp-fig::before{content:"";position:absolute;inset:6% 4% 10%;border-radius:50%;background:radial-gradient(closest-side,rgba(191,230,218,.55),rgba(217,232,250,.22) 62%,rgba(255,255,255,0));pointer-events:none}
+.lp-photo{position:absolute;left:-22.857%;top:-2.04%;width:142.857%;aspect-ratio:16/9;display:block;transform-origin:50% 75%;
+ -webkit-mask-image:radial-gradient(ellipse 33% 50% at 49% 47%,#000 55%,transparent 100%);mask-image:radial-gradient(ellipse 33% 50% at 49% 47%,#000 55%,transparent 100%)}
+.lp-photo img{display:block;width:100%;height:100%;mix-blend-mode:multiply}
+.lp-lines{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:#56656f;stroke-opacity:.6;stroke-width:1}
+.lp-dot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px}
+.lp-dot .core,.lp-dot .ring{position:absolute;inset:0;border-radius:50%}
+.lp-dot .core{background:#fff;border:3px solid var(--accent);box-sizing:border-box;box-shadow:0 1px 6px rgba(15,110,96,.35)}
+.lp-dot .ring{border:1.5px solid var(--accent);opacity:0}
+.d-temp{left:54.3%;top:28.6%}.d-breath{left:44.3%;top:60.2%}.d-heart{left:42.9%;top:83.7%}.d-spo2{left:61.4%;top:74.5%}
+.lp-calls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.lp-call{display:flex;flex-direction:column;gap:1px;padding:8px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--glass-edge);box-shadow:var(--shadow-1);-webkit-backdrop-filter:blur(var(--blur));backdrop-filter:blur(var(--blur));line-height:1.25;white-space:nowrap;min-width:0}
 html.lite .lp-call{background:var(--surface-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
-.lp-call-label{font-size:11px;color:var(--muted);font-weight:600}
-.lp-call-val{font-size:11px;color:var(--muted);white-space:nowrap}
-.lp-call-val b{font-size:clamp(16px,4.6vw,24px);color:var(--ink);letter-spacing:-.02em}
-.c-temp{left:0;top:2%}.c-heart{left:0;top:38.5%}.c-breath{right:0;top:20%;text-align:right;align-items:flex-end}.c-spo2{right:0;top:55%;text-align:right;align-items:flex-end}
-.lp-chip{position:absolute;left:50%;bottom:2%;transform:translateX(-50%);padding:6px 14px;border-radius:var(--radius-pill);background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:700;border:1px solid #eedfca;white-space:nowrap}
+.lp-call-label{font-size:12px;color:var(--muted);font-weight:600}
+.lp-call-val{font-size:12px;color:var(--muted)}
+.lp-call-val b{font-size:22px;color:var(--ink);letter-spacing:-.02em}
+.lp-chip{position:absolute;right:2%;bottom:3%;padding:5px 12px;border-radius:var(--radius-pill);background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:700;border:1px solid #eedfca;white-space:nowrap}
+.lp-lines{display:none}
 /* features */
 .lp-features{padding:24px 0 24px}
 .lp-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:14px}
@@ -58,25 +65,28 @@ html.lite .lp-call{background:var(--surface-solid);-webkit-backdrop-filter:none;
  .lp-hero{grid-template-columns:1fr 1.05fr;gap:40px;padding:48px 0 64px}
  .lp-grid{grid-template-columns:repeat(3,1fr);gap:18px}
  .lp-card{padding:26px}
- .lp-call{padding:8px 14px}.lp-call-label,.lp-call-val{font-size:13px}.lp-call-val b{font-size:26px}
+
+ .lp-lines{display:block}
+ .lp-calls{display:contents}
+ .lp-call{position:absolute;min-width:128px;padding:8px 14px;translate:0 -50%}
+ .lp-call-label,.lp-call-val{font-size:13px}.lp-call-val b{font-size:24px}
+ .c-temp{right:0;top:28.6%}.c-spo2{right:0;top:74.5%}.c-breath{left:0;top:60.2%}.c-heart{left:0;top:83.7%}
+ .lp-chip{right:0;bottom:1%}
  .lp-final{padding:56px 40px}
 }
 @media (min-width:560px) and (max-width:899px){.lp-grid{grid-template-columns:1fr 1fr}}
 /* motion: all of it is decoration */
 @media (prefers-reduced-motion:no-preference){
- .lp-breathe{animation:lp-breathe 5.5s ease-in-out infinite}
- .lp-halo{animation:lp-halo 5.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+ .lp-photo{animation:lp-breathe 5.5s ease-in-out infinite}
  .lp-dot .ring{animation:lp-ring 2.6s ease-out infinite}
- .d-heart .ring{animation-duration:1.1s}.d-breath .ring{animation-delay:.6s}.d-spo2 .ring{animation-delay:1.2s}.d-temp .ring{animation-delay:1.8s}
- .lp-ecg{animation:lp-ecg 2.2s linear infinite}
- .lp-call{animation:lp-float 6s ease-in-out infinite}.c-heart{animation-delay:-1.5s}.c-breath{animation-delay:-3s}.c-spo2{animation-delay:-4.5s}
+ .d-breath .ring{animation-delay:.6s}.d-heart .ring{animation-delay:1.2s;animation-duration:1.1s}.d-spo2 .ring{animation-delay:1.2s}.d-temp .ring{animation-delay:1.8s}
  .lp-hero .lp-copy{animation:lp-in .7s ease-out both}
  .lp-btn{transition:background .2s,transform .15s}
 }
-@keyframes lp-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
-@keyframes lp-halo{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+@media (prefers-reduced-motion:no-preference) and (min-width:900px){.lp-call{animation:lp-float 6s ease-in-out infinite}.c-heart{animation-delay:-1.5s}.c-breath{animation-delay:-3s}.c-spo2{animation-delay:-4.5s}}
+@keyframes lp-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
 @keyframes lp-ring{0%{opacity:.7;transform:scale(1)}80%,100%{opacity:0;transform:scale(3.2)}}
-@keyframes lp-ecg{0%{stroke-dashoffset:1}60%,100%{stroke-dashoffset:0}}
 @keyframes lp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes lp-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+html.lite .lp *{animation:none!important}
 @media (prefers-reduced-motion:reduce){.lp *,.lp *::before,.lp *::after{animation:none!important;transition:none!important}}

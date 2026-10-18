@@ -64,7 +64,7 @@ export async function authenticate(req){
 }
 
 // Paths a signed-out browser may load in builtin mode (the sign-in page and what it needs).
-export const PUBLIC_PATHS=new Set(['/login','/login.js','/passkey-prompt.js','/style.css','/landing.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/manifest.webmanifest']);
+export const PUBLIC_PATHS=new Set(['/login','/login.js','/passkey-prompt.js','/style.css','/landing.css','/icon-192.png','/icon-512.png','/apple-touch-icon.png','/hero-figure.webp','/hero-figure-640.webp','/hero-figure.jpg','/hero-figure-640.jpg','/manifest.webmanifest']);
 
 // ---- pages ----
 export function page(title,body,status=200){

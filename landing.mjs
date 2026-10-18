@@ -1,6 +1,8 @@
 // The public landing page for signed-out visitors (built-in sign-in only). Server-rendered like auth.mjs `page()`:
 // no scripts, no inline styles; all motion is CSS in public/landing.css. The vitals on the figure are fixed sample
 // values, labelled as such. Fictional content only.
+// The photo-style figure (public/hero-figure*.webp/.jpg) is an AI-generated illustration of an invented person; it shows
+// no real person. It is the only raster image on the page.
 import {esc} from './http.mjs';
 
 const icon=d=>`<svg class="lp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -15,36 +17,22 @@ const FEATURES=[
  ['sky','Privacy & EU hosting','Hosted in the EU or on your own server. Built with GDPR in mind: export everything or delete your account any time.','<path d="M12 3.5l7 2.8v5.4c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6.3z"/><path d="M9 12l2.2 2.2L15.2 10"/>'],
  ['lilac','Open source','AGPL-3.0 licensed. Read the code, run it yourself, and keep your family’s records under your control.','<path d="M8.5 7L4 12l4.5 5M15.5 7l4.5 5-4.5 5M13.5 5l-3 14"/>'],
 ];
-// Callouts on the figure: [class, label, value, unit, side]. Sample values only.
-const VITALS=[['heart','Heart','72','bpm'],['temp','Body temp','36.6','°C'],['breath','Breathing','14','rpm'],['spo2','SpO₂','98','%']];
 const SAMPLE='Example figure with sample values, not real data: heart 72 beats per minute, breathing 14 breaths per minute, body temperature 36.6 degrees Celsius, blood oxygen 98 percent.';
 
+// Dots and connector lines are positioned in % of the cropped image (see .lp-fig in landing.css), so they stay on the
+// same body part at every width. Positions: [class, label, value, unit, dot x, dot y, line end x] in % of the stage.
+const VITALS=[['temp','Body temp','36.6','°C',54.3,28.6,74],['breath','Breathing','14','rpm',44.3,60.2,26],['heart','Heart','72','bpm',42.9,83.7,26],['spo2','SpO₂','98','%',61.4,74.5,74]];
 function figure(){
  return `<div class="lp-stage" role="img" aria-label="${esc(SAMPLE)}">
-<svg class="lp-figure" viewBox="0 0 560 520" aria-hidden="true" focusable="false">
-<defs>
-<radialGradient id="lp-glow" cx="50%" cy="42%" r="55%"><stop offset="0" stop-color="#bfe6da" stop-opacity=".85"/><stop offset=".6" stop-color="#d9e8fa" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-<linearGradient id="lp-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9f5f0"/><stop offset=".55" stop-color="#d5e6f4"/><stop offset="1" stop-color="#d5e6f4" stop-opacity="0"/></linearGradient>
-<linearGradient id="lp-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f6e60" stop-opacity=".55"/><stop offset="1" stop-color="#2f5f96" stop-opacity="0"/></linearGradient>
-</defs>
-<circle class="lp-halo" cx="280" cy="240" r="250" fill="url(#lp-glow)"/>
-<g class="lp-breathe">
-<path class="lp-body" d="M280 26c27 0 44 21 44 50 0 22-9 38-22 47v18c34 8 77 20 100 37 23 15 32 38 36 80l8 262H114l8-262c4-42 13-65 36-80 23-17 66-29 100-37v-18c-13-9-22-25-22-47 0-29 17-50 44-50z" fill="url(#lp-body)" stroke="url(#lp-edge)" stroke-width="2"/>
-<path d="M232 150c14 14 31 21 48 21s34-7 48-21" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="3" stroke-linecap="round"/>
-<path class="lp-ecg" pathLength="1" d="M214 248h22l8-1 10-34 14 66 12-46 8 15h46" fill="none" stroke="#0f6e60" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-</g>
-<g class="lp-lines" fill="none" stroke="#56656f" stroke-opacity=".55" stroke-width="1">
-<path d="M110 70H236L262 64"/><path d="M110 232H212L236 250"/><path d="M450 142H350L330 190"/><path d="M450 312H372L352 330"/>
-</g>
-<g class="lp-dots">
-<g class="lp-dot d-temp"><circle class="ring" cx="262" cy="64" r="7"/><circle class="core" cx="262" cy="64" r="6"/></g>
-<g class="lp-dot d-heart"><circle class="ring" cx="236" cy="250" r="7"/><circle class="core" cx="236" cy="250" r="6"/></g>
-<g class="lp-dot d-breath"><circle class="ring" cx="330" cy="190" r="7"/><circle class="core" cx="330" cy="190" r="6"/></g>
-<g class="lp-dot d-spo2"><circle class="ring" cx="352" cy="330" r="7"/><circle class="core" cx="352" cy="330" r="6"/></g>
-</g>
-</svg>
-${VITALS.map(([k,l,v,u])=>`<div class="lp-call c-${k}" aria-hidden="true"><span class="lp-call-label">${l}</span><span class="lp-call-val"><b>${v}</b> ${u}</span></div>`).join('\n')}
+<div class="lp-fig">
+<picture class="lp-photo"><source type="image/webp" srcset="/hero-figure-640.webp 640w, /hero-figure.webp 1280w" sizes="(min-width:900px) 800px, 140vw"><img src="/hero-figure.jpg" srcset="/hero-figure-640.jpg 640w, /hero-figure.jpg 1280w" sizes="(min-width:900px) 800px, 140vw" width="1280" height="720" alt="" loading="eager" fetchpriority="high" decoding="async"></picture>
+<svg class="lp-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">${VITALS.map(([k,,,,x,y,e])=>`<path class="l-${k}" d="M${x} ${y}H${e}" vector-effect="non-scaling-stroke"/>`).join('')}</svg>
+${VITALS.map(([k])=>`<span class="lp-dot d-${k}" aria-hidden="true"><i class="ring"></i><i class="core"></i></span>`).join('\n')}
 <span class="lp-chip" aria-hidden="true">Sample data</span>
+</div>
+<div class="lp-calls">
+${VITALS.map(([k,l,v,u])=>`<div class="lp-call c-${k}" aria-hidden="true"><span class="lp-call-label">${l}</span><span class="lp-call-val"><b>${v}</b> ${u}</span></div>`).join('\n')}
+</div>
 </div>`;
 }
 
