@@ -29,6 +29,11 @@ Per household member (adults and children; set up from a `members.json` file, se
   in any language, as aliases.
 - **Child record**: growth, check-ups and vaccinations.
 - **Record inbox**: photograph or upload letters and reports; they are stored for review, never read automatically.
+- **Reading lab reports on the device**: "Read values" on an uploaded lab report (or "Import from a report" in
+  Labs) reads a PDF's text with pdf.js, or a photo or scan with tesseract.js OCR (English and German, Hindi on
+  request), **in the browser**. You review every value before anything is saved; unclear and unrecognised rows
+  start unticked, and the original file stays attached. Nothing is sent to an outside service. See
+  "Report-reading assets" below.
 - Installable PWA (works well from the iPhone home screen), offline app shell, no third-party scripts or trackers.
 
 ## Requirements
@@ -166,6 +171,19 @@ node scripts/import-json.mjs                # import; the JSON files and uploads
 The import runs only into an empty database and prints counts, never values. Keep the JSON files as a backup
 until you have checked the app.
 
+### Report-reading assets
+
+The browser-side reader uses pdf.js 6.4.299, tesseract.js 7.0.0, tesseract.js-core 7.0.0 and the eng/deu/hin
+models (about 19 MB). They are **not committed**: `public/ocr-assets.mjs` pins each npm tarball and file by
+sha256, and `node scripts/vendor-ocr.mjs` (run by `build.py`) downloads them into `public/vendor/ocr/<version>/`,
+refusing anything that doesn't match. Tarballs are cached in `~/.cache/apnihealth-ocr`, so only the first build
+needs the npm registry. Without the assets the app works and simply doesn't offer "Read values".
+`node scripts/vendor-ocr.mjs --check` verifies an install. The app page's CSP allows `'wasm-unsafe-eval'` (wasm
+compilation only) for this; iOS 16 or newer is needed.
+
+To see which marker names in your database the catalog doesn't know (names and counts only, read-only):
+`node scripts/unmapped-markers.mjs`.
+
 ## Try it with fictional data
 
 See [docs/preview.md](docs/preview.md).
@@ -178,7 +196,9 @@ NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs && node test-demo.mjs && node test-module-load.mjs
 python3 test-build-index.py
 node test-server.mjs                 # end to end on preview data
+node test-labunits.mjs && node test-labmap.mjs && node test-labimport.mjs && node test-report-fixtures.mjs && node test-vendor-ocr.mjs && node test-unmapped-markers.mjs
 node test-browser-smoke.mjs && node test-browser-accounts.mjs && node test-browser-onboarding.mjs   # need Chrome (CHROME_BIN)
+node scripts/vendor-ocr.mjs && node test-browser-ocr.mjs && node test-browser-report-review.mjs   # report reading in Chrome
 # or: npm test && npm run test:browser
 ```
 
@@ -187,7 +207,8 @@ All tests use fictional data. Never add real health data to code, tests, fixture
 ## Roadmap
 
 - Export and account deletion.
-- Lab results: CSV import, and lab views for children.
+- Lab results: CSV import, and lab views for children. Reading reports with an outside AI model only as a
+  separate, opt-in step (not built; see `docs/plans/report-ocr.md`).
 - Docker image and self-hosting guide.
 - A refreshed dashboard design.
 

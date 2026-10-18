@@ -53,6 +53,7 @@ jobs:
           node test-labimport.mjs
           CHROME_BIN=google-chrome node test-report-fixtures.mjs
           node test-vendor-ocr.mjs
+          node test-unmapped-markers.mjs
           node test-mailer.mjs
           node test-auth.mjs
           node test-signup.mjs
