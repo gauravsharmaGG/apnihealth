@@ -11,9 +11,10 @@ import * as members from './members.mjs';
 import {system,transaction,listMembers,runAs,SYSTEM} from './store.mjs';
 import {zone,inZone,publicOrigin} from './env.mjs';
 import {zoneOfMember} from './settings.mjs';
-const dir=new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('base64url'),unb64=s=>Buffer.from(s,'base64url');
-const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
-const wr=(n,v)=>{mkdirSync(dir,{recursive:true,mode:0o700});const f=new URL(n,dir),t=new URL(n+'.tmp',dir);writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600});renameSync(t,f)};
+// private/ next to the code, resolved on use (import.meta.url is undefined on Workers, which use VAPID_PRIVATE_JWK).
+const dir=()=>new URL('./private/',import.meta.url),b64=b=>Buffer.from(b).toString('base64url'),unb64=s=>Buffer.from(s,'base64url');
+const rd=(n,d)=>{try{return JSON.parse(readFileSync(new URL(n,dir()),'utf8'))}catch(e){if(e.code==='ENOENT')return d;throw e}};
+const wr=(n,v)=>{const d=dir();mkdirSync(d,{recursive:true,mode:0o700});const f=new URL(n,d),t=new URL(n+'.tmp',d);writeFileSync(t,JSON.stringify(v,null,2)+'\n',{mode:0o600});renameSync(t,f)};
 // ---- VAPID keys (generated once, kept private) ----
 // VAPID_PRIVATE_JWK: the private key as a JWK ({"kty":"EC","crv":"P-256","d":...,"x":...,"y":...}). Checked once:
 // a malformed or mismatched key fails loudly instead of sending unverifiable pushes.
