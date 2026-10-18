@@ -39,7 +39,8 @@ try{
   const at=` at ${vw}`;
   await load('alex',vw,vh,mobile);
   assert.equal(await ev(`document.querySelector('#home-greet').textContent`),'Hello, Alex.','greeting'+at);
-  assert(await ev(`document.querySelector('#home-date').textContent.length>5`),'date'+at);
+  assert(await ev(`document.querySelector('#appbar-date').textContent.length>5&&!document.querySelector('#home-date')`),'one date, in the app bar'+at);
+  assert(await ev(`(()=>{const f=document.querySelector('.fig-svg').getBoundingClientRect(),h=document.querySelector('#home-greet').getBoundingClientRect();return h.top<innerHeight&&f.top<innerHeight&&(innerWidth<600||document.querySelector('#home-cards .metric-card').getBoundingClientRect().bottom<innerHeight)})()`),'greeting, figure and first cards above the fold'+at);
   assert(await ev(`document.querySelectorAll('#home h1,#home h2').length>=4`),'semantic headings'+at);
   // figure: svg + a callout per tracked figure measurement; the numbers are the person's latest log values
   assert(await ev(`!!document.querySelector('#home-figure svg.fig-svg')&&document.querySelectorAll('#home-figure .fig-dot').length===4`),'figure with four dots'+at);
@@ -49,7 +50,7 @@ try{
   const latest=m=>api.filter(e=>e.metric===m).sort((a,b)=>a.date<b.date?-1:1).at(-1)?.value;
   const expected={'Resting heart rate':latest('resting_hr'),'Weight':latest('weight'),'Blood oxygen':latest('spo2')};
   for(const c of callouts){
-   if(c.label==='Body temperature'){assert(c.empty&&/No reading yet/.test(c.value)&&c.link==='#log'&&!/\d/.test(c.value),'empty callout for a metric without data'+at);continue}
+   if(c.label==="Body temperature"){assert(c.empty&&/No reading yet/.test(c.value)&&c.link==='#log'&&!/\d/.test(c.value),'empty callout for a metric without data'+at);continue}
    assert(!c.empty,c.label+' has a reading'+at);
    const shown=parseFloat(c.value.replace(/,/g,'')),raw=expected[c.label];assert(raw!=null,'API has '+c.label);
    const want=await ev(`(()=>{const k={'Resting heart rate':'resting_hr','Weight':'weight','Blood oxygen':'spo2'}['${c.label}'];return +AH.disp(k,${raw})})()`);
@@ -59,7 +60,7 @@ try{
   assert(!(await ev(`/\\d/.test(document.querySelector('#home-figure .fig-svg').textContent)`)),'no text numbers in the figure svg'+at);
   assert(await ev(`document.querySelector('#home-figure .fig-svg').getAttribute('aria-hidden')==='true'&&document.querySelector('#home-figure .fig-callouts').tagName==='UL'`),'figure has a text alternative'+at);
   assert(await ev(`[...document.querySelectorAll('#home-figure .fig-add')].every(a=>a.getBoundingClientRect().height>=44)`),'44px add links'+at);
-  assert(await ev(`getComputedStyle(document.querySelector('.fig-pulse')).animationName!=='none'`),'dots pulse'+at);
+  assert(await ev(`getComputedStyle(document.querySelector('.fig-dot:not(.is-empty) .fig-pulse')).animationName!=='none'`),'dots pulse'+at);
   // cards, sparklines, timeline with now marker, insights
   assert.equal(await ev(`document.querySelectorAll('#home-cards .metric-card').length`),8,'cards'+at);
   assert(await ev(`document.querySelectorAll('#home-cards .mc-spark').length>=5`),'sparklines'+at);
@@ -73,7 +74,7 @@ try{
   else assert(await ev(`(()=>{const f=document.querySelector('#home-figure').getBoundingClientRect(),c=document.querySelector('#home-cards').getBoundingClientRect();return c.left>f.right-20})()`),'cards beside the figure on desktop');
   // reduced motion switches the pulse off
   await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-  assert(await ev(`getComputedStyle(document.querySelector('.fig-pulse')).animationName==='none'`),'pulse off under reduced motion'+at);
+  assert(await ev(`getComputedStyle(document.querySelector('.fig-dot:not(.is-empty) .fig-pulse')).animationName==='none'`),'pulse off under reduced motion'+at);
   await send('Emulation.setEmulatedMedia',{features:[]});
   if(shots){const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'dashboard-'+vw+'.png'),Buffer.from(s.result.data,'base64'))}
   // a profile without readings: every callout is an empty state, nothing invented

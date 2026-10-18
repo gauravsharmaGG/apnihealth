@@ -651,32 +651,36 @@ button.text-button.danger:hover{background:var(--bad-soft)}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .home-top{display:grid;gap:8px 28px;grid-template-columns:minmax(0,1fr);align-items:start}
 .home-left,.home-right{min-width:0}.home-left .home-head{padding-bottom:0}
-@media(min-width:1100px){.home-top{grid-template-columns:minmax(0,430px) minmax(0,1fr)}.home-right .section-title{margin-top:30px}.home-right .metric-grid{margin-top:12px}}
-.fig-panel{margin-top:8px}
-.fig-stage{position:relative;width:100%;max-width:560px;aspect-ratio:500/440;margin:0 auto}
+@media(min-width:1100px){.home-top{grid-template-columns:minmax(0,440px) minmax(0,1fr)}.home-right .section-title{margin-top:30px}.home-right .metric-grid{margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr))}}
+.fig-panel{position:relative;margin-top:22px}
+.fig-stage{position:relative;width:100%;max-width:560px;aspect-ratio:560/450;margin:0 auto}
 .fig-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.fig-glow{fill:#a9d6cb;opacity:.7}.fig-body{fill:url(#fig-grad);stroke:#fff;stroke-width:3}
+.fig-halo{fill:url(#fig-halo)}.fig-body{fill:url(#fig-grad);stroke:url(#fig-edge);stroke-width:2}.fig-collar{fill:none;stroke:#fff;stroke-opacity:.85;stroke-width:3;stroke-linecap:round}
 .fig-line{fill:none;stroke:var(--muted);stroke-width:1;opacity:.55;vector-effect:non-scaling-stroke}
 .fig-core{fill:var(--accent);stroke:var(--surface-solid);stroke-width:2.5}.fig-pulse{fill:var(--accent);opacity:0;transform-box:fill-box;transform-origin:center;animation:fig-pulse 2.6s ease-out infinite}
 .fig-dot.is-empty .fig-core{fill:var(--faint)}.fig-dot.is-empty .fig-pulse{animation:none}
 @keyframes fig-pulse{0%{transform:scale(.7);opacity:.5}100%{transform:scale(2.6);opacity:0}}
 .fig-callouts{list-style:none;margin:0;padding:0}
-.fig-c{position:absolute;width:29%;display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-radius:var(--radius-sm);background:var(--surface);transform:translateY(-50%)}
-.fig-c.c-hr,.fig-c.c-wt{left:0}.fig-c.c-tp,.fig-c.c-ox{right:0;text-align:right}
-.c-hr{top:34%}.c-wt{top:60%}.c-tp{top:21%}.c-ox{top:68%}
+.fig-c{position:absolute;width:27%;display:flex;flex-direction:column;gap:1px;padding:6px;border-radius:var(--radius-sm);background:var(--surface);transform:translateY(-50%)}
+.fig-c.c-tp,.fig-c.c-ox{left:0}.fig-c.c-hr,.fig-c.c-wt{right:0;text-align:right}
+.c-tp{top:15.5%}.c-ox{top:44.5%}.c-hr{top:58%}.c-wt{top:85%}
 .fig-label{font-size:12px;font-weight:600;color:var(--ink-2)}
 .fig-value{font-size:20px;line-height:1.15;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}.fig-value span{font-size:12px;font-weight:500;color:var(--muted)}
 .fig-c.is-empty .fig-value{font-size:14px;color:var(--muted);font-weight:600}
-.fig-c small{font-size:11.5px;color:var(--muted);line-height:1.35}
+.fig-c small span{display:block}.fig-c small{font-size:11.5px;color:var(--muted);line-height:1.35}
 .fig-add{display:inline-flex;align-items:center;min-height:44px;font-size:13px;font-weight:600}
-.c-tp .fig-add,.c-ox .fig-add{justify-content:flex-end}
+.c-hr .fig-add,.c-wt .fig-add{justify-content:flex-end}
 @media(max-width:599px){
- .fig-stage{aspect-ratio:auto;max-width:none}.fig-svg{position:static;display:block;height:220px}.fig-line{display:none}
+ .fig-stage{aspect-ratio:auto;max-width:none}.fig-svg{position:static;display:block;height:230px}.fig-line{display:none}
  .fig-callouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
- .fig-c,.fig-c.c-tp,.fig-c.c-ox{position:static;width:auto;transform:none;text-align:left;border:1px solid var(--border)}.c-hr,.c-wt,.c-tp,.c-ox{top:auto}
- .fig-c.c-tp .fig-add,.fig-c.c-ox .fig-add{justify-content:flex-start}}
+ .fig-c,.fig-c.c-hr,.fig-c.c-wt{position:static;width:auto;transform:none;text-align:left;border:1px solid var(--border)}.c-hr,.c-wt,.c-tp,.c-ox{top:auto}
+ .fig-c.c-hr .fig-add,.fig-c.c-wt .fig-add{justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.fig-pulse{animation:none;opacity:0}}
 html.lite .fig-pulse{animation:none;opacity:0}
 .tl-bar{margin-top:30px}
 .tl-now-label{position:absolute;top:-27px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:8px;background:var(--ink);color:#fff;font-size:11px;font-weight:600;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums}
 .in-when{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+/* soft glow behind the figure, like the rest of the glass theme (decoration only) */
+.fig-panel::before{content:"";position:absolute;inset:-6% -4% -10%;z-index:-1;pointer-events:none;background:radial-gradient(60% 55% at 50% 45%,rgba(191,230,218,.55),rgba(217,232,250,.25) 60%,transparent 80%)}
+.home-left .home-head{padding-top:12px}
+@media(min-width:1100px){.home-left .home-head h1{margin-bottom:2px}.home-right .section-title{margin-top:16px}}

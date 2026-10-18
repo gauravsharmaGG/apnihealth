@@ -4,27 +4,29 @@
 // text alternative for the picture. No advice, no medical judgement: the only status is the week-on-week trend.
 (()=>{
 const A=window.AH,$=s=>document.querySelector(s);
-// key: tracked measurement; pos: callout slot (CSS class, side of the figure); dot: where the dot sits on the body
+// key: tracked measurement; pos: callout slot (CSS class); side: which side the callout sits on; dot: where the dot
+// sits on the bust (viewBox 560x450); line: elbow path from the dot to the callout edge
 const SPOTS=[
- {key:'heart_rate',label:'Resting heart rate',pos:'c-hr',side:'l',dot:[236,168],end:[150,150]},
- {key:'weight',label:'Weight',pos:'c-wt',side:'l',dot:[236,262],end:[150,256]},
- {key:'temperature',label:'Body temperature',pos:'c-tp',side:'r',dot:[262,100],end:[350,96]},
- {key:'spo2',label:'Blood oxygen',pos:'c-ox',side:'r',dot:[352,300],end:[350,300]}
+ {key:'temperature',label:'Body temperature',pos:'c-tp',dot:[280,58],line:'M280 58L262 70H146'},
+ {key:'spo2',label:'Blood oxygen',pos:'c-ox',dot:[262,176],line:'M262 176L246 200H146'},
+ {key:'heart_rate',label:'Resting heart rate',pos:'c-hr',dot:[322,256],line:'M322 256L342 262H414'},
+ {key:'weight',label:'Weight',pos:'c-wt',dot:[286,372],line:'M286 372L310 386H414'}
 ];
 const WORD={up:'Up on last week',down:'Down on last week',flat:'Steady'};
-const BODY='M236 90V108C200 114 170 122 158 150C148 178 144 230 138 290C136 304 152 306 156 292C164 250 168 214 176 190L180 270C182 300 184 330 188 345L192 420C192 428 214 428 216 420L232 350L250 330L268 350L284 420C286 428 308 428 308 420L312 345C316 330 318 300 320 270L324 190C332 214 336 250 344 292C348 306 364 304 362 290C356 230 352 178 342 150C330 122 300 114 264 108V90Z';
+// an original bust: head, neck, shoulders and upper chest, fading out at the bottom
+const BODY='M280 26c27 0 44 21 44 50 0 22-9 38-22 47v18c34 8 77 20 100 37 23 15 32 38 36 80l8 262H114l8-262c4-42 13-65 36-80 23-17 66-29 100-37v-18c-13-9-22-25-22-47 0-29 17-50 44-50z';
 function callout(s,entries,today,H){
  const metrics=A.GROUPS[s.key]||[],main=metrics[0],map=H.daily(entries,main),last=[...map.keys()].sort().at(-1);
  if(!last)return {s,has:false,html:`<li class="fig-c ${s.pos} is-empty"><span class="fig-label">${A.esc(s.label)}</span><strong class="fig-value">No reading yet</strong><a class="fig-add" href="#log">Add one →</a></li>`};
  const m=H.META[s.key],t=H.trendText(s.key,main,H.weekTrend(map,today)),word=t.cls==='flat'&&/Not enough/.test(t.text)?'':WORD[t.cls];
  const value=A.nf(A.disp(main,map.get(last)),m.dp),unit=A.unitOf(main);
- return {s,has:true,html:`<li class="fig-c ${s.pos}"><span class="fig-label">${A.esc(s.label)}</span><strong class="fig-value">${value}<span> ${A.esc(unit)}</span></strong><small>${[word,'Updated '+H.rel(last,today).toLowerCase()].filter(Boolean).join(' · ')}</small></li>`};
+ return {s,has:true,html:`<li class="fig-c ${s.pos}"><span class="fig-label">${A.esc(s.label)}</span><strong class="fig-value">${value}<span> ${A.esc(unit)}</span></strong><small>${[word,'Updated '+H.rel(last,today).toLowerCase()].filter(Boolean).map(x=>`<span>${x}</span>`).join('')}</small></li>`};
 }
 A.figure=function(entries,today,H){
  const el=$('#home-figure');if(!el)return;
  const tr=new Set(A.tracked()),list=SPOTS.filter(s=>tr.has(s.key)).map(s=>callout(s,entries,today,H));
- const lines=list.map(c=>`<path class="fig-line" d="M${c.s.dot[0]} ${c.s.dot[1]}L${c.s.end[0]} ${c.s.end[1]}"/>`).join('');
- const dots=list.map(c=>`<g class="fig-dot${c.has?'':' is-empty'}"><circle class="fig-pulse" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="9"/><circle class="fig-core" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="5"/></g>`).join('');
- el.innerHTML=`<h2 id="fig-title" class="sr-only">Latest readings</h2><div class="fig-stage"><svg class="fig-svg" viewBox="0 0 500 440" aria-hidden="true" focusable="false"><defs><linearGradient id="fig-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#d3e8e3"/><stop offset="1" stop-color="#e4eef0"/></linearGradient><filter id="fig-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter></defs><g class="fig-glow" filter="url(#fig-blur)"><ellipse cx="250" cy="60" rx="30" ry="35"/><path d="${BODY}"/></g><g class="fig-body"><ellipse cx="250" cy="60" rx="28" ry="33"/><path d="${BODY}"/></g>${lines}${dots}</svg><ul class="fig-callouts" aria-label="Latest readings">${list.map(c=>c.html).join('')}</ul></div>`;
+ const lines=list.map(c=>`<path class="fig-line" d="${c.s.line}"/>`).join('');
+ const dots=list.map(c=>`<g class="fig-dot${c.has?'':' is-empty'}"><circle class="fig-pulse" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="8"/><circle class="fig-core" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="5"/></g>`).join('');
+ el.innerHTML=`<h2 id="fig-title" class="sr-only">Latest readings</h2><div class="fig-stage"><svg class="fig-svg" viewBox="0 0 560 450" aria-hidden="true" focusable="false"><defs><radialGradient id="fig-halo" cx="50%" cy="42%" r="55%"><stop offset="0" stop-color="#bfe6da" stop-opacity=".85"/><stop offset=".6" stop-color="#d9e8fa" stop-opacity=".35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient><linearGradient id="fig-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9f5f0"/><stop offset=".5" stop-color="#d5e6f4"/><stop offset=".86" stop-color="#d5e6f4" stop-opacity="0"/></linearGradient><linearGradient id="fig-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f6e60" stop-opacity=".5"/><stop offset=".8" stop-color="#2f5f96" stop-opacity="0"/></linearGradient></defs><circle class="fig-halo" cx="280" cy="220" r="240"/><path class="fig-body" d="${BODY}"/><path class="fig-collar" d="M232 150c14 14 31 21 48 21s34-7 48-21"/>${lines}${dots}</svg><ul class="fig-callouts" aria-label="Latest readings">${list.map(c=>c.html).join('')}</ul></div>`;
 };
 })();

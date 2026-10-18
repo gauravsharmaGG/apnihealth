@@ -2,7 +2,7 @@
 // sparkline and this week against last week) and friendly empty states. Plain descriptions of the person's own
 // records, never advice. Timeline and insights render into their own slots (timeline.js, insights.js).
 (()=>{
-const {esc,day,addDays,nf,disp,unitOf,GROUPS,tracked,spark,api,longDate}=window.AH;
+const {esc,day,addDays,nf,disp,unitOf,GROUPS,tracked,spark,api}=window.AH;
 const $=s=>document.querySelector(s);
 const META={
  sleep:{label:'Sleep',tint:'lilac',dp:1,diffDp:1,flat:.25,agg:'last',icon:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'},
@@ -47,7 +47,7 @@ let entries=null,loading=null;
 function render(){
  const root=$('#home-cards');if(!root||$('#home')?.hidden)return;
  const p=window.PROFILES?.[window.PROFILE],today=day(Date.now());
- $('#home-greet').textContent=`Hello, ${(p?.name||'').trim().split(/\s+/)[0]||'there'}.`;$('#home-date').textContent=longDate();
+ $('#home-greet').textContent=`Hello, ${(p?.name||'').trim().split(/\s+/)[0]||'there'}.`;
  if(!entries){root.innerHTML='<p class="muted">Loading your numbers…</p>';return}
  window.AH.figure?.(entries,today,{daily,weekTrend,trendText,rel,META});
  const keys=tracked().filter(k=>META[k]);
