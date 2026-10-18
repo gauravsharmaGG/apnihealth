@@ -8,17 +8,17 @@ const A=window.AH,$=s=>document.querySelector(s);
 // key: tracked measurement; pos: callout slot (CSS class); dot: where the point sits on the body (viewBox 500x540, the
 // same box as the stage, so points stay aligned at every width); line: elbow path from the point to the callout edge
 const SPOTS=[
- {key:'temperature',label:'Body temperature',pos:'c-tp',dot:[250,88],line:'M250 88L214 64H136'},
- {key:'spo2',label:'Blood oxygen',pos:'c-ox',dot:[250,172],line:'M250 172L218 214H136'},
+ {key:'temperature',label:'Body temperature',pos:'c-tp',dot:[250,90],line:'M250 90L208 64H136'},
+ {key:'spo2',label:'Blood oxygen',pos:'c-ox',dot:[250,166],line:'M250 166L222 214H136'},
  {key:'heart_rate',label:'Resting heart rate',pos:'c-hr',dot:[292,290],line:'M292 290H364'},
  {key:'weight',label:'Weight',pos:'c-wt',dot:[250,436],line:'M250 436L278 444H364'}
 ];
 const ARROW={up:'\u2191',down:'\u2193',flat:'\u2192'};
 // one smooth silhouette from cubic Béziers: rounded head, tapering jaw and neck, soft trapezius curves into sloping
 // shoulders, upper arms merged with a gently narrowing torso. Only the right half is written; the left is its mirror image.
-const HALF=[[272,52,286,70,286,98],[286,122,286,138,281,150],[278,158,282,164,282,178],[282,194,304,204,334,214],[368,228,404,246,412,296],[416,330,414,372,408,414],[404,456,396,500,392,540]];
+const HALF=[[274,40,290,60,290,90],[290,114,284,134,278,148],[272,156,274,166,280,178],[288,196,318,200,340,212],[358,220,370,232,372,262],[376,296,374,360,368,420],[364,470,360,510,358,540]];
 const BODY=(()=>{
- let p=[250,52],d='M250 52',pts=[];
+ let p=[250,40],d='M250 40',pts=[];
  for(const s of HALF){pts.push([p,s]);p=[s[4],s[5]];d+=`C${s.join(' ')}`}
  d+=`L${500-p[0]} ${p[1]}`;
  for(const [q,s] of pts.reverse())d+=`C${500-s[2]} ${s[3]} ${500-s[0]} ${s[1]} ${500-q[0]} ${q[1]}`;
@@ -44,7 +44,7 @@ const DEFS=`<defs>
 </defs>`;
 // layers: wide bloom, glassy form, inner glow (blurred inset edge + soft core), light from above, a thin rim light along
 // the head and shoulders, specular spots, and a few faint flowing inner lines (spine, energy ribbons, rib arcs)
-const FORM=`<g mask="url(#fig-mask)"><path class="fig-bloom" filter="url(#fig-bloom)" d="${BODY}"/><path class="fig-body" filter="url(#fig-soft)" d="${BODY}"/><g clip-path="url(#fig-clip)"><path class="fig-inset" filter="url(#fig-glow)" d="${BODY}"/><ellipse class="fig-glowcore" cx="250" cy="290" rx="120" ry="170"/><ellipse class="fig-chest" cx="250" cy="268" rx="96" ry="78"/><path class="fig-lit" d="${BODY}"/><g class="fig-inner"><path class="fig-ribbon" d="M250 190V470"/><path d="M250 222C220 270 280 334 250 396S232 452 250 484"/></g></g><path class="fig-rim" d="${BODY}"/><ellipse class="fig-spec" cx="228" cy="80" rx="12" ry="22" transform="rotate(14 228 80)"/><ellipse class="fig-spec" cx="168" cy="262" rx="40" ry="11" transform="rotate(-16 168 262)"/></g>`;
+const FORM=`<g mask="url(#fig-mask)"><path class="fig-bloom" filter="url(#fig-bloom)" d="${BODY}"/><path class="fig-body" filter="url(#fig-soft)" d="${BODY}"/><g clip-path="url(#fig-clip)"><path class="fig-inset" filter="url(#fig-glow)" d="${BODY}"/><ellipse class="fig-glowcore" cx="250" cy="290" rx="120" ry="170"/><ellipse class="fig-chest" cx="250" cy="268" rx="96" ry="78"/><path class="fig-lit" d="${BODY}"/><g class="fig-inner"><path class="fig-ribbon" d="M250 190V470"/><path d="M250 222C220 270 280 334 250 396S232 452 250 484"/></g></g><path class="fig-rim" d="${BODY}"/><ellipse class="fig-spec" cx="230" cy="74" rx="9" ry="18" transform="rotate(14 230 74)"/><ellipse class="fig-spec" cx="168" cy="262" rx="40" ry="11" transform="rotate(-16 168 262)"/></g>`;
 function callout(s,entries,today,H){
  const metrics=A.GROUPS[s.key]||[],main=metrics[0],map=H.daily(entries,main),last=[...map.keys()].sort().at(-1);
  if(!last)return {s,has:false,html:`<li class="fig-c ${s.pos} is-empty"><span class="fig-label">${A.esc(s.label)}</span><strong class="fig-value">No reading yet</strong><a class="fig-add" href="#log">Add one →</a></li>`};
@@ -57,6 +57,6 @@ A.figure=function(entries,today,H){
  const tr=new Set(A.tracked()),list=SPOTS.filter(s=>tr.has(s.key)).map(s=>callout(s,entries,today,H));
  const lines=list.map(c=>`<path class="fig-line" d="${c.s.line}"/>`).join('');
  const dots=list.map(c=>`<g class="fig-dot${c.has?'':' is-empty'}">${c.has?`<circle class="fig-aura" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="21"/>`:''}<circle class="fig-pulse" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="8"/><circle class="fig-core" cx="${c.s.dot[0]}" cy="${c.s.dot[1]}" r="5"/></g>`).join('');
- el.innerHTML=`<h2 id="fig-title" class="sr-only">Latest readings</h2><div class="fig-stage"><svg class="fig-svg" viewBox="0 0 500 540" aria-hidden="true" focusable="false">${DEFS}<ellipse class="fig-halo" cx="250" cy="250" rx="250" ry="270"/><ellipse class="fig-mist" cx="250" cy="330" rx="230" ry="200"/>${FORM}${lines}${list.some(c=>c.s.key==='heart_rate'&&c.has)?'<path class="fig-ecg-base" d="M258 290h18l6-10 7 22 8-30 6 18h20"/><path class="fig-ecg" pathLength="1" d="M258 290h18l6-10 7 22 8-30 6 18h20"/>':''}${dots}</svg><ul class="fig-callouts" aria-label="Latest readings">${list.map(c=>c.html).join('')}</ul></div>`;
+ el.innerHTML=`<h2 id="fig-title" class="sr-only">Latest readings</h2><div class="fig-stage"><svg class="fig-svg" viewBox="0 0 500 540" aria-hidden="true" focusable="false">${DEFS}<ellipse class="fig-halo" cx="250" cy="250" rx="250" ry="270"/><ellipse class="fig-mist" cx="250" cy="330" rx="230" ry="200"/>${FORM}${lines}${list.some(c=>c.s.key==='heart_rate'&&c.has)?'<path class="fig-ecg-base" d="M252 290h24l6-10 7 24 8-36 7 26 5-4h23"/><path class="fig-ecg" pathLength="1" d="M252 290h24l6-10 7 24 8-36 7 26 5-4h23"/>':''}${dots}</svg><ul class="fig-callouts" aria-label="Latest readings">${list.map(c=>c.html).join('')}</ul></div>`;
 };
 })();
