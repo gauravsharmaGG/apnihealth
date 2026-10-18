@@ -1,12 +1,12 @@
 // App-shell cache so the dashboard opens instantly and works offline. Network first, so content is never stale online.
-// /api/ and /records/ are never cached. Cache is wiped on sign out.
-const V='apnihealth-v13',SHELL=['/','/style.css','/landing.css','/app.js','/labs.js','/log.js','/tip.js','/data-child.js','/config.js','/members.css','/core.js','/profiles.js','/medlist.js','/dashboard.js','/figure.js','/timeline.js','/insights.js','/child.js','/episodes.js','/medicines.js','/settings.js','/account.js','/calendar.js','/ahparse.js','/ahimport.js','/reports-data.js','/doc.html','/doc.js','/home.js','/splash.js','/pwa.js','/notes.js','/manifest.webmanifest','/icon-192.png'];
+// /api/ and /records/ are never cached, nor /vendor/ (large, versioned report-reading files the browser caches itself). Cache is wiped on sign out.
+const V='apnihealth-v14',SHELL=['/','/style.css','/landing.css','/app.js','/labs.js','/log.js','/tip.js','/data-child.js','/config.js','/members.css','/core.js','/profiles.js','/medlist.js','/dashboard.js','/figure.js','/timeline.js','/insights.js','/child.js','/episodes.js','/medicines.js','/settings.js','/account.js','/calendar.js','/ahparse.js','/ahimport.js','/reports-data.js','/doc.html','/doc.js','/home.js','/splash.js','/pwa.js','/notes.js','/manifest.webmanifest','/icon-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>Promise.all(SHELL.map(u=>c.add(new Request(u,{credentials:'same-origin'})).catch(()=>{})))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('message',e=>{if(e.data==='clear')e.waitUntil(caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))))});
 self.addEventListener('fetch',e=>{
  const r=e.request,u=new URL(r.url);
- if(r.method!=='GET'||u.origin!==location.origin||u.pathname.startsWith('/api/')||u.pathname.startsWith('/records/')||u.pathname==='/logout')return;
+ if(r.method!=='GET'||u.origin!==location.origin||u.pathname.startsWith('/api/')||u.pathname.startsWith('/records/')||u.pathname.startsWith('/vendor/')||u.pathname==='/logout')return;
  e.respondWith((async()=>{
   try{
    const res=await fetch(r);

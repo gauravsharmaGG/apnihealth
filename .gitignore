@@ -10,6 +10,8 @@ public/notes.js
 public/index.html
 public/.*.tmp
 public/*-cover.*
+# Report-reading assets: downloaded and sha256-checked by scripts/vendor-ocr.mjs (public/ocr-assets.mjs)
+public/vendor/
 *.pdf
 *.heic
 *.sqlite
