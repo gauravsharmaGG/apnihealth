@@ -22,7 +22,7 @@ import {blobs} from './blobs.mjs';
 import {inZone} from './env.mjs';
 import {hasConsent,consentsOf,CONSENT_VERSION} from './consent.mjs';
 import {APP_HOST,APP_NAME,TIME_ZONE,DEMO_NOTICE,publicOrigin} from './env.mjs';
-import {headers,frameHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
+import {headers,frameHeaders,appHeaders,vendorHeaders,mime,readBody,json,send,limited,sameOrigin,allowedHosts as allowed} from './http.mjs';
 
 // Static files come from a source with open(path) -> null | {size, read() -> Promise<Buffer>, stream() -> Readable}.
 // Node reads public/ next to the code; the Workers entry point installs one backed by the static assets binding.
@@ -106,15 +106,16 @@ export async function handler(req,res){try{
 }catch(e){if(res.headersSent)res.destroy();else if(e instanceof AccessError)fail(res,e);else send(res,400,'Unable to process request')}}
 
 const escHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const staticHeaders=rel=>rel.startsWith('/records/')?frameHeaders:rel==='/index.html'?appHeaders:rel.startsWith('/vendor/ocr/')?vendorHeaders:headers;
 async function serveStatic(req,res,path){
  const rel=path==='/'?'/index.html':path,ext=extname(rel);
  if(path.includes('\0')||!mime[ext])return send(res,404,'Not found');
  const file=await staticFiles().open(rel);if(!file)return send(res,404,'Not found');
  if(DEMO_NOTICE&&ext==='.html'){ // demo instances: the notice on top of the app shell too
   const html=(await file.read()).toString('utf8').replace(/<body[^>]*>/,m=>m+`<p class="demo-notice" role="note">${escHtml(DEMO_NOTICE)}</p>`);
-  res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime['.html'],'Content-Length':Buffer.byteLength(html)});return res.end(req.method==='HEAD'?undefined:html);
+  res.writeHead(200,{...staticHeaders(rel),'Content-Type':mime['.html'],'Content-Length':Buffer.byteLength(html)});return res.end(req.method==='HEAD'?undefined:html);
  }
- res.writeHead(200,{...(path.startsWith('/records/')?frameHeaders:headers),'Content-Type':mime[ext],'Content-Length':file.size});if(req.method==='HEAD')res.end();else file.stream().on('error',()=>res.destroy()).pipe(res);
+ res.writeHead(200,{...staticHeaders(rel),'Content-Type':mime[ext],'Content-Length':file.size});if(req.method==='HEAD')res.end();else file.stream().on('error',()=>res.destroy()).pipe(res);
 }
 
 // The app itself, running inside the request's access context (store.actor()).

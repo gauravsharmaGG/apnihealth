@@ -29,6 +29,23 @@ try{
  assert.equal(C.name,'Test Health');assert.equal(C.timeZone,'Europe/Berlin');assert.deepEqual(C.members.map(m=>m.id),['alex','sam','mia']);
  const css=await (await get('/members.css')).text();assert.match(css,/\.pc-mia\{--pc:#3b6ea5\}/);
  assert.equal((await get('/')).status,200);
+ // CSP: wasm compilation only on the app page and the vendored report-reading files; never JS eval
+ {const csp=async p=>(await get(p)).headers.get('content-security-policy');
+  assert.match(await csp('/'),/script-src 'self' 'wasm-unsafe-eval';/);assert.doesNotMatch(await csp('/'),/'unsafe-eval'|'unsafe-inline'/);
+  for(const p of ['/style.css','/app.js','/doc.html','/welcome.html'])assert.match(await csp(p),/script-src 'self';/,p);
+  const {OCR_BASE,PATHS}=await import(join(dir,'public/ocr-assets.mjs'));
+  if(existsSync(join(dir,'public',OCR_BASE))){ // build.py installs them (needs the registry or the cache once)
+   const w=await get(OCR_BASE+PATHS.tesseractWorker);assert.equal(w.status,200);assert.match(w.headers.get('content-type'),/text\/javascript/);
+   assert.match(w.headers.get('content-security-policy'),/'wasm-unsafe-eval'/,'workers take the CSP of their own script');
+   assert.equal(w.headers.get('cache-control'),'private, max-age=31536000, immutable');await w.arrayBuffer();
+   const g=await get(OCR_BASE+PATHS.lang+'deu.traineddata.gz');assert.equal(g.headers.get('content-type'),'application/octet-stream');assert.equal(g.headers.get('content-encoding'),null,'tesseract gunzips it itself');
+   const b=Buffer.from(await g.arrayBuffer());assert.equal(b[0],0x1f);assert.equal(b[1],0x8b);
+   const m=await get(OCR_BASE+PATHS.pdfWasm+'openjpeg.wasm');assert.equal(m.headers.get('content-type'),'application/wasm');await m.arrayBuffer();
+   assert.equal((await get(OCR_BASE+'pdfjs/LICENSE')).status,404,'only the listed file types are served');
+   assert.equal((await get(OCR_BASE+PATHS.pdf,{})).status,403,'vendored files need a session too');
+  }else if(process.env.CI)throw Error('CI: the OCR assets should have been installed by build.py');
+  else console.log('note: OCR assets not installed, vendor serving not checked');
+ }
  const log=await (await get('/api/log')).json();assert(log.entries.length>50,'default member is the first one');
  assert.equal((await (await get('/api/log?profile=sam')).json()).entries.length,0,'members are isolated');
  assert.equal((await get('/api/log?profile=nobody')).status,400);

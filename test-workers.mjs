@@ -4,7 +4,7 @@
 // Run: node test-workers.mjs   (WRANGLER overrides the command, e.g. WRANGLER="npx --yes wrangler@4.151.1")
 import assert from 'node:assert/strict';
 import {spawn,execFileSync} from 'node:child_process';
-import {mkdtempSync,mkdirSync,copyFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,copyFileSync,rmSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join,dirname} from 'node:path';import net from 'node:net';import http from 'node:http';
 import {until} from './testlib.mjs';
 import {CONSENT_VERSION} from './consent.mjs';
@@ -55,6 +55,19 @@ try{
  assert.equal((await req('/',{cookie})).headers.get('location'),'/welcome');
  assert.equal((await req('/api/households',{method:'POST',cookie,json:{name:'Example Home',memberName:'Alex Example'}})).status,200);
  const member=(await req('/api/onboarding',{cookie})).json().members[0].id;
+ // report-reading assets through the assets binding: wasm allowed only on the app page and those files, cached immutable
+ {const {OCR_BASE,PATHS}=await import(join(dir,'public/ocr-assets.mjs'));
+  assert.equal((await req('/api/household/onboarded',{method:'POST',cookie,json:{}})).status,200);
+  const home=await req('/',{cookie});assert.equal(home.status,200);assert.match(home.headers.get('content-security-policy'),/script-src 'self' 'wasm-unsafe-eval';/);
+  assert.match((await req('/style.css',{cookie})).headers.get('content-security-policy'),/script-src 'self';/);
+  if(existsSync(join(dir,'public',OCR_BASE))){
+   const core=await req(OCR_BASE+PATHS.core+'tesseract-core-simd-lstm.wasm.js',{cookie});assert.equal(core.status,200);assert(core.buf.length>3e6,'the 3.9 MB core in one piece');
+   assert.equal(core.headers.get('cache-control'),'private, max-age=31536000, immutable');assert.match(core.headers.get('content-security-policy'),/'wasm-unsafe-eval'/);
+   const g=await req(OCR_BASE+PATHS.lang+'eng.traineddata.gz',{cookie});assert.equal(g.headers.get('content-type'),'application/octet-stream');assert.equal(g.buf[0],0x1f);
+   assert.equal((await req(OCR_BASE+PATHS.pdfWasm+'qcms_bg.wasm',{cookie})).headers.get('content-type'),'application/wasm');
+   assert.equal((await req(OCR_BASE+PATHS.pdf)).status,303,'signed out: no vendored files');
+  }else if(process.env.CI)throw Error('CI: build.py should have installed the OCR assets');else console.log('note: OCR assets not installed, vendor serving not checked');
+ }
  // an upload goes to R2 and comes back byte for byte; the export ZIP contains it
  const png=Buffer.from('89504e470d0a1a0a0000000d49484452','hex');
  const up=await req('/api/inbox?profile='+member,{method:'POST',cookie,json:{category:'other',date:'2026-10-05',title:'Example scan',fileName:'scan.png',mimeType:'image/png',dataBase64:png.toString('base64')}});
@@ -78,6 +91,6 @@ try{
  await stop();({req,O}=await start());
  assert.equal((await req('/api/inbox?profile='+member,{cookie})).json().items.length,1,'session and records persist');
  assert.deepEqual((await req(`/api/inbox/${items[0].id}/file?profile=${member}`,{cookie})).buf,png,'file persists');
- console.log('PASS workers (wrangler dev): sign-in page with demo notice and headers, gating and host check, open sign-up by emailed link, consent, onboarding in Durable Object SQLite, upload to R2 and back, values read from it saved with a household marker and duplicate check, ZIP export, Cron Trigger scheduler, data persists across restarts.');
+ console.log('PASS workers (wrangler dev): sign-in page with demo notice and headers, report-reading assets (CSP, cache, MIME), gating and host check, open sign-up by emailed link, consent, onboarding in Durable Object SQLite, upload to R2 and back, values read from it saved with a household marker and duplicate check, ZIP export, Cron Trigger scheduler, data persists across restarts.');
 }catch(e){console.error(log.slice(-4000));throw e}
 finally{await stop();rmSync(dir,{recursive:true,force:true})}
