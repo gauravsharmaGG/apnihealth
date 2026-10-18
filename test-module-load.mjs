@@ -1,4 +1,4 @@
-// Every app module (except the Node entry point server.mjs) loads where import.meta.url is undefined, as on
+// Every app module (except the entry points server.mjs and worker.mjs) loads where import.meta.url is undefined, as on
 // Cloudflare Workers: paths next to the code are resolved on use, never at module load. The modules are copied to a
 // temp dir with import.meta.url replaced by undefined, then imported; the marker catalog then falls back to the
 // bundled default. No data, no network.
@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,readdirSync,readFileSync,writeFileSync,cpSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';import {join} from 'node:path';import {pathToFileURL} from 'node:url';
 const here=new URL('.',import.meta.url),dir=mkdtempSync(join(tmpdir(),'apni-load-'));
-const NODE_ONLY=new Set(['server.mjs','testlib.mjs']);
-const mods=readdirSync(here).filter(f=>f.endsWith('.mjs')&&!f.startsWith('test-')&&!NODE_ONLY.has(f));
+const ENTRY_POINTS=new Set(['server.mjs','worker.mjs','testlib.mjs']); // entry points (they listen or import cloudflare:*)
+const mods=readdirSync(here).filter(f=>f.endsWith('.mjs')&&!f.startsWith('test-')&&!ENTRY_POINTS.has(f));
 process.env.DB_FILE=join(dir,'never-opened.db');process.env.NO_PUSH='1';
 try{
  cpSync(new URL('config/',here),join(dir,'config'),{recursive:true});

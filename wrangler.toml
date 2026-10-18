@@ -1,0 +1,47 @@
+# Cloudflare Workers config for a public ApniHealth instance (plan: docs/plans/workers-d1.md).
+# No account id, routes or secrets here. Secrets are set with `wrangler secret put` and never committed:
+#   RESEND_API_KEY     sign-in and invite emails (MAIL_FROM must be on a domain verified in Resend)
+#   VAPID_PRIVATE_JWK  Web Push key pair as a P-256 private JWK
+# Nothing in this file creates Cloudflare resources by itself; `wrangler dev` runs everything locally.
+name = "apnihealth-demo"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static files from public/ (built with `python3 build.py` from a clean checkout with an empty private/).
+# run_worker_first: every request goes through the app (auth, consent, security headers, demo notice).
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+not_found_handling = "none"
+
+# One SQLite-backed Durable Object owns the database (created in the EU jurisdiction by worker.mjs).
+[[durable_objects.bindings]]
+name = "APP"
+class_name = "ApniHealth"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ApniHealth"]
+
+# Uploaded files. The bucket must be created in the EU jurisdiction before the first deploy.
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "apnihealth-demo"
+jurisdiction = "eu"
+
+# Reminders and the hourly purge (scheduler.mjs).
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+AUTH_MODE = "builtin"
+SIGNUP_MODE = "open"
+APP_NAME = "ApniHealth Demo"
+APP_TIME_ZONE = "Europe/Berlin"
+DEMO_NOTICE = "This is a public demo. Do not enter real health data; it may be deleted at any time."
+# Required before a deploy (hostname not decided yet): requests for any other host are refused.
+# APP_HOST = "demo.example.org"
+# MAIL_FROM = "ApniHealth Demo <noreply@example.org>"

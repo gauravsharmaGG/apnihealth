@@ -72,6 +72,20 @@ Email goes out over SMTP (`SMTP_URL`) or, with `RESEND_API_KEY` set, through the
 request, no SMTP connection; it wins when both are set). `MAIL_FROM` (or `SMTP_FROM`) is the sender and must be on
 a domain verified with your provider. Use a send-only API key.
 
+### Cloudflare Workers (in progress)
+
+`worker.mjs` + `wrangler.toml` run the same app on Cloudflare Workers: one SQLite-backed Durable Object holds the
+database, uploads go to R2, `public/` is served as static assets through the app, and a Cron Trigger runs the
+reminders. Try it locally (no Cloudflare account needed; the jurisdiction setting is not supported locally):
+
+```bash
+python3 build.py   # generic public/index.html from an empty private/
+npx wrangler@4.151.1 dev --var PORT:8787 --var DO_JURISDICTION:none
+```
+
+`node test-workers.mjs` runs the end-to-end check the same way. Deploying needs `APP_HOST`, `MAIL_FROM` and the
+secrets listed in `wrangler.toml`; see `docs/plans/workers-d1.md`.
+
 ### Sign-in (AUTH_MODE)
 
 - `AUTH_MODE=builtin` (default): people sign in with a one-time link sent by email (valid 15 minutes, single use).
@@ -159,7 +173,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-theme.mjs && node test-db.mjs && node test-sqladapter.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-datarights.mjs && node test-blobs.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-theme.mjs && node test-db.mjs && node test-sqladapter.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-datarights.mjs && node test-blobs.mjs && node test-workers-backends.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-scheduler.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs && node test-demo.mjs && node test-module-load.mjs
 python3 test-build-index.py

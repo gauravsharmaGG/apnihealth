@@ -31,8 +31,11 @@ every instance keeps its health data in git-ignored folders on its own server. S
 
 ## Structure
 
-- `server.mjs`: Node HTTP server on `127.0.0.1:$PORT`: static `public/`, JSON APIs (`/api/...`), `/config.js`
-  (instance name, time zone and members for the client), `/members.css` (member colours) and the push loop.
+- `app.mjs`: the request handler shared by both runtimes: static `public/`, JSON APIs (`/api/...`), `/config.js`
+  (instance name, time zone and members for the client), `/members.css` (member colours). No listening, no timers.
+  `server.mjs`: Node entry point (`127.0.0.1:$PORT`, scheduler timer). `worker.mjs` + `wrangler.toml`: Cloudflare
+  Workers entry point (one SQLite Durable Object runs the app; R2 uploads and static assets via
+  `workers-backends.mjs`; Cron Trigger). Keep runtime-specific code in the entry points and backends.
 - `env.mjs`: instance settings from the environment. `members.mjs`: the member list.
 - `auth.mjs`: who is asking (`AUTH_MODE` builtin sessions or trusted-proxy), sign-in routes and pages.
   `accounts.mjs`: users, memberships, sessions, sign-in links. `mailer.mjs`: outgoing email through the Resend HTTP API (`RESEND_API_KEY`, works on Workers) or SMTP (`SMTP_URL`); `RESEND_API_KEY` wins when both are set. `webauthn.mjs`: passkey verification (CBOR/COSE, no deps). `household.mjs`: households, people, invites, profiles API. `http.mjs`: shared HTTP helpers. `consent.mjs` + `consent-page.mjs`: health data notice, versioned consent records and the /consent page (bump `CONSENT_VERSION` when the notice text changes materially). `settings.mjs`: per-household tracked measurements, time zone and units; `env.mjs` `zone()`/`inZone()` give the zone of the household being served. `public/onboarding.js` + `welcome.html`: first-run setup at /welcome. `datarights.mjs` + `zip.mjs`: export (streamed ZIP, no deps) and account deletion. `blobs.mjs`: uploaded files behind a small async interface (keys `profiles/<id>/...`; the fs backend keeps them under `private/profiles/<id>/`); never touch profile files with `node:fs` directly.
