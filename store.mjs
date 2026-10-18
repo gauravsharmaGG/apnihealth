@@ -143,8 +143,10 @@ export function addProfile(householdId,m){
 }
 // Where a profile's uploaded files live on disk with the fs blob backend: private/profiles/<id>/ next to the code
 // (blob keys under profilePrefix(id) in blobs.mjs).
-const profilesRoot=resolve(fileURLToPath(new URL('.',import.meta.url)),'private/profiles');
+// Resolved on first use, not at load (import.meta.url is undefined on Workers, where profileDir is not used).
+let profilesRoot=null;
 export function profileDir(memberId){
+ profilesRoot??=resolve(fileURLToPath(new URL('.',import.meta.url)),'private/profiles');
  const p=resolve(profilesRoot,String(memberId));
  if(!p.startsWith(profilesRoot+sep)||p.slice(profilesRoot.length+1).includes(sep))throw Error('Bad profile id');
  return p;

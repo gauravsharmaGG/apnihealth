@@ -7,11 +7,12 @@ import {fileURLToPath} from 'node:url';
 import {db} from './db.mjs';
 import {forMember,households,AccessError,canWrite} from './store.mjs';
 const hash=t=>createHash('sha256').update(String(t)).digest('hex');
-export const LEGACY_FILE=fileURLToPath(new URL('./private/ingest-token.txt',import.meta.url));
+// Resolved on use, not at load: on Workers import.meta.url is undefined (and there is no legacy file).
+export const legacyFile=()=>fileURLToPath(new URL('./private/ingest-token.txt',import.meta.url));
 export const MAX_KEYS=10;
 
 // Once, at startup: register the old shared key (if any) for the oldest household. Never re-adds a revoked one.
-export function migrateLegacy(file=LEGACY_FILE){
+export function migrateLegacy(file=legacyFile()){
  if(!existsSync(file))return false;
  const t=readFileSync(file,'utf8').trim(),h=households()[0];
  if(!t||!h)return false;

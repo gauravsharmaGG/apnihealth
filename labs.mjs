@@ -9,17 +9,19 @@ import {join} from 'node:path';
 import {forMember} from './store.mjs';
 // The default catalog is bundled as a module (no file read at runtime, so it also works without a filesystem).
 import DEFAULT_MARKERS from './config/markers.default.json' with {type:'json'};
-const ROOT=fileURLToPath(new URL('.',import.meta.url));
+const defaultPrivateDir=()=>import.meta.url?join(fileURLToPath(new URL('.',import.meta.url)),'private'):null;
 const MAX_VALUES=200,MAX_PENDING=50;
 
 // ---- catalog ----
 const cache=new Map();
-export function catalog(privateDir=join(ROOT,'private')){
+// The default privateDir (private/ next to the code) is resolved on use, so the module also loads where
+// import.meta.url is undefined (Workers); without one only the bundled default catalog is used.
+export function catalog(privateDir=defaultPrivateDir()){
  if(cache.has(privateDir))return cache.get(privateDir);
  const entries=new Map();
  // config/markers.default.json, then the instance's own private/markers.json when there is one (Node only).
- const own=join(privateDir,'markers.json');
- const sources=[['markers.default.json',()=>DEFAULT_MARKERS],['markers.json',()=>existsSync(own)?JSON.parse(readFileSync(own,'utf8')):null]];
+ const own=privateDir&&join(privateDir,'markers.json');
+ const sources=[['markers.default.json',()=>DEFAULT_MARKERS],['markers.json',()=>own&&existsSync(own)?JSON.parse(readFileSync(own,'utf8')):null]];
  for(const [name,load] of sources){
   let data;try{data=load()}catch{throw Error(name+' is not valid JSON')}
   if(!data)continue;
