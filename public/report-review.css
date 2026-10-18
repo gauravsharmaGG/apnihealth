@@ -1,0 +1,42 @@
+/* Review screen for values read from a lab report (report-review.mjs). Mobile first (390px), loaded on demand. */
+#lab-import{margin-left:8px}
+.lab-reports .section-head:has(#lab-import:not([hidden])){flex-wrap:wrap;gap:8px}
+.lab-reports .section-head:has(#lab-import:not([hidden])) #lab-import{margin-left:0}
+.rr{width:min(720px,calc(100% - 28px));max-height:92dvh;overflow:auto;padding:22px}
+.rr form{display:block}
+.rr-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rr-head h2{margin:0}
+.rr-x{width:40px;height:40px;border:0;background:transparent;font-size:26px;line-height:1;color:var(--muted);padding:0;cursor:pointer}
+.rr-progress{font-weight:600;margin:18px 0 6px}
+.rr-small{font-size:13px;margin:4px 0}
+.rr-note{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:var(--tint);font-size:13.5px;line-height:1.45}
+.rr-note.warn{background:#fbf0dd;color:#5d3d0c}
+.rr-note a{white-space:nowrap}
+.rr-dups .text-button{margin-top:4px}
+.rr-h{margin:18px 0 0;font-size:15px}
+.rr-rows{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.rr-row{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px;padding:10px 12px 12px;background:#fff;opacity:.78}
+.rr-row.on{opacity:1}
+.rr-row.rr-ok{border-left-color:var(--teal)}
+.rr-row.rr-check{border-left-color:#d79a2b;background:#fffaf0}
+.rr-row.rr-low,.rr-row.rr-new{border-left-color:#9aa8b2}
+.rr-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.rr-inc{display:flex;align-items:center;gap:10px;min-width:0;font-weight:650;font-size:14.5px;cursor:pointer}
+.rr-inc input{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--teal)}
+.rr-name{overflow-wrap:anywhere}
+.rr-badge{flex:none;font-size:11.5px;font-weight:650;padding:3px 8px;border-radius:999px;background:var(--tint);color:var(--teal-dark)}
+.rr-check .rr-badge{background:#fbf0dd;color:#7a4e10}
+.rr-low .rr-badge,.rr-new .rr-badge{background:#eef1f4;color:var(--muted)}
+.rr-line{margin:6px 0 0;padding:6px 8px;border-radius:8px;background:#f4f7f8;font:12.5px/1.4 ui-monospace,Menlo,monospace;color:#3d5260;overflow-wrap:anywhere}
+.rr-vals{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.rr .field{margin-top:10px}
+.rr .field input,.rr .field select{width:100%;min-width:0;box-sizing:border-box;min-height:44px}
+.rr-hint{margin:8px 0 0;font-size:13px;color:var(--teal-dark)}
+.rr-issues{margin:6px 0 0;font-size:12.5px;color:#7a4e10}
+.rr-unread{margin-top:14px;font-size:13px}
+.rr-unread ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.rr .lab-check{font-size:13.5px}
+.rr-actions{position:sticky;bottom:-22px;background:inherit;padding:12px 0 4px;margin-top:14px}
+.rr-actions .primary[disabled]{opacity:.55}
+@media(min-width:701px){.rr-vals{grid-template-columns:1.1fr .9fr 1.2fr .8fr}}
+@media(max-width:700px){.rr{width:100%;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}.rr-actions{bottom:calc(-18px - env(safe-area-inset-bottom))}}
