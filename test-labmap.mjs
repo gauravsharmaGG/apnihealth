@@ -108,6 +108,19 @@ const ocr=M.mapReport(page([row('Hämoglobin','l4,O','g/dl','13,5 - 17,5'),row('
 const ohb=by(ocr,'Hämoglobin');assert.deepEqual([ohb.num,ohb.issues.includes('ocr-fixed')],[14,true]);assert.notEqual(ohb.bucket,'high','an OCR-fixed value is never in the high bucket');
 assert.equal(by(ocr,'Kalium').bucket,'high');const na=by(ocr,'Natrium');assert.equal(na.num,140);assert.equal(na.include,false,'low OCR confidence: not ticked');
 assert.equal(M.mapReport(page([row('Kalium','4,2','mmol/l','3,5 - 5,1')]),markers,{method:'pdf-text'}).rows[0].conf,1,'exact alias + known unit on PDF text');
+// OCR losing decimal points in ranges, µ read as p, a slash as l, ü as ii, and a value that lost its point
+{const o=M.mapReport(page([row('Kalium','4,3','mmol/l','35-53'),row('Kreatinin','1,1','mg/dl','07-13'),row('Harnsäure','7,9','mg/dl','35-7,2'),
+  row('Erythrozyten','4,9','Mio/pl','43-58'),row('GPT (ALAT)','32','ull','<50'),row('Glucose niichtern','92','mg/dl','70 99'),row('TSH basal','24','mU/l','0,27 - 4,20'),
+  row('Vitamin D (25-OH)','18','ng/ml','30 100'),row('Ferritin','8,5','ng/ml','10-40')],{conf:0.96}),markers,{method:'ocr'});
+ const k=by(o,'Kalium');assert.deepEqual([k.flag,k.issues.includes('range-ocr-fixed'),k.include],[null,true,true],'35-53 next to 4,3 is 3,5-5,3: no false low flag');
+ assert.equal(by(o,'Kreatinin').flag,null,'07-13 is 0,7-1,3');assert.equal(by(o,'Harnsäure').flag,'high','35-7,2 is 3,5-7,2');
+ const ery=by(o,'Erythrozyten');assert.equal(ery.unit,'Mio/µl');assert(ery.issues.includes('ocr-unit')&&ery.bucket!=='high');assert.equal(ery.flag,null);
+ assert.equal(by(o,'GPT (ALAT)').unit,'u/l');assert.equal(by(o,'Glucose niichtern').marker,'Fasting blood sugar');
+ const tsh=by(o,'TSH basal');assert(tsh.issues.includes('value-unclear')&&!tsh.include,'24 next to 0,27-4,20 probably lost its point: not ticked');
+ assert.equal(by(o,'Vitamin D (25-OH)').flag,'low','two numbers are a range when the dash is lost');
+ assert.equal(by(o,'Ferritin').flag,'low','a value just outside an integer range keeps its flag');
+ const pdf=M.mapReport(page([row('Kalium','4,3','mmol/l','35-53')]),markers,{method:'pdf-text'});assert.equal(pdf.rows[0].flag,'low','PDF text is taken as printed');
+}
 
 // --- plausibility, flag mismatch, unknown unit, missing unit, duplicates
 const odd=M.mapReport(page([row('Hemoglobin','142','g/dL','13 - 17'),row('Ferritin','45','furlongs','30 - 300'),row('Potassium','4.1',null,'3.5 - 5.1'),
@@ -122,4 +135,4 @@ const k2=by(odd,'Kalium');assert(k2.issues.includes('duplicate')&&!k2.include,'s
 assert.deepEqual(M.toValue(hb),{name:'Hemoglobin: oxygen-carrying protein',value:'14,2',unit:'g/dl',reference:'13,5 - 17,5',flag:undefined,page:1,rawName:'Hämoglobin',confidence:hb.conf});
 // --- unread lines are kept for the review screen (never saved)
 assert(rd.unread.some(u=>/Patient/.test(u.text)),'unparsed lines are listed');
-console.log(`PASS labmap: lines/cells, row grammar (de/en/Indian), metadata without patient details, alias/German/Hindi/household matching, guarded fuzzy, unit-picked pairs, OCR value fixes, plausibility, buckets, duplicates (${rd.rows.length+ri.rows.length} fixture rows).`);
+console.log(`PASS labmap: lines/cells, row grammar (de/en/Indian), metadata without patient details, alias/German/Hindi/household matching, guarded fuzzy, unit-picked pairs, OCR value/range/unit fixes, plausibility, buckets, duplicates (${rd.rows.length+ri.rows.length} fixture rows).`);
