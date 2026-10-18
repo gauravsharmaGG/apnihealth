@@ -14,6 +14,7 @@ import {setBlobs} from './blobs.mjs';
 import {r2Blobs,assetFiles} from './workers-backends.mjs';
 
 const INTERNAL_PORT=8080; // the in-isolate port httpServerHandler routes to (nothing listens on the network)
+let listening=false; // module scope: shared by every ApniHealth object constructed in this isolate
 
 // The instance Durable Object, in the EU jurisdiction unless DO_JURISDICTION is "none" (local tests only).
 function instance(env){
@@ -47,7 +48,9 @@ export class ApniHealth extends DurableObject{
    const app=await import('./app.mjs'); // after useDatabase: app modules read config and may query at startup
    app.setStaticFiles(assetFiles(env.ASSETS));
    app.startup({legacyImport:false});
-   http.createServer(app.handler).listen(INTERNAL_PORT);
+   // The isolate can outlive this object (a reset or eviction re-runs the constructor in the same isolate), and the
+   // in-isolate port stays bound, so a second listen() threw EADDRINUSE on every request. Listen once per isolate.
+   if(!listening){http.createServer(app.handler).listen(INTERNAL_PORT);listening=true}
    this.http=httpServerHandler({port:INTERNAL_PORT});
   });
  }
