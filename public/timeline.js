@@ -20,10 +20,10 @@ function render(){
  if(!data){el.innerHTML=head+'<p class="muted">Loading today…</p>';return}
  const now=Date.now(),today=A.day(now),list=items(now),eps=data.eps.filter(e=>e.status!=='resolved');
  const timed=list.filter(i=>i.ms!=null),hour=ms=>{const [h,m]=A.hm(ms).split(':').map(Number);return h+m/60};
- let from=6,to=22;for(const i of timed){from=Math.min(from,Math.floor(hour(i.ms)));to=Math.max(to,Math.ceil(hour(i.ms)+.01))}
+ const nowH=hour(now);let from=Math.min(6,Math.floor(nowH)),to=Math.max(22,Math.ceil(nowH+.01));for(const i of timed){from=Math.min(from,Math.floor(hour(i.ms)));to=Math.max(to,Math.ceil(hour(i.ms)+.01))}
  const pos=h=>((h-from)/(to-from)*100).toFixed(2);
  const ticks=[];for(let h=Math.ceil(from/4)*4;h<=to;h+=4)ticks.push(`<span class="tl-tick" data-x="${pos(h)}">${String(h).padStart(2,'0')}:00</span>`);
- const nowH=hour(now),bar=timed.length?`<div class="tl-bar" aria-hidden="true"><div class="tl-track">${timed.map(i=>`<span class="tl-dot k-${i.kind} s-${i.status}" data-x="${pos(hour(i.ms))}"></span>`).join('')}${nowH>=from&&nowH<=to?`<span class="tl-now" data-x="${pos(nowH)}"></span>`:''}</div><div class="tl-ticks">${ticks.join('')}</div></div>`:'';
+ const bar=timed.length?`<div class="tl-bar" aria-hidden="true"><div class="tl-track">${timed.map(i=>`<span class="tl-dot k-${i.kind} s-${i.status}" data-x="${pos(hour(i.ms))}"></span>`).join('')}${nowH>=from&&nowH<=to?`<span class="tl-now" data-x="${pos(nowH)}"><span class="tl-now-label">${A.hm(now)}</span></span>`:''}</div><div class="tl-ticks">${ticks.join('')}</div></div>`:'';
  const epHtml=eps.length?`<div class="tl-eps">${eps.map(e=>{const d=Math.round((Date.parse(today)-Date.parse(e.startDate))/864e5)+1;return `<a class="tl-ep" href="#episodes" data-epgo="${A.esc(e.id)}">${ico('ep')}<span><strong>${A.esc(e.title)}</strong><small>Ongoing · day ${d}</small></span></a>`}).join('')}</div>`:'';
  const rows=list.length?`<ol class="tl-list">${list.map(i=>`<li class="tl-row k-${i.kind}"><span class="tl-time">${i.ms!=null?A.hm(i.ms):'All day'}</span>${ico(i.kind)}<span class="tl-text"><strong>${A.esc(i.title)}</strong>${i.sub?`<small>${A.esc(i.sub)}</small>`:''}</span><span class="dose ${i.status}">${A.esc(i.label)}</span></li>`).join('')}</ol>`
   :`<div class="tl-empty"><p>Nothing scheduled for today.</p><p class="muted">Medicine doses and appointments for today appear here.</p></div>`;

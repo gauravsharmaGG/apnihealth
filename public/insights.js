@@ -8,6 +8,7 @@ const ARROW={up:'<path d="M12 19V5M6 11l6-6 6 6"/>',down:'<path d="M12 5v14M6 13
 const ico=k=>`<svg class="in-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ARROW[k]}</svg>`;
 const daily=(E,m)=>{const r=new Map();for(const e of E)if(e.metric===m)r.set(e.date,e.value);return r};
 const win=(map,a,b)=>[...map].filter(([d])=>d>=a&&d<=b).map(([,v])=>v);
+const rel=d=>{const t=A.day(Date.now());return d===t?'Today':d===A.addDays(t,-1)?'Yesterday':short(d)};
 const short=d=>new Date(d+'T12:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 // Week-over-week rule. min: smallest change worth mentioning (fraction), abs: the same in units (matches the
 // dashboard card, so both say the same thing); always: report "about the same" too.
@@ -23,21 +24,21 @@ function build(now){
   const a=avg(win(m,A.addDays(today,-6),today)),b=avg(win(m,A.addDays(today,-13),A.addDays(today,-7)));if(a==null||b==null||!b)continue;
   const f=(a-b)/b,small=r.abs?Math.abs(a-b)<r.abs:Math.abs(f)<r.min,dir=small?'flat':f>0?'up':'down';if(dir==='flat'&&!r.always)continue;
   const ch=r.pct?Math.round(Math.abs(f)*100)+'%':A.nf(Math.abs(a-b),r.dp)+' '+A.unitOf(r.metric);
-  out.push({k:dir,title:r.label+(dir==='flat'?': steady':dir==='up'?': up on last week':': down on last week'),text:r.say(a,dir,ch),href:'#trends'})}
+  out.push({k:dir,title:r.label+(dir==='flat'?': steady':dir==='up'?': up on last week':': down on last week'),text:r.say(a,dir,ch),href:'#trends',when:'This week'})}
  if(tracked.has('weight')){const m=daily(E,'weight'),ds=[...m.keys()].sort(),last=ds.at(-1);
   const ref=ds.filter(d=>d<=A.addDays(last||today,-28)).at(-1);
   if(last&&ref&&last>=A.addDays(today,-14)){const d=A.disp('weight',m.get(last))-A.disp('weight',m.get(ref)),u=A.unitOf('weight');
-   if(Math.abs(d)>=(u==='lb'?1:.5))out.push({k:d>0?'up':'down',title:'Weight over a month',text:`Your latest weight is ${A.nf(Math.abs(d),1)} ${u} ${d>0?'higher':'lower'} than on ${short(ref)}.`,href:'#trends'})}}
+   if(Math.abs(d)>=(u==='lb'?1:.5))out.push({k:d>0?'up':'down',title:'Weight over a month',text:`Your latest weight is ${A.nf(Math.abs(d),1)} ${u} ${d>0?'higher':'lower'} than on ${short(ref)}.`,href:'#trends',when:rel(last)})}}
  // medicine doses in the last 7 days that were neither marked taken nor skipped
  let missed=0;const from=Date.parse(A.addDays(today,-6)+'T00:00Z')-864e5;
  for(const p of data.plans)for(const s of p.slots||[]){const ms=A.slotMs(s);if(ms<from||ms>now||A.day(ms)<A.addDays(today,-6))continue;if(A.doseStatus(p,s,now)[0]==='missed')missed++}
- if(missed)out.push({k:'dose',title:'Unmarked doses',text:`${missed} medicine dose${missed>1?'s':''} in the last 7 days ${missed>1?'were':'was'} not marked as taken or skipped.`,href:'#medicines'});
+ if(missed)out.push({k:'dose',title:'Unmarked doses',text:`${missed} medicine dose${missed>1?'s':''} in the last 7 days ${missed>1?'were':'was'} not marked as taken or skipped.`,href:'#medicines',when:'Last 7 days'});
  const soon=data.appts.filter(a=>a.status==='scheduled'&&a.date>today&&a.date<=A.addDays(today,3)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
- if(soon){const n=Math.round((Date.parse(soon.date)-Date.parse(today))/864e5);out.push({k:'cal',title:'Coming up',text:`${soon.title} is ${n===1?'tomorrow':'in '+n+' days'}${soon.time?' at '+soon.time:''}.`,href:'#calendar'})}
+ if(soon){const n=Math.round((Date.parse(soon.date)-Date.parse(today))/864e5);out.push({k:'cal',title:'Coming up',text:`${soon.title} is ${n===1?'tomorrow':'in '+n+' days'}${soon.time?' at '+soon.time:''}.`,href:'#calendar',when:n===1?'Tomorrow':'In '+n+' days'})}
  // gaps: a tracked measurement that has readings, but none for more than 10 days
  const LABEL={weight:'weight',sleep:'sleep',steps:'step',heart_rate:'resting heart rate',spo2:'blood oxygen',hrv:'heart rate variability',body_fat:'body fat',blood_pressure:'blood pressure',temperature:'temperature'};
  for(const g of tracked){const met=A.GROUPS[g]?.[0];if(!met||!LABEL[g])continue;const ds=E.filter(e=>e.metric===met).map(e=>e.date).sort(),last=ds.at(-1);
-  if(last&&last<A.addDays(today,-10))out.push({k:'gap',title:'No recent readings',text:`No ${LABEL[g]} readings since ${short(last)}.`,href:'#log'})}
+  if(last&&last<A.addDays(today,-10))out.push({k:'gap',title:'No recent readings',text:`No ${LABEL[g]} readings since ${short(last)}.`,href:'#log',when:'Since '+short(last)})}
  return out.slice(0,6);
 }
 function render(){
@@ -45,7 +46,7 @@ function render(){
  const head='<div class="panel-head"><h2 id="insights-title">Recent insights</h2></div>',foot='<p class="in-note">Insights describe your own records with simple rules. They are not a diagnosis or medical advice.</p>';
  if(!data){el.innerHTML=head+'<p class="muted">Looking at your records…</p>';return}
  const list=build(Date.now());
- el.innerHTML=head+(list.length?`<ul class="in-list">${list.map(i=>`<li class="in-item in-${i.k}">${ico(i.k)}<div><strong>${A.esc(i.title)}</strong><p>${A.esc(i.text)}</p></div><a class="in-go" href="${i.href}" aria-label="Open: ${A.esc(i.title)}">→</a></li>`).join('')}</ul>`:'<p class="muted">Nothing to point out yet. Insights appear once there are about two weeks of readings, medicines or appointments.</p>')+foot;
+ el.innerHTML=head+(list.length?`<ul class="in-list">${list.map(i=>`<li class="in-item in-${i.k}">${ico(i.k)}<div><strong>${A.esc(i.title)}</strong>${i.when?`<small class="in-when">${A.esc(i.when)}</small>`:''}<p>${A.esc(i.text)}</p></div><a class="in-go" href="${i.href}" aria-label="Open: ${A.esc(i.title)}">→</a></li>`).join('')}</ul>`:'<p class="muted">Nothing to point out yet. Insights appear once there are about two weeks of readings, medicines or appointments.</p>')+foot;
 }
 async function load(){
  const p=window.PROFILE,n=++serial;data=null;render();
