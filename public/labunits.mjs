@@ -31,7 +31,8 @@ const SAME={
  '/ul':['cells/ul','/ulcells'],
  '10^3/ul':['10^9/l','tsd/ul','thou/ul','thousand/ul','k/ul','/nl','giga/l'],
  '10^6/ul':['10^12/l','mio/ul','mill/ul','million/ul','millions/ul','m/ul','/pl','tera/l'],
- 'lakh/ul':['lakhs/ul','lac/ul','lacs/ul'],
+ // Indian reports often print the count in lakhs without the per-volume part ("2.5 lakhs"); it is per µL (cumm).
+ 'lakh/ul':['lakhs/ul','lac/ul','lacs/ul','lakh','lakhs','lac','lacs'],
  'ml/min/1.73m^2':['ml/min/1.73m2','ml/min/1,73m^2','ml/min/1,73m2','ml/min/1.73qm','ml/min/1,73qm','ml/min/1.73m²'],
  'mm/h':['mm/hr','mm/1h','mm/1sth','mm/1sthr'],
 };

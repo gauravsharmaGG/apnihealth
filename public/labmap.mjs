@@ -101,7 +101,8 @@ const OCRFIX={O:'0',o:'0',Q:'0',D:'0',l:'1',I:'1',i:'1','|':'1',S:'5',s:'5',B:'8
 export function parseNum(s,locale='en'){
  let t=String(s).replace(/\s/g,'');
  if(locale==='de'){if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t))t=t.replace(/\./g,'');t=t.replace(',','.')}
- else{if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t))t=t.replace(/,/g,'');else t=t.replace(',','.')}
+ // Indian grouping (lakh/crore): 2,50,000 and 1,50,00,000
+ else{if(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)||/^\d{1,2}(,\d{2})+,\d{3}(\.\d+)?$/.test(t))t=t.replace(/,/g,'');else t=t.replace(',','.')}
  const n=Number(t);return /^-?\d+(\.\d+)?$/.test(t)&&Number.isFinite(n)?n:null;
 }
 const NUMW=/^([<>≤≥]=?)?(-?\d[\d.,]*)([*↑↓+]|[HhLl]\*?)?$/;
@@ -113,7 +114,9 @@ function numWord(w,ocr){
 const RANGE=[[/^(-?\d[\d.,]*)\s*(?:-|–|—|bis|to)\s*(-?\d[\d.,]*)$/i,(a,b)=>({lo:a,hi:b})],[/^(?:<|≤|<=|bis|up to|upto|below|unter)\s*(-?\d[\d.,]*)$/i,a=>({hi:a})],[/^(?:>|≥|>=|above|over|uber|über|ab)\s*(-?\d[\d.,]*)$/i,a=>({lo:a})]];
 export function parseRange(s,locale,{ocr=false}={}){
  const t=String(s??'').trim().replace(/\s+/g,' ');if(!t)return null;
- for(const [re,f] of ocr?[...RANGE,[/^(\d[\d.,]*) (\d[\d.,]*)$/,(a,b)=>a!==null&&b!==null&&a<b?{lo:a,hi:b}:{lo:null}]]:RANGE){const m=re.exec(t);if(m){const r=f(...m.slice(1).map(x=>parseNum(x,locale)));if(Object.values(r).every(v=>v!==null))return {text:t,...r}}}
+ // OCR drops the dash of a range ("4000 11000") or reads it as "~": two increasing numbers are a range, and its
+ // text is written back with the dash so the saved reference reads "4000-11000".
+ for(const [re,f,dashless] of ocr?[...RANGE,[/^(\d[\d.,]*) ?~ ?(\d[\d.,]*)$/,(a,b)=>a!==null&&b!==null&&a<b?{lo:a,hi:b}:{lo:null},true],[/^(\d[\d.,]*) (\d[\d.,]*)$/,(a,b)=>a!==null&&b!==null&&a<b?{lo:a,hi:b}:{lo:null},true]]:RANGE){const m=re.exec(t);if(m){const r=f(...m.slice(1).map(x=>parseNum(x,locale)));if(Object.values(r).every(v=>v!==null))return {text:dashless?m[1]+'-'+m[2]:t,...r}}}
  return null;
 }
 function unitAt(words,i){
@@ -195,7 +198,9 @@ function detectLocale(lines){
  for(const l of lines){
   if(/(ergebnis|einheit|referenz|normbereich|befund|untersuchung|labor\b|nüchtern|harnstoff|leukozyten)/i.test(l.text))de+=3;
   if(/(result|units?\b|reference|interval|investigation|observed)/i.test(l.text))en+=3;
-  for(const m of l.text.matchAll(/\b\d+([.,])\d{1,2}\b/g))m[1]===','?de++:en++;
+  // Indian digit grouping (2,50,000) is an English-style report; it would otherwise count as decimal commas
+  const txt=l.text.replace(/\b\d{1,2}(?:,\d{2})+,\d{3}\b/g,()=>{en+=2;return ' '});
+  for(const m of txt.matchAll(/\b\d+([.,])\d{1,2}\b/g))m[1]===','?de++:en++;
  }
  return de>en?'de':'en';
 }
@@ -224,6 +229,20 @@ function ocrRange(range,value,locale){
  if(!dec&&k.some(x=>decOf(b[x]))&&!near(range,3))return {range,issue:'value-unclear'};
  return near(range,3)?null:{range,issue:'range-unclear'};
 }
+// Counts in lakh/µL (1 lakh = 100,000; platelets are about 1.5-4.5 lakh/µL) are printed with one decimal ("2.5 lakhs/cumm").
+// OCR drops that small point, so "2.5" reads as "25" (and the range "1.5 - 4.5" as "15 - 45"), which still looks
+// plausible after conversion (2,500 × 10³/µL). A two-digit whole number in lakh/µL lost its point when the value with
+// the point fits the printed range read the same way, or when there is no range. Returns the fixed fields or null.
+function ocrLakh(r,locale){
+ if(normUnit(r.unit)!=='lakh/ul'||r.cmp||!/^\d{2}$/.test(String(r.value)))return null;
+ const num=r.num/10;let range=r.range;
+ if(range){
+  const bounds=String(range.text).match(/\d[\d.,]*/g)||[],whole=bounds.length>0&&bounds.every(b=>/^\d{2}$/.test(b));
+  if(whole){range={...range,text:range.text.replace(/\d{2}/g,d=>d[0]+'.'+d[1])};for(const k of ['lo','hi'])if(range[k]!==undefined)range[k]=range[k]/10}
+  if((range.lo!==undefined&&num<range.lo/3)||(range.hi!==undefined&&num>range.hi*3))return null;
+ }
+ return {num,value:locale==='de'?String(num).replace('.',','):String(num),range,reference:range?range.text:r.reference};
+}
 // OCR misreads in units: µ as p or u, a slash as l or I, a stray i. One edit, kept only if the marker accepts it.
 const UNIT_EDITS=[[/p/g,'µ'],[/u/g,'µ'],[/\/(?=l$)/gi,'/µ'],[/[lI1|]/g,'/'],[/[fi](?=[lL]$)/g,'/'],[/i/g,'']];
 function ocrUnit(marker,unit){
@@ -240,6 +259,7 @@ export function mapReport(tokens,markers,{household=[],method='pdf-text'}={}){
   const r=parseRow(l,{locale,ocr});
   if(!r||!r.name||r.name.length>80||(r.valueType==='number'&&NEVER.test(r.name))||(r.valueType==='number'&&parseDate(l.text)&&/(datum|date|on\b)/i.test(l.text))){if(l.text.length>2)unread.push({page:l.page,text:l.text});continue}
   const issues=[];
+  if(ocr&&r.unit&&r.num!==null){const f=ocrLakh(r,locale);if(f){Object.assign(r,f);issues.push('value-ocr-fixed')}}
   if(ocr&&r.range&&r.num!==null){const f=ocrRange(r.range,r.value,locale);if(f){r.range=f.range;issues.push(f.issue)}}
   let m=matcher.match(r.name,r.unit);
   if(!m&&ocr&&/ii/.test(r.name))m=matcher.match(r.name.replace(/ii/g,'ü'),r.unit); // OCR reads ü as ii
@@ -262,7 +282,7 @@ export function mapReport(tokens,markers,{household=[],method='pdf-text'}={}){
   }
   if(r.valueType==='text')issues.push('text-value');
   if(r.ocrFixed)issues.push('ocr-fixed');
-  const ocrPenalty=(r.ocrFixed?0.85:1)*(issues.includes('ocr-unit')?0.85:1)*(issues.includes('range-ocr-fixed')?0.9:1)*(issues.includes('value-unclear')?0.6:1);
+  const ocrPenalty=(r.ocrFixed?0.85:1)*(issues.includes('ocr-unit')?0.85:1)*(issues.includes('range-ocr-fixed')?0.9:1)*(issues.includes('value-unclear')?0.6:1)*(issues.includes('value-ocr-fixed')?0.85:1);
   if(issues.includes('range-unclear')&&flagSource==='range'){flag=null;flagSource=null}
   const conf=e?round(m.score*Math.min(1,r.valueConf)*unitScore*plausScore*flagScore*ocrPenalty):0;
   const bucket=!e?'unmapped':conf>=BUCKETS.high?'high':conf>=BUCKETS.medium?'medium':'low';

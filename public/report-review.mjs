@@ -100,7 +100,7 @@ async function readItem(p,item,file,langs=DEFAULT_LANGS){
 // ---- review ----
 const BADGE={high:['ok','Looks right'],medium:['check','Check this'],low:['low','Low confidence'],unmapped:['new','Not recognised']};
 const ISSUE={'no-unit':'No unit printed','unit-unknown':'Unit not known for this marker','implausible':'Value looks implausible','flag-mismatch':'Flag and range disagree',
- 'text-value':'Text results can’t be saved yet','ocr-fixed':'Some characters were corrected','ocr-unit':'Unit corrected from the scan','range-ocr-fixed':'Range read with corrected decimals',
+ 'text-value':'Text results can’t be saved yet','ocr-fixed':'Some characters were corrected','ocr-unit':'Unit corrected from the scan','range-ocr-fixed':'Range read with corrected decimals','value-ocr-fixed':'Decimal point restored from the scan',
  'range-unclear':'Range unclear','value-unclear':'Value may have lost its decimal point','duplicate':'Same marker earlier in this report','duplicate-other-unit':'Same marker earlier, other unit','saved':'Already saved for this date'};
 function rowHtml(r){
  const [cls,label]=BADGE[r.bucket]||BADGE.low,text=r.valueType==='text',mapped=r.choice==='map'&&r.markerName;
