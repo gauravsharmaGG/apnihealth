@@ -41,7 +41,7 @@ try{
  const login=await req('/login');assert.equal(login.status,200);assert.match(login.body,/class="demo-notice" role="note">This is a public demo/);
  const css=await req('/style.css');assert.equal(css.status,200);assert.match(css.headers.get('content-type'),/text\/css/);
  assert.match(css.headers.get('content-security-policy'),/default-src 'self'/);assert.equal(css.headers.get('cache-control'),'private, no-store, max-age=0');
- assert.equal((await req('/')).headers.get('location'),'/login','signed out: sign in first');
+  {const lp=await req('/');assert.equal(lp.status,200,'signed out: landing page');assert.match(lp.headers.get('content-type'),/text\/html/);assert.match(lp.body,/class="demo-notice" role="note">This is a public demo/);assert.match(lp.body,/<h1 id="lp-h1">/);assert.equal(lp.headers.get('x-robots-tag'),null);assert.equal((await req('/landing.css')).status,200)}
  assert.equal((await req('/api/inbox')).status,401);
  assert.equal((await req('/records/x.pdf')).status,303,'no static file without a session');
  const hostCheck=await new Promise((ok,no)=>http.get(O+'/login',{headers:{Host:'evil.example'}},r=>{r.resume();ok(r.statusCode)}).on('error',no));assert.equal(hostCheck,400,'host check');
