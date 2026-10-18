@@ -56,6 +56,7 @@ try{
  const ls=await labsOf('sam');assert.deepEqual(ls.measurements.map(m=>m.points.length).sort(),[1,2],'a second adult has their own lab results');assert(ls.measurements.every(m=>m.points.every(p=>p.source===null)));
  assert.equal((await labsOf('mia')).measurements.length,0);
  const cat=await (await get('/api/labs/catalog')).json();assert(cat.markers.length>50&&cat.markers.every(m=>m.name&&m.group&&Array.isArray(m.aliases)));
+ {const g=cat.markers.find(m=>m.name==='Fasting blood sugar');assert.equal(g.unit,'mg/dL');assert.equal(g.units[0].factor,18.016);assert.deepEqual(g.plausible,[10,2000])}
  const lr=await post('/api/labs?profile=mia',{date:'2000-01-01',values:[{name:'Hemoglobin',value:'12',unit:'g/dL'}]});assert.equal(lr.status,201,'any member can hold lab results');
  const added=await lr.json();assert.equal(added.measurements.length,1);
  assert.equal((await post('/api/labs?profile=mia',{date:'2000-01-01',values:[{name:'Not a real marker',value:'1'}]})).status,400);
