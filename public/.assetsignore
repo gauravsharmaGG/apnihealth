@@ -1,0 +1,5 @@
+# Never uploaded as static assets on Workers (wrangler reads this file): personal records and build leftovers.
+.assetsignore
+records/
+*.tmp
+*-cover.*

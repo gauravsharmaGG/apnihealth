@@ -39,6 +39,7 @@ backups/
 
 # Tooling
 node_modules/
+.wrangler/
 .venv/
 __pycache__/
 *.pyc

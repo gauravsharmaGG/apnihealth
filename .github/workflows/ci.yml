@@ -52,6 +52,7 @@ jobs:
           node test-onboarding.mjs
           node test-datarights.mjs
           node test-blobs.mjs
+          node test-workers-backends.mjs
           node test-passkeys.mjs
           node test-households.mjs
           node test-ingest-push.mjs
@@ -74,3 +75,21 @@ jobs:
         env:
           CHROME_BIN: google-chrome
         run: node test-browser-smoke.mjs && node test-browser-accounts.mjs && node test-browser-onboarding.mjs
+
+  # The Cloudflare Workers target under `wrangler dev` (local workerd + Miniflare; no Cloudflare account, nothing
+  # deployed). wrangler is fetched with npx at a pinned version; it is not an npm dependency of the app.
+  workers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.13"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Workers end-to-end (wrangler dev 4.151.1)
+        env:
+          WRANGLER_SEND_METRICS: "false"
+        run: node test-workers.mjs
