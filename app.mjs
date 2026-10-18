@@ -202,7 +202,14 @@ async function app(req,res,reqUrl,path,user,hh,hs){
   }catch(e){return fail(res,e)}
  }
  // Lab results: catalog of known markers (names, groups, aliases), and per-member reports.
- if(path==='/api/labs/catalog'&&req.method==='GET')return json(res,200,{markers:labs.catalog().markers.map(({name,group,aliases,unit,units,plausible,alt})=>({name,group,aliases,unit,units,plausible,alt}))});
+ // The marker catalog as this profile's household sees it (defaults, private/markers.json, household markers).
+ if(path==='/api/labs/catalog'&&req.method==='GET'){try{return json(res,200,{markers:labs.catalogFor(qProfile).markers.map(({name,group,aliases,unit,units,plausible,alt,custom})=>({name,group,aliases,unit,units,plausible,alt,...(custom?{custom:true}:{})}))})}catch(e){return fail(res,e)}}
+ // Read-only duplicate check before saving values read from a report.
+ if(path==='/api/labs/check'&&req.method==='POST'){
+  if(!sameOrigin(req))return json(res,403,{error:'Origin rejected'});
+  if(limited('labs-check',120,600000))return json(res,429,{error:'Too many requests'});
+  try{return json(res,200,labs.checkDuplicates(qProfile,JSON.parse(await readBody(req,65536))))}catch(e){return fail(res,e)}
+ }
  if(path==='/api/labs'||path.startsWith('/api/labs/')){
   const id=path.split('/')[3];
   try{

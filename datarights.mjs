@@ -32,6 +32,8 @@ export async function exportData(user){
   }
   const s=settings.get(h.id);
   households.push({id:h.id,name:h.name,yourRole:h.role,settings:{metrics:s.metrics,timeZone:s.timeZone,units:s.units},
+   // Household custom lab markers and learned aliases (lab_markers is per household, not per member).
+   labMarkers:system().prepare('SELECT name,group_name,unit,aliases,created_at FROM lab_markers WHERE household_id=? ORDER BY name').all(h.id).map(r=>({name:r.name,group:r.group_name,unit:r.unit,aliases:JSON.parse(r.aliases||'[]'),createdAt:r.created_at})),
    people:A.people(h.id).map(p=>({email:p.email,name:p.name,role:p.role})),members});
  }
  const data={

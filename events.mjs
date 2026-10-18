@@ -1,7 +1,7 @@
 // Per-profile episodes, care log (fever, medicine, notes) and record inbox (photo/PDF uploads awaiting review).
 // Records live in the database (document tables via store.docs); uploaded files go through blobs.mjs
 // (key profiles/<id>/uploads/<file>; on Node that is still private/profiles/<id>/uploads/).
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import * as members from './members.mjs';
 import {blobs,uploadKey} from './blobs.mjs';
 import {docs,forMember,canWrite,AccessError,canWriteMember} from './store.mjs';
@@ -68,7 +68,7 @@ function checkLink(p,e){if(e.link?.type==='upload'&&!IN.list(p).some(x=>x.id===e
 export function addEvent(p,v){const e={id:randomUUID(),...validateEvent(v)};if(e.episodeId&&!listEpisodes(p).some(x=>x.id===e.episodeId))throw Error('Episode not found');checkLink(p,e);const all=listEvents(p);all.push(e);EV.replace(p,all);return e}
 export function updateEvent(p,id,v){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return null;const n=validateEvent(v);if(n.episodeId&&!listEpisodes(p).some(x=>x.id===n.episodeId))throw Error('Episode not found');checkLink(p,n);all[i]={...all[i],...n,id};if(!('episodeId' in n))delete all[i].episodeId;if(!('link' in n))delete all[i].link;EV.replace(p,all);return all[i]}
 export function deleteEvent(p,id){const all=listEvents(p),i=all.findIndex(e=>e.id===id);if(i<0)return false;all.splice(i,1);EV.replace(p,all);return true}
-const pub=({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status})=>({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status});
+const pub=({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status,sha256,labReportId})=>({id,category,episodeId,date,title,note,fileName,mimeType,size,createdAt,status,sha256,labReportId});
 export const listInbox=p=>IN.list(p).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).map(pub);
 export async function addInbox(p,v){
  if(!v||typeof v!=='object')throw Error('Upload must be an object');
@@ -83,9 +83,12 @@ export async function addInbox(p,v){
  known(p); // unknown profiles are refused before anything is stored
  const id=randomUUID(),stored=id+mimes.get(v.mimeType),key=uploadKey(p,stored);await blobs().put(key,buf,{contentType:v.mimeType});
  const epId=typeof v.episodeId==='string'&&listEpisodes(p).some(x=>x.id===v.episodeId)?v.episodeId:undefined;
- const item={id,category:v.category,episodeId:epId,date:v.date,title,note,fileName,storedFileName:stored,mimeType:v.mimeType,size:buf.length,createdAt:new Date().toISOString(),status:'needs-review'};
- try{const all=IN.list(p);all.push(item);IN.replace(p,all)}catch(e){await blobs().delete(key).catch(()=>{});throw e}
- return pub(item);
+ const sha256=createHash('sha256').update(buf).digest('hex');
+ const item={id,category:v.category,episodeId:epId,date:v.date,title,note,fileName,storedFileName:stored,mimeType:v.mimeType,size:buf.length,createdAt:new Date().toISOString(),status:'needs-review',sha256};
+ let same=[];
+ try{const all=IN.list(p);same=all.filter(x=>x.sha256===sha256).map(x=>({id:x.id,title:x.title,labReportId:x.labReportId}));all.push(item);IN.replace(p,all)}catch(e){await blobs().delete(key).catch(()=>{});throw e}
+ // sameAs: earlier uploads of this member with identical bytes (for "Already imported on ...").
+ return {...pub(item),...(same.length?{sameAs:same}:{})};
 }
 // The stored file of one inbox item: {key,size,mime,name} or null; stream it with blobs().stream(key).
 export async function inboxFile(p,id){
@@ -93,7 +96,16 @@ export async function inboxFile(p,id){
  let key;try{key=uploadKey(p,it.storedFileName)}catch{return null}
  const st=await blobs().stat(key);return st?{key,size:st.size,mime:it.mimeType,name:it.fileName}:null;
 }
+// The raw inbox item (or null), and the link to the lab report that was read from it (labs.mjs, in its transaction).
+export const inboxItem=(p,id)=>IN.list(p).find(x=>x.id===id)||null;
+export function linkInbox(p,id,reportId){
+ const all=IN.list(p),it=all.find(x=>x.id===id);if(!it)throw Error('Attached file not found');
+ if(reportId){it.status='imported';it.labReportId=reportId}else{it.status='needs-review';delete it.labReportId}
+ IN.replace(p,all);
+}
+// A file that a lab report links to is refused: delete the report first (the file is the evidence for its values).
 export async function deleteInbox(p,id){
- const all=IN.list(p),i=all.findIndex(x=>x.id===id);if(i<0)return false;const [it]=all.splice(i,1);IN.replace(p,all);
+ const all=IN.list(p),i=all.findIndex(x=>x.id===id);if(i<0)return false;
+ if(forMember(p).get('SELECT 1 AS x FROM lab_reports WHERE member_id=$member AND upload_id=$id',{id}))throw Error('A lab report was read from this file. Delete that report first.');const [it]=all.splice(i,1);IN.replace(p,all);
  try{await blobs().delete(uploadKey(p,it.storedFileName))}catch{}return true;
 }
