@@ -76,7 +76,7 @@ jobs:
       - name: Browser smoke and accounts tests (Chrome, 390x844)
         env:
           CHROME_BIN: google-chrome
-        run: node test-browser-smoke.mjs && node test-browser-accounts.mjs && node test-browser-onboarding.mjs
+        run: node test-browser-smoke.mjs && node test-browser-dashboard.mjs && node test-browser-accounts.mjs && node test-browser-onboarding.mjs && node test-browser-landing.mjs
 
   # The Cloudflare Workers target under `wrangler dev` (local workerd + Miniflare; no Cloudflare account, nothing
   # deployed). wrangler is fetched with npx at a pinned version; it is not an npm dependency of the app.

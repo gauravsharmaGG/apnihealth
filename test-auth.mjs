@@ -43,7 +43,7 @@ try{
  const as=(c,path,o={})=>req(port,{path,...o,headers:{Cookie:c.cookie,...(o.method&&o.method!=='GET'?{Origin:O,'Content-Type':'application/json'}:{}),...(o.headers||{})}});
  const J=async p=>JSON.parse((await p).body);
  // signed out
- assert.equal((await req(port,{path:'/'})).status,303);assert.equal((await req(port,{path:'/'})).headers.location,'/login');
+ {const lp=await req(port,{path:'/'});assert.equal(lp.status,200,'signed out: landing page');assert.match(lp.headers['content-type'],/text\/html/);assert.match(lp.body,/<h1 id="lp-h1">/);assert.match(lp.body,/href="\/login"/);assert.equal(lp.headers['x-robots-tag'],undefined,'landing is indexable');assert.equal((await req(port,{method:'HEAD',path:'/'})).status,200);assert.equal((await req(port,{path:'/landing.css'})).status,200);assert.equal((await req(port,{path:'/index.html'})).status,303,'the app shell stays private')}
  assert.equal((await req(port,{path:'/api/log'})).status,401);assert.equal((await req(port,{path:'/config.js'})).status,303);
  assert.equal((await req(port,{path:'/login'})).status,200);assert.equal((await req(port,{path:'/style.css'})).status,200);
  assert.equal((await req(port,{path:'/api/log',headers:{Cookie:'apni_session='+'x'.repeat(43)}})).status,401,'a made-up session is refused');
