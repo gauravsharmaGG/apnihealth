@@ -111,9 +111,9 @@ function numWord(w,ocr){
  return m?{m,fixed:false}:null;
 }
 const RANGE=[[/^(-?\d[\d.,]*)\s*(?:-|–|—|bis|to)\s*(-?\d[\d.,]*)$/i,(a,b)=>({lo:a,hi:b})],[/^(?:<|≤|<=|bis|up to|upto|below|unter)\s*(-?\d[\d.,]*)$/i,a=>({hi:a})],[/^(?:>|≥|>=|above|over|uber|über|ab)\s*(-?\d[\d.,]*)$/i,a=>({lo:a})]];
-export function parseRange(s,locale){
+export function parseRange(s,locale,{ocr=false}={}){
  const t=String(s??'').trim().replace(/\s+/g,' ');if(!t)return null;
- for(const [re,f] of RANGE){const m=re.exec(t);if(m){const r=f(...m.slice(1).map(x=>parseNum(x,locale)));if(Object.values(r).every(v=>v!==null))return {text:t,...r}}}
+ for(const [re,f] of ocr?[...RANGE,[/^(\d[\d.,]*) (\d[\d.,]*)$/,(a,b)=>a!==null&&b!==null&&a<b?{lo:a,hi:b}:{lo:null}]]:RANGE){const m=re.exec(t);if(m){const r=f(...m.slice(1).map(x=>parseNum(x,locale)));if(Object.values(r).every(v=>v!==null))return {text:t,...r}}}
  return null;
 }
 function unitAt(words,i){
@@ -153,7 +153,7 @@ export function parseRow(line,{locale='en',ocr=false}={}){
   const w=words[i].text,lw=w.toLowerCase();
   if(!flag&&FLAGS.has(lw)&&!(lw==='-'&&words[i+1]&&/^\d/.test(words[i+1].text))){flag=FLAGS.get(lw);flagWord=w;i++;continue}
   if(!unit){const u=unitAt(words,i);if(u){unit=u.unit;i+=u.n;continue}}
-  if(!range){for(let n=Math.min(5,words.length-i);n>=1;n--){const r=parseRange(words.slice(i,i+n).map(x=>x.text).join(' '),locale);if(r){range=r;i+=n;break}}if(range)continue}
+  if(!range){for(let n=Math.min(5,words.length-i);n>=1;n--){const r=parseRange(words.slice(i,i+n).map(x=>x.text).join(' '),locale,{ocr});if(r){range=r;i+=n;break}}if(range)continue}
   rest.push(w);i++;
  }
  // An unknown word after the value is kept as the unit, so the review flags it (unit-unknown) instead of guessing.
@@ -199,6 +199,37 @@ function detectLocale(lines){
  }
  return de>en?'de':'en';
 }
+// OCR often drops small decimal points in reference ranges ("3.5-5.3" read as "35-53", "0.7-1.3" as "07-13").
+// A bound with a leading zero lost its point for sure; integer bounds far from a value that has decimals are read
+// with the value's decimals when that puts the value near the range. Otherwise a range far off the value is unclear
+// and gives no flag. Returns {range, issue} or null (range fine as read).
+function ocrRange(range,value,locale){
+ const bounds=String(range.text).match(/\d[\d.,]*/g)||[],decOf=b=>(/[.,](\d+)$/.exec(String(b))||[,''])[1].length,dec=decOf(value);
+ const k=Object.keys(range).filter(x=>x==='lo'||x==='hi'),num=parseNum(String(value).replace(/^[<>≤≥]=?/,''),locale);
+ if(num===null||!k.length||bounds.length<k.length)return null;
+ const b=Object.fromEntries(k.map((x,i)=>[x,bounds[i]])),inside=r=>(r.lo===undefined||num>=r.lo)&&(r.hi===undefined||num<=r.hi);
+ const near=(r,f)=>(r.lo===undefined||num>=r.lo/f)&&(r.hi===undefined||num<=r.hi*f);
+ const fixed=fix=>({range:{...range,...fix},issue:'range-ocr-fixed'});
+ // "07-13": a leading zero always had a point after it
+ if(k.some(x=>/^0\d+$/.test(b[x])))return fixed(Object.fromEntries(k.map(x=>[x,/^0\d+$/.test(b[x])?Number('0.'+b[x].slice(1)):range[x]])));
+ // "35-7.2": low above high, one bound lost its point; give it the other bound's decimals
+ if(range.lo!==undefined&&range.hi!==undefined&&range.lo>range.hi){
+  if(!decOf(b.lo)&&decOf(b.hi))return fixed({lo:range.lo/10**decOf(b.hi)});
+  return {range,issue:'range-unclear'};
+ }
+ if(inside(range))return null;
+ // "135-175" next to 14,2: integer bounds read with the value's decimals when that puts the value in or near the range
+ if(dec>0&&k.every(x=>/^\d{2,}$/.test(b[x]))){const f=Object.fromEntries(k.map(x=>[x,range[x]/10**dec]));if(near(f,2))return fixed(f)}
+ // a value without decimals far above a range printed with decimals ("24" for 2.4 next to 0.35-5.50) lost its point
+ if(!dec&&k.some(x=>decOf(b[x]))&&!near(range,3))return {range,issue:'value-unclear'};
+ return near(range,3)?null:{range,issue:'range-unclear'};
+}
+// OCR misreads in units: µ as p or u, a slash as l or I, a stray i. One edit, kept only if the marker accepts it.
+const UNIT_EDITS=[[/p/g,'µ'],[/u/g,'µ'],[/\/(?=l$)/gi,'/µ'],[/[lI1|]/g,'/'],[/[fi](?=[lL]$)/g,'/'],[/i/g,'']];
+function ocrUnit(marker,unit){
+ for(const [re,to] of UNIT_EDITS)for(const m of unit.matchAll(re)){const u=unit.slice(0,m.index)+to+unit.slice(m.index+m[0].length);if(u&&accepts(marker,u))return u}
+ return null;
+}
 // Score parts, and the buckets: high = ticked; medium = ticked and highlighted; low or unmapped = not ticked.
 export const BUCKETS={high:0.9,medium:0.7};
 export function mapReport(tokens,markers,{household=[],method='pdf-text'}={}){
@@ -208,7 +239,11 @@ export function mapReport(tokens,markers,{household=[],method='pdf-text'}={}){
   if(HEADER.test(l.cells[0]?.text||'')&&l.cells.length>=2&&!l.cells.slice(1).some(c=>/^\d/.test(c.text))){continue}
   const r=parseRow(l,{locale,ocr});
   if(!r||!r.name||r.name.length>80||(r.valueType==='number'&&NEVER.test(r.name))||(r.valueType==='number'&&parseDate(l.text)&&/(datum|date|on\b)/i.test(l.text))){if(l.text.length>2)unread.push({page:l.page,text:l.text});continue}
-  const m=matcher.match(r.name,r.unit),issues=[];
+  const issues=[];
+  if(ocr&&r.range&&r.num!==null){const f=ocrRange(r.range,r.value,locale);if(f){r.range=f.range;issues.push(f.issue)}}
+  let m=matcher.match(r.name,r.unit);
+  if(!m&&ocr&&/ii/.test(r.name))m=matcher.match(r.name.replace(/ii/g,'ü'),r.unit); // OCR reads ü as ii
+  if(ocr&&m&&r.unit&&!accepts(m.marker,r.unit)){const u=ocrUnit(m.marker,r.unit);if(u){r.unit=u;issues.push('ocr-unit');m=matcher.match(r.name,r.unit)||m}}
   const e=m?.marker||null;
   let unitScore=1,plausScore=1,flagScore=1,preferred=null;
   if(e){
@@ -227,7 +262,9 @@ export function mapReport(tokens,markers,{household=[],method='pdf-text'}={}){
   }
   if(r.valueType==='text')issues.push('text-value');
   if(r.ocrFixed)issues.push('ocr-fixed');
-  const conf=e?round(m.score*Math.min(1,r.valueConf)*unitScore*plausScore*flagScore*(r.ocrFixed?0.85:1)):0;
+  const ocrPenalty=(r.ocrFixed?0.85:1)*(issues.includes('ocr-unit')?0.85:1)*(issues.includes('range-ocr-fixed')?0.9:1)*(issues.includes('value-unclear')?0.6:1);
+  if(issues.includes('range-unclear')&&flagSource==='range'){flag=null;flagSource=null}
+  const conf=e?round(m.score*Math.min(1,r.valueConf)*unitScore*plausScore*flagScore*ocrPenalty):0;
   const bucket=!e?'unmapped':conf>=BUCKETS.high?'high':conf>=BUCKETS.medium?'medium':'low';
   rows.push({line:l.text,page:l.page,y:l.y,name:r.name,marker:e?.name||null,custom:!!e?.custom,how:m?.how||null,unitPicked:!!m?.unitPicked,value:r.value,num:r.num,cmp:r.cmp||null,
    unit:r.unit,reference:r.reference,flag,flagSource,conf,bucket,include:!!e&&bucket!=='low'&&r.valueType==='number',issues,preferred:preferred&&preferred.factor!==1?{num:preferred.num,unit:preferred.unit}:null,valueType:r.valueType});

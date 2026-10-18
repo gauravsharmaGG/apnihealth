@@ -37,3 +37,23 @@ export function makePdf(pages){
  return {pdf:Buffer.from(out,'latin1'),tokens};
 }
 export const PAGE={W,H};
+// A "scanned" PDF: one JPEG per A4 page and no text at all (what a scanner or a phone's scan feature makes).
+// jpegs: [{data: Buffer (baseline JPEG), width, height}] (pixel size of each image).
+export function makeImagePdf(jpegs){
+ const parts=[],offs=[];let len=0;
+ const push=b=>{const buf=Buffer.isBuffer(b)?b:Buffer.from(b,'latin1');parts.push(buf);len+=buf.length};
+ const n=2+jpegs.length*3;
+ push('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n');
+ const obj=(id,body,stream)=>{offs[id-1]=len;push(`${id} 0 obj\n${body}\n`);if(stream){push('stream\n');push(stream);push('\nendstream\n')}push('endobj\n')};
+ obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+ obj(2,`<< /Type /Pages /Kids [${jpegs.map((_,i)=>`${3+i*3} 0 R`).join(' ')}] /Count ${jpegs.length} >>`);
+ jpegs.forEach((j,i)=>{
+  const page=3+i*3,img=page+1,cs=page+2,content=`q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q\n`;
+  obj(page,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${img} 0 R >> >> /Contents ${cs} 0 R >>`);
+  obj(img,`<< /Type /XObject /Subtype /Image /Width ${j.width} /Height ${j.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${j.data.length} >>`,j.data);
+  obj(cs,`<< /Length ${content.length} >>`,content);
+ });
+ const xref=len;
+ push(`xref\n0 ${n+1}\n0000000000 65535 f \n${offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<< /Size ${n+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+ return Buffer.concat(parts);
+}

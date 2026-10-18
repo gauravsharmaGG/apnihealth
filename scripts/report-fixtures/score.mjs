@@ -1,3 +1,4 @@
+import {similarity,normName} from '../../public/labmap.mjs';
 // Field-level scoring of a reading (labmap.mapReport output) against a synthetic report's ground truth.
 // A row is correct when marker, number and flag all match. Precision is measured on the rows the reader would save
 // by default (ticked, i.e. high and medium buckets) and separately on the high bucket; recall on the expected
@@ -6,7 +7,9 @@ const close=(a,b)=>a===b||(Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)
 export function score(rep,result){
  const truth=rep.pages.flat(),rows=result.rows,used=new Set(),detail=[];
  for(const t of truth){
-  const i=rows.findIndex((r,k)=>!used.has(k)&&r.name&&norm(r.name)===norm(t.name));
+  let i=rows.findIndex((r,k)=>!used.has(k)&&r.name&&norm(r.name)===norm(t.name));
+  // OCR may misread a letter of the printed name (Hamoglobin): then the closest unused row with the same page order
+  if(i<0){let best=0.8;rows.forEach((r,k)=>{if(used.has(k)||!r.name)return;const v=similarity(normName(r.name),normName(t.name));if(v>=best){best=v;i=k}})}
   if(i<0){detail.push({name:t.name,found:false,want:t.want});continue}
   used.add(i);const r=rows[i];
   const ok=t.want.marker===null?r.marker===null||!r.include:r.marker===t.want.marker&&close(r.num,t.want.num)&&(r.flag||null)===(t.want.flag||null);
