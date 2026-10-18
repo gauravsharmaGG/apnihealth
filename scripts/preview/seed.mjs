@@ -47,5 +47,5 @@ const a0=appts.list(ADULT)[0];if(a0)appts.mutate(ADULT,{action:'status',id:a0.id
 const entries=[];for(let d=-90;d<=0;d++){entries.push({metric:'steps',date:day(d),value:Math.round(4000+rnd()*8000)},{metric:'resting_hr',date:day(d),value:Math.round(58+rnd()*8)},{metric:'sleep',date:day(d),value:+(6+rnd()*2.5).toFixed(1)});entries.push({metric:'spo2',date:day(d),value:Math.round(96+rnd()*3)},{metric:'hrv',date:day(d),value:Math.round(42+rnd()*18)});if(d%7===0)entries.push({metric:'weight',date:day(d),value:+(72-d/60+rnd()).toFixed(1)},{metric:'bp_sys',date:day(d),value:Math.round(114+rnd()*8)},{metric:'bp_dia',date:day(d),value:Math.round(72+rnd()*6)})}
 hlog.add(entries,'manual',ADULT);
 // the example household tracks a few more measurements than the defaults, so previews show every card type
-(await imp('settings.mjs')).save(house.id,{metrics:['sleep','steps','heart_rate','spo2','hrv','weight','blood_pressure']});
+(await imp('settings.mjs')).save(house.id,{metrics:['sleep','steps','heart_rate','spo2','hrv','weight','blood_pressure','temperature']});
 console.log('seeded apnihealth preview data (fictional) in',wt);
