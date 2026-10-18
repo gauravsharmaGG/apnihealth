@@ -1,5 +1,6 @@
 // Lab results entered in the app: loads the current member's results from /api/labs into the explorer
-// (window.setLabData in app.js), lists their reports and handles the "Add results" form.
+// (window.setLabData in app.js), lists their reports and handles the "Add results" form. "Import from a report"
+// (reading a PDF or photo on the device) lives in report-review.mjs and is loaded only where the browser supports it.
 (()=>{
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,11 +12,12 @@ function show(j){
  window.setLabData?.(j.measurements||[]);
  const list=$('#lab-report-list');if(!list)return;
  const reps=(j.reports||[]).slice().reverse();
- list.innerHTML=reps.length?reps.map(r=>`<li><span><strong>${esc(r.title||r.source||'Lab report')}</strong><small>${day(r.date)} · ${r.count} result${r.count===1?'':'s'}${r.screening?' · screening':''}${r.preliminary?' · preliminary':''}</small></span><button type="button" class="text-button" data-lab-del="${esc(r.id)}" aria-label="Delete report from ${day(r.date)}">Delete</button></li>`).join(''):'<li><span class="muted">No lab reports yet.</span></li>';
+ list.innerHTML=reps.length?reps.map(r=>`<li><span><strong>${esc(r.title||r.source||'Lab report')}</strong><small>${day(r.date)} · ${r.count} result${r.count===1?'':'s'}${r.screening?' · screening':''}${r.preliminary?' · preliminary':''}</small></span>${r.uploadId?`<a class="text-button" href="/api/inbox/${encodeURIComponent(r.uploadId)}/file?profile=${encodeURIComponent(P())}" target="_blank" rel="noopener" aria-label="Open the original file of the report from ${day(r.date)}">Original</a>`:''}<button type="button" class="text-button" data-lab-del="${esc(r.id)}" aria-label="Delete report from ${day(r.date)}">Delete</button></li>`).join(''):'<li><span class="muted">No lab reports yet.</span></li>';
 }
 async function load(){
  const n=++seq;
- if(!isAdult()){window.setLabData?.([]);return}
+ if(!isAdult()){window.setLabData?.([]);const b=$('#lab-import');if(b)b.hidden=true;return}
+ import('/report-review.mjs').then(m=>m.labsEntry($('#lab-add'),P)).catch(()=>{}); // "Import from a report" where supported
  try{const j=await api('/api/labs');if(n===seq)show(j)}catch{if(n===seq){window.setLabData?.([]);const l=$('#lab-report-list');if(l)l.innerHTML='<li><span class="muted">Could not load lab results. Refresh to try again.</span></li>'}}
 }
 // ---- form ----
@@ -54,5 +56,6 @@ document.addEventListener('click',async e=>{
 });
 $('#lab-form')?.addEventListener('submit',submit);
 addEventListener('profilechange',load);
+addEventListener('labschange',e=>{if(e.detail?.profile===P()){seq++;load()}});
 load();
 })();

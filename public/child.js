@@ -66,10 +66,13 @@ const CATS={'u-examination':'Check-up','vaccination':'Vaccination','growth-chart
 const CATS_FOR={child:['u-examination','vaccination','growth-chart','medical-document','other'],adult:['lab-report','medical-document','other']};
 const kindOf=p=>window.PROFILES?.[p]?.kind==='child'?'child':'adult';
 function inboxMarkup(p){return `<form class="inbox-form" data-p="${p}" novalidate><label class="field">Type<select name="category">${CATS_FOR[kindOf(p)].map(c=>`<option value="${c}">${CATS[c]}</option>`).join('')}</select></label><label class="field">Date of the record<input type="date" name="date" required></label><label class="field wide">Title<input name="title" maxlength="120" placeholder="e.g. Blood test results" autocomplete="off"></label><label class="field wide">Note (optional)<input name="note" maxlength="500" autocomplete="off"></label><label class="field wide">Photo or PDF, up to 8 MB<input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"></label><button class="primary" type="submit">Save for review</button><p class="form-msg" role="status" aria-live="polite"></p></form><div class="inbox-list"></div>`}
+const inboxItems=new Map();
 async function loadInbox(p){
  const box=document.querySelector(`[data-inbox="${kindOf(p)}"]`);if(!box)return;
  if(box.dataset.ready!==p){box.innerHTML=inboxMarkup(p);box.dataset.ready=p;box.querySelector('input[type=date]').value=todayStr();box.querySelector('input[type=date]').max=todayStr()}
- try{const {items}=await api(`/api/inbox?profile=${p}`);box.querySelector('.inbox-list').innerHTML=items.length?`<h3>Saved records</h3><ul class="entry-list">${items.map(i=>`<li><span class="e-main"><span class="chip prod">${esc(CATS[i.category]||i.category)}</span><strong>${esc(i.title)}</strong></span><span class="e-meta">${fmt(i.date)} · ${nf(i.size/1024,0)} KB · Needs review${i.note?' · '+esc(i.note):''}</span><span class="row-actions"><a class="text-button" href="/api/inbox/${esc(i.id)}/file?profile=${p}" target="_blank" rel="noopener">Open</a><button class="text-button danger" data-delbox="${esc(i.id)}" data-p="${p}">Delete</button></span></li>`).join('')}</ul>`:''}catch{}
+ try{const {items}=await api(`/api/inbox?profile=${p}`);inboxItems.set(p,items);box.querySelector('.inbox-list').innerHTML=items.length?`<h3>Saved records</h3><ul class="entry-list">${items.map(i=>`<li><span class="e-main"><span class="chip prod">${esc(CATS[i.category]||i.category)}</span><strong>${esc(i.title)}</strong></span><span class="e-meta">${fmt(i.date)} · ${nf(i.size/1024,0)} KB · ${i.status==='imported'?'Values saved':'Needs review'}${i.note?' · '+esc(i.note):''}</span><span class="row-actions">${i.category==='lab-report'&&i.status!=='imported'&&kindOf(p)==='adult'?`<button type="button" class="text-button" data-read-report="${esc(i.id)}" data-p="${p}" hidden>Read values</button>`:''}<a class="text-button" href="/api/inbox/${esc(i.id)}/file?profile=${p}" target="_blank" rel="noopener">Open</a><button class="text-button danger" data-delbox="${esc(i.id)}" data-p="${p}">Delete</button></span></li>`).join('')}</ul>`:'';
+  if(items.some(i=>i.category==='lab-report'&&i.status!=='imported'))import('/report-review.mjs').then(m=>m.decorate(box)).catch(()=>{}); // "Read values" where supported
+ }catch{}
 }
 async function submitInbox(form){
  const p=form.dataset.p,msg=form.querySelector('.form-msg'),f=form.file.files[0],bad=t=>{msg.className='form-msg bad';msg.textContent=t};
@@ -95,10 +98,12 @@ function activate(){
  loadInbox(p);
 }
 document.addEventListener('click',async e=>{
- const db=e.target.closest('[data-delbox]');if(db){if(!confirm('Delete this record and its file?'))return;try{await api(`/api/inbox/${encodeURIComponent(db.dataset.delbox)}?profile=${db.dataset.p}`,{method:'DELETE'});await loadInbox(db.dataset.p)}catch{alert('Could not delete. Try again.')}}
+ const db=e.target.closest('[data-delbox]');if(db){if(!confirm('Delete this record and its file?'))return;try{await api(`/api/inbox/${encodeURIComponent(db.dataset.delbox)}?profile=${db.dataset.p}`,{method:'DELETE'});await loadInbox(db.dataset.p)}catch(err){alert(err.status===400&&err.message?err.message:'Could not delete. Try again.')}}
+ const rr=e.target.closest('[data-read-report]');if(rr){const it=(inboxItems.get(rr.dataset.p)||[]).find(i=>i.id===rr.dataset.readReport);if(it)import('/report-review.mjs').then(m=>m.readUpload(rr.dataset.p,it)).catch(()=>alert('Could not start the reader.'))}
 });
 document.addEventListener('submit',e=>{if(e.target.matches('.inbox-form')){e.preventDefault();submitInbox(e.target)}});
 addEventListener('profilechange',activate);
+addEventListener('inboxchange',e=>{if(e.detail?.profile===P())loadInbox(P())});
 addEventListener('layoutchange',()=>{if(isChild())renderGrowth()});
 let wasN=innerWidth<700;addEventListener('resize',()=>{const n=innerWidth<700;if(n!==wasN){wasN=n;if(isChild())renderGrowth()}});
 activate();
