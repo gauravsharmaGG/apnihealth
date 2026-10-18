@@ -24,7 +24,7 @@ assert.equal(M.parseNum('6,8','de'),6.8);assert.equal(M.parseNum('1.234,5','de')
 assert.deepEqual(M.parseRange('3,9 - 10,2','de'),{text:'3,9 - 10,2',lo:3.9,hi:10.2});assert.deepEqual(M.parseRange('< 50','de'),{text:'< 50',hi:50});assert.deepEqual(M.parseRange('bis 5,0','de'),{text:'bis 5,0',hi:5});
 assert.deepEqual(M.parseRange('13.0 - 17.0'),{text:'13.0 - 17.0',lo:13,hi:17});assert.equal(M.parseRange('high'),null);
 // --- dates
-assert.equal(M.parseDate('Abnahme: 12.01.2000 08:10'),'2000-01-12');assert.equal(M.parseDate('Collected on 12-Jan-2000'),'2000-01-12');assert.equal(M.parseDate('2000-02-30'),null);assert.equal(M.parseDate('5 Okt 2000'),'2000-10-05');
+assert.equal(M.parseDate('Abnahme: 12.01.2000 08:10'),'2000-01-12');assert.equal(M.parseDate('Collected on 12-Jan-2000'),'2000-01-12');assert.equal(M.parseDate('2000-02-30'),null);assert.equal(M.parseDate('5 Okt 2000'),'2000-10-05');assert.equal(M.parseDate('03/15/2000'),'2000-03-15','US month-first when only that fits');assert.equal(M.parseDate('03/04/2000'),'2000-04-03','ambiguous: day first');
 
 // --- a German text PDF (decimal comma, flags, Tsd/µl, GOT/GPT, Befunddatum vs Abnahme)
 const de=page([
