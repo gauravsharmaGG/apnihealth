@@ -61,6 +61,24 @@ try{
   assert(await ev(`document.querySelector('#home-figure .fig-svg').getAttribute('aria-hidden')==='true'&&document.querySelector('#home-figure .fig-callouts').tagName==='UL'`),'figure has a text alternative'+at);
   assert(await ev(`[...document.querySelectorAll('#home-figure .fig-add')].every(a=>a.getBoundingClientRect().height>=44)`),'44px add links'+at);
   assert(await ev(`getComputedStyle(document.querySelector('.fig-dot:not(.is-empty) .fig-pulse')).animationName!=='none'`),'dots pulse'+at);
+  // layout of the callouts: label and value on one line each, at most three lines, no overlap with each other, the head or the viewport
+  const layout=async()=>ev(`(()=>{const cs=[...document.querySelectorAll('#home-figure .fig-c')],R=e=>e.getBoundingClientRect(),
+   one=e=>R(e).height<=parseFloat(getComputedStyle(e).fontSize)*1.6;
+   const rs=cs.map(R),ov=[];rs.forEach((a,i)=>rs.forEach((b,j)=>{if(j>i&&a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)ov.push(i+'/'+j)}));
+   const head=R(document.querySelector('#home-figure .fig-svg')),sv=document.querySelector('#home-figure .fig-svg');
+   return {n:cs.length,oneLine:cs.every(c=>one(c.querySelector('.fig-label'))&&one(c.querySelector('.fig-value'))),text:cs.every(c=>c.querySelectorAll('small,.fig-add').length<=1),
+    heights:cs.map(c=>Math.round(R(c).height)),overlap:ov,inView:rs.every(r=>r.left>=0&&r.right<=innerWidth&&r.width>0),
+    meta:cs.every(c=>{const m=c.querySelector('small');return !m||one(m)}),
+    hero:!!document.querySelector('img[src*="hero-figure"],picture source[srcset*="hero-figure"]')||!!document.querySelector('#home img'),
+    dotsInSvg:[...document.querySelectorAll('#home-figure .fig-core')].every(d=>{const r=R(d),s=R(sv);return r.left>=s.left&&r.right<=s.right&&r.top>=s.top&&r.bottom<=s.bottom})}})()`);
+  const L=await layout();
+  assert(!L.hero,'no hero-figure or other image on the dashboard'+at);
+  assert(L.oneLine&&L.meta,'callout label, value and meta each on one line'+at);
+  assert(L.text,'at most one meta line or add link per callout'+at);
+  assert(L.heights.every(h=>h<=(L.n&&130)),'callout height '+L.heights+at);
+  assert.deepEqual(L.overlap,[],'callouts overlap'+at);assert(L.inView,'callouts inside the viewport'+at);assert(L.dotsInSvg,'dots inside the figure'+at);
+  assert(await ev(`(()=>{const h=document.querySelector('#home-figure .fig-body').getBoundingClientRect(),s=document.querySelector('#home-figure .fig-svg').getBoundingClientRect();return h.width>0&&getComputedStyle(document.querySelector('#home-figure .fig-body')).fill.startsWith('url')&&!document.querySelector('#home-figure .fig-body').getAttribute('stroke')})()`),'soft filled body form, no outline'+at);
+  if(!mobile)assert(await ev(`(()=>{const sv=document.querySelector('#home-figure .fig-svg').getBoundingClientRect(),hx=sv.left+sv.width*.5,hy=sv.top+sv.height*.2;return [...document.querySelectorAll('#home-figure .fig-c')].every(c=>{const r=c.getBoundingClientRect();return !(r.left<hx+40&&r.right>hx-40&&r.top<hy+55&&r.bottom>hy-55)})})()`),'callouts clear of the head'+at);
   // cards, sparklines, timeline with now marker, insights
   assert.equal(await ev(`document.querySelectorAll('#home-cards .metric-card').length`),8,'cards'+at);
   assert(await ev(`document.querySelectorAll('#home-cards .mc-spark').length>=5`),'sparklines'+at);
@@ -81,6 +99,7 @@ try{
   await load('sam',vw,vh,mobile);
   assert.equal(await ev(`document.querySelector('#home-greet').textContent`),'Hello, Sam.');
   assert(await ev(`document.querySelectorAll('#home-figure .fig-c.is-empty').length===4&&![...document.querySelectorAll('#home-figure .fig-c')].some(c=>/\\d/.test(c.textContent))`),'empty callouts for a new profile'+at);
+  {const E=await layout();assert(E.oneLine&&E.meta&&!E.overlap.length&&E.inView,'empty callouts: one-line text, no overlap, in the viewport'+at+' '+JSON.stringify(E))}
   assert(await ev(`!!document.querySelector('#home-cards .home-empty')&&!!document.querySelector('#home-today .tl-empty')`),'empty states'+at);
   assert(!(await ev('document.documentElement.scrollWidth>innerWidth+1')),'empty home scrolls horizontally'+at);
  }
