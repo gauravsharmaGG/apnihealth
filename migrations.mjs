@@ -234,5 +234,25 @@ CREATE TABLE consents(
 ALTER TABLE households ADD COLUMN settings TEXT NOT NULL DEFAULT '{}';
 ALTER TABLE households ADD COLUMN onboarded_at TEXT;
 UPDATE households SET onboarded_at=created_at;
+`},
+ {version:10,name:'reading lab reports: links to uploads, canonical markers, provenance, household markers',sql:`
+-- upload_id: the uploaded file (inbox item id of the same member) a report was read from.
+ALTER TABLE lab_reports ADD COLUMN upload_id TEXT;
+-- marker: canonical catalog name resolved at save time; raw_name: the name as printed (when it differs);
+-- method: how the value got here; confidence: the reader's score (0..1) for values read from a report.
+ALTER TABLE lab_values ADD COLUMN marker TEXT;
+ALTER TABLE lab_values ADD COLUMN raw_name TEXT;
+ALTER TABLE lab_values ADD COLUMN method TEXT CHECK(method IS NULL OR method IN ('manual','pdf-text','ocr','ai'));
+ALTER TABLE lab_values ADD COLUMN confidence REAL CHECK(confidence IS NULL OR (confidence>=0 AND confidence<=1));
+-- Household custom markers and learned aliases (no private/markers.json on Workers). aliases: JSON list.
+CREATE TABLE lab_markers(
+ household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+ name TEXT NOT NULL,
+ group_name TEXT NOT NULL DEFAULT 'Other',
+ unit TEXT,
+ aliases TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(aliases)),
+ created_at TEXT NOT NULL,
+ PRIMARY KEY(household_id,name)
+);
 `}
 ];

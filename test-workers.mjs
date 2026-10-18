@@ -65,12 +65,19 @@ try{
  assert.equal(zip.buf.readUInt32LE(0),0x04034b50,'a ZIP file');
  const inZip=JSON.parse(execFileSync('python3',['-c','import sys,zipfile,io,json;z=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read()));print(json.dumps({n:z.read(n).hex() for n in z.namelist() if n.startswith("files/")}))'],{input:zip.buf,encoding:'utf8'}));
  assert.deepEqual(Object.values(inZip),[png.toString('hex')],'the upload is in the export, byte for byte');
+ // values read from the upload (migration 10 on the Durable Object): link, household marker, duplicate check, delete refused
+ const lab=await req('/api/labs?profile='+member,{method:'POST',cookie,json:{date:'2026-10-05',uploadId:items[0].id,method:'ocr',values:[{name:'Ferritin',rawName:'Ferritin (example lab)',value:'45',unit:'ng/mL',confidence:0.92},{name:'Example custom marker',value:'3',unit:'mg/L'}],learn:{custom:[{name:'Example custom marker',unit:'mg/L'}]}}});
+ assert.equal(lab.status,201,lab.body);
+ assert.equal((await req('/api/inbox?profile='+member,{cookie})).json().items[0].status,'imported');
+ assert((await req('/api/labs/catalog?profile='+member,{cookie})).json().markers.some(m=>m.name==='Example custom marker'&&m.custom),'household marker in the catalog');
+ const dup=(await req('/api/labs/check?profile='+member,{method:'POST',cookie,json:{date:'2026-10-05',values:[{marker:'Ferritin',num:45,unit:'µg/L'}]}})).json();assert.deepEqual(dup.duplicates,['Ferritin: iron stores']);
+ const del=await req(`/api/inbox/${items[0].id}?profile=${member}`,{method:'DELETE',cookie});assert.equal(del.status,400);assert.match(del.body,/Delete that report first/);
  // the Cron Trigger runs the scheduler without errors
  const sch=await req('/cdn-cgi/local/scheduled');assert.equal(sch.status,200);await new Promise(r=>setTimeout(r,500));assert.doesNotMatch(log,/scheduled: /,'scheduler reported no errors');
  // data survives a restart (Durable Object SQLite and R2 persisted locally)
  await stop();({req,O}=await start());
  assert.equal((await req('/api/inbox?profile='+member,{cookie})).json().items.length,1,'session and records persist');
  assert.deepEqual((await req(`/api/inbox/${items[0].id}/file?profile=${member}`,{cookie})).buf,png,'file persists');
- console.log('PASS workers (wrangler dev): sign-in page with demo notice and headers, gating and host check, open sign-up by emailed link, consent, onboarding in Durable Object SQLite, upload to R2 and back, ZIP export, Cron Trigger scheduler, data persists across restarts.');
+ console.log('PASS workers (wrangler dev): sign-in page with demo notice and headers, gating and host check, open sign-up by emailed link, consent, onboarding in Durable Object SQLite, upload to R2 and back, values read from it saved with a household marker and duplicate check, ZIP export, Cron Trigger scheduler, data persists across restarts.');
 }catch(e){console.error(log.slice(-4000));throw e}
 finally{await stop();rmSync(dir,{recursive:true,force:true})}

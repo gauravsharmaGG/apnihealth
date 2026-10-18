@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.mjs",
     "import-json": "node scripts/import-json.mjs",
-    "test": "NO_PUSH=1 sh -c 'for t in test-theme test-db test-sqladapter test-import test-labunits test-labmap test-labs test-mailer test-auth test-signup test-consent test-onboarding test-datarights test-blobs test-workers-backends test-passkeys test-households test-ingest-push test-members test-medicines test-push test-scheduler test-appointments test-access test-ahparse test-preview test-demo test-module-load; do node $t.mjs || exit 1; done' && python3 test-build-index.py && node test-server.mjs",
+    "test": "NO_PUSH=1 sh -c 'for t in test-theme test-db test-sqladapter test-import test-labunits test-labmap test-labs test-labimport test-mailer test-auth test-signup test-consent test-onboarding test-datarights test-blobs test-workers-backends test-passkeys test-households test-ingest-push test-members test-medicines test-push test-scheduler test-appointments test-access test-ahparse test-preview test-demo test-module-load; do node $t.mjs || exit 1; done' && python3 test-build-index.py && node test-server.mjs",
     "test:workers": "node test-workers.mjs",
     "test:browser": "node test-browser-smoke.mjs && node test-browser-accounts.mjs && node test-browser-onboarding.mjs"
   },
