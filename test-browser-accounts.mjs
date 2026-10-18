@@ -39,7 +39,7 @@ try{
  const {authenticatorId}=await send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  const noScroll=async what=>assert(await ev('document.documentElement.scrollWidth<=innerWidth'),what+': no horizontal scroll');
  // 1. email link sign-in
- await go(base+'/');assert.equal(await ev('location.pathname'),'/login');
+ await go(base+'/');assert.equal(await ev('location.pathname'),'/','signed-out visitors see the landing page');await go(base+'/login');assert.equal(await ev('location.pathname'),'/login');
  assert.equal(await ev("!document.getElementById('passkey-area').hidden"),true,'passkey button shown');await noScroll('sign-in page');
  await ev("document.querySelector('input[name=email]').value='preview@example.com';document.querySelector('form.auth-form').requestSubmit()");
  const link=await until(()=>(log.match(/sign-in link for preview@example\.com: (\S+)/)||[])[1],5000,'sign-in link');

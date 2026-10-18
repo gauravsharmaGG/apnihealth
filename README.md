@@ -219,6 +219,10 @@ people, you are responsible for it as a data controller: get explicit consent, d
 secure the server, and be able to export and delete a person's data. See [SECURITY.md](SECURITY.md) for
 reporting vulnerabilities.
 
+## Credits / assets
+
+The photo-style figure on the public landing page (`public/hero-figure*.webp`, `.jpg`) is an AI-generated illustration of an invented person. It shows no real person.
+
 ## License
 
 [GNU Affero General Public License v3.0](LICENSE). If you run a modified version for others over a network,
