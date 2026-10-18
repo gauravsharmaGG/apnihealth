@@ -65,6 +65,12 @@ try{
  assert(e,'422 rejects');assert.match(e.message,/^Resend refused: 422 validation_error: The from domain is not verified$/);assert(!e.message.includes(KEY));
  fake.reply={status:500,body:'<html>oops</html>'};
  await assert.rejects(sendMail({to:'a@example.com',subject:'x',text:'y'}),/^Error: Resend refused: 500$/);
+ // a redirect is not followed (the key stays with the configured host) and counts as a refusal
+ fake.reply={status:307,body:''};const before=fake.reqs.length;
+ await assert.rejects(sendMail({to:'a@example.com',subject:'x',text:'y'}),/^Error: Resend refused: 307$/);
+ assert.equal(fake.reqs.length,before+1,'redirect not followed');
+ // Workers' fetch accepts only redirect 'follow' or 'manual' (it throws a TypeError on 'error')
+ assert(!/redirect:\s*'error'/.test((await import('node:fs')).readFileSync(new URL('./mailer.mjs',import.meta.url),'utf8')),"mailer.mjs must not use redirect:'error'");
  // https is required except for a loopback test endpoint; network errors do not echo the key or URL
  await assert.rejects(sendMail({to:'a@example.com',subject:'x',text:'y'},{endpoint:'http://api.example.com/emails'}),/https/);
  const dead=await sendMail({to:'a@example.com',subject:'x',text:'y'},{endpoint:'http://127.0.0.1:1/emails'}).then(()=>null,e=>e);

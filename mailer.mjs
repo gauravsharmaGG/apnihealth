@@ -47,7 +47,9 @@ async function sendResend({to,subject,text},{apiKey,from=defaultFrom(),timeout=2
  noCrlf(from,'MAIL_FROM');noCrlf(to,'Recipient');noCrlf(subject,'Subject');noCrlf(apiKey,'RESEND_API_KEY');
  let res;
  try{
-  res=await fetch(u,{method:'POST',redirect:'error',signal:AbortSignal.timeout(timeout),
+  // redirect:'manual', not 'error': Workers' fetch refuses 'error' with a TypeError. A redirect is not followed
+  // (the key never goes to another host) and is reported as a refusal below, since a 3xx response is not ok.
+  res=await fetch(u,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(timeout),
    headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json','User-Agent':'ApniHealth'},
    body:JSON.stringify({from,to:[to],subject,text:String(text),headers:{'Auto-Submitted':'auto-generated'}})});
  }catch(e){throw Error('Resend request failed: '+(e?.name==='TimeoutError'?'timeout':'network error'))}
