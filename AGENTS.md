@@ -1,6 +1,7 @@
 # AGENTS.md
 
-Guidance for people and coding agents changing this repo. Read it before you start.
+Guidance for people and coding agents changing this repo. Read it before you start. New to the repo? Read
+[`docs/HANDOFF.md`](docs/HANDOFF.md) next: architecture, tests, deploy, conventions and open items.
 
 ## What this is
 
@@ -84,3 +85,6 @@ When a change affects cached assets, bump the cache version `V` in `public/sw.js
 - Keep PRs small and focused. Describe behaviour in generic terms.
 - Run the tests listed in `README.md` and say which you ran. CI runs them plus gitleaks.
 - UI changes: check at 390x844 first (preview mode, `docs/preview.md`).
+- End every PR body with the line `MergeJudge-Actor: agent`. Merge only with the maintainer's OK, using
+  `gh pr merge <N> --merge --body "MergeJudge-Actor: agent"`. Never force-push; merge `main` into a branch to update it.
+- A new test file goes into `package.json` and `.github/workflows/ci.yml`.
