@@ -61,6 +61,7 @@ try{
   assert(await ev(`document.querySelector('#home-figure .fig-svg').getAttribute('aria-hidden')==='true'&&document.querySelector('#home-figure .fig-callouts').tagName==='UL'`),'figure has a text alternative'+at);
   assert(await ev(`[...document.querySelectorAll('#home-figure .fig-add')].every(a=>a.getBoundingClientRect().height>=44)`),'44px add links'+at);
   assert(await ev(`getComputedStyle(document.querySelector('.fig-dot:not(.is-empty) .fig-pulse')).animationName!=='none'`),'dots pulse'+at);
+  assert(await ev(`(()=>{const e=document.querySelector('.fig-ecg');return !!e&&getComputedStyle(e).animationName!=='none'})()`),'ECG shimmer near the heart dot'+at);
   // layout of the callouts: label and value on one line each, at most three lines, no overlap with each other, the head or the viewport
   const layout=async()=>ev(`(()=>{const cs=[...document.querySelectorAll('#home-figure .fig-c')],R=e=>e.getBoundingClientRect(),
    one=e=>R(e).height<=parseFloat(getComputedStyle(e).fontSize)*1.6;
@@ -93,6 +94,7 @@ try{
   // reduced motion switches the pulse off
   await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
   assert(await ev(`getComputedStyle(document.querySelector('.fig-dot:not(.is-empty) .fig-pulse')).animationName==='none'`),'pulse off under reduced motion'+at);
+  assert(await ev(`getComputedStyle(document.querySelector('.fig-ecg')).animationName==='none'`),'ECG shimmer off under reduced motion'+at);
   await send('Emulation.setEmulatedMedia',{features:[]});
   if(shots){const s=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'dashboard-'+vw+'.png'),Buffer.from(s.result.data,'base64'))}
   // a profile without readings: every callout is an empty state, nothing invented
