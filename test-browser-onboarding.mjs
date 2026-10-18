@@ -39,7 +39,7 @@ try{
  const shot=async name=>{if(process.env.SHOTS)(await import('node:fs')).writeFileSync(join(process.env.SHOTS,name+'.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'))};
  const step=n=>until(()=>ev(`document.getElementById('ob-progress')?.textContent.startsWith('Step ${n} of 5')`),8000,'onboarding step '+n);
  // sign up
- await go(base+'/');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);
+ await go(base+'/');assert.equal(await ev('location.pathname'),'/','signed-out visitors see the landing page');await go(base+'/login');assert.equal(await ev('location.pathname'),'/login');assert.match(await ev('document.body.textContent'),/New here\?/);
  // demo notice (DEMO_NOTICE): a full-width strip above the card, never squeezed in beside it
  const demoLayout=async what=>{const g=await ev(`(()=>{const n=document.querySelector('.demo-notice'),c=document.querySelector('.auth-card'),r=n.getBoundingClientRect(),k=c.getBoundingClientRect(),m=getComputedStyle(c.querySelector('.eyebrow'),'::before');return {nb:r.bottom,nw:r.width,ct:k.top,cw:k.width,mh:parseFloat(m.height),mw:parseFloat(m.width)}})()`);
   assert(g.nb<=g.ct,what+': demo notice above the card ('+g.nb+' > '+g.ct+')');assert(g.nw>=389,what+': notice spans the width');assert(g.cw>=300,what+': card keeps its width ('+g.cw+')');
