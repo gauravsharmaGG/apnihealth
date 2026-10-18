@@ -28,8 +28,8 @@ const all=process.argv.includes('--all'),OPTS=JSON.parse(process.env.OCR_OPTS||'
 // rendered with the machine's system fonts, so OCR results differ between machines (the CI runner has no
 // Devanagari font, so hi-mixed renders as boxes there and its recall is reported, not gated). Gated per case:
 // high-bucket precision and at most two wrong-but-ticked rows; recall only as the mean over the Latin-script
-// cases. Known miss: "2.5 lakhs/cumm" with range "1.5 - 4.5" read as 25 and 15-45 (both lose the point, so
-// nothing looks wrong); the review screen is where that gets caught.
+// cases. "2.5 lakhs/cumm" read as 25 next to 15-45 (both lose the point) is restored by labmap's lakh rule and
+// shown as "Decimal point restored" on the review screen (test-labmap.mjs covers it).
 const FLOORS={precisionHigh:0.85,wrongTicked:2,meanRecall:0.6};
 const dir=mkdtempSync(join(tmpdir(),'apni-ocr-'));
 const HTML='<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OCR test</title><script type="module" src="/ocr-harness.mjs"></script></head><body><p>OCR test</p></body></html>';

@@ -135,4 +135,28 @@ const k2=by(odd,'Kalium');assert(k2.issues.includes('duplicate')&&!k2.include,'s
 assert.deepEqual(M.toValue(hb),{name:'Hemoglobin: oxygen-carrying protein',value:'14,2',unit:'g/dl',reference:'13,5 - 17,5',flag:undefined,page:1,rawName:'Hämoglobin',confidence:hb.conf});
 // --- unread lines are kept for the review screen (never saved)
 assert(rd.unread.some(u=>/Patient/.test(u.text)),'unparsed lines are listed');
+// --- Indian lakh values and ranges that lost their dash (OCR)
+assert.equal(M.parseNum('2,50,000'),250000,'Indian digit grouping');assert.equal(M.parseNum('1,50,00,000'),15000000);assert.equal(M.parseNum('2,50,000.5'),250000.5);
+assert.deepEqual(M.parseRange('4000 11000','en',{ocr:true}),{text:'4000-11000',lo:4000,hi:11000},'dashless OCR range gets its dash back');
+assert.deepEqual(M.parseRange('4,000 11,000','en',{ocr:true}),{text:'4,000-11,000',lo:4000,hi:11000});
+assert.deepEqual(M.parseRange('1.5 ~ 4.5','en',{ocr:true}),{text:'1.5-4.5',lo:1.5,hi:4.5},'a dash read as ~');
+assert.equal(M.parseRange('4000 11000','en'),null,'text PDFs: two bare numbers are not a range');assert.equal(M.parseRange('11000 4000','en',{ocr:true}),null,'decreasing is not a range');
+const lk=M.mapReport(page([
+ row('Total Leucocyte Count (TLC)','7,500','cells/cumm','4000 11000'),
+ row('Platelet Count','25','lakhs/cumm','15 - 45'),
+ row('Platelets','25','lakhs/cumm','1.5 - 4.5'),
+ row('Platelet count (PLT)','2.1','lakhs','1.5 - 4.5'),
+],{conf:0.96}),markers,{method:'ocr'});
+const lt=lk.rows.find(r=>r.name==='Total Leucocyte Count (TLC)');assert.deepEqual([lt.reference,lt.num,lt.flag],['4000-11000',7500,null],'TLC range with the dash restored');
+const lp=lk.rows.find(r=>r.name==='Platelet Count');
+assert.deepEqual([lp.marker,lp.num,lp.value,lp.reference,lp.flag,lp.preferred],['Platelet count',2.5,'2.5','1.5 - 4.5',null,{num:250,unit:'10³/µL'}],'25 lakhs with 15-45: both lost the point');
+assert(lp.issues.includes('value-ocr-fixed')&&lp.bucket!=='high'&&lp.bucket!=='unmapped','a restored point is highlighted for review '+JSON.stringify([lp.issues,lp.bucket]));
+const lp2=lk.rows.find(r=>r.name==='Platelets');assert.deepEqual([lp2.num,lp2.reference,lp2.preferred?.num],[2.5,'1.5 - 4.5',250],'25 lakhs next to a correct 1.5-4.5');
+assert(!lp2.issues.includes('value-unclear'),'fixed value is not also unclear');
+const lp3=lk.rows.find(r=>r.name==='Platelet count (PLT)');assert.deepEqual([lp3.marker,lp3.num,lp3.preferred?.num,lp3.issues.includes('value-ocr-fixed')],['Platelet count',2.1,210,false],'bare "lakhs" unit, value untouched');
+// a two-digit lakh value far outside the printed range is left alone (no guess), and text PDFs are never changed
+const lk2=M.mapReport(page([row('Platelet Count','25','lakhs/cumm','150 - 450')],{conf:0.96}),markers,{method:'ocr'});assert.equal(lk2.rows[0].num,25);assert(!lk2.rows[0].issues.includes('value-ocr-fixed'));
+const lk3=M.mapReport(page([row('Platelet Count','25','lakhs/cumm','15 - 45')]),markers);assert.deepEqual([lk3.rows[0].num,lk3.rows[0].reference],[25,'15 - 45'],'text PDF: no OCR fixes');
+assert.equal(M.mapReport(page([row('Platelet Count','2,50,000','/cumm','1,50,000 - 4,50,000')]),markers).rows[0].preferred.num,250,'Indian grouping in a text PDF');
+
 console.log(`PASS labmap: lines/cells, row grammar (de/en/Indian), metadata without patient details, alias/German/Hindi/household matching, guarded fuzzy, unit-picked pairs, OCR value/range/unit fixes, plausibility, buckets, duplicates (${rd.rows.length+ri.rows.length} fixture rows).`);
