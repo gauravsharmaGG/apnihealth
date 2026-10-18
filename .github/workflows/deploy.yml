@@ -1,0 +1,100 @@
+name: Deploy
+
+# Every push to main deploys to the production Worker, but only after the CI workflow passed on that exact commit.
+# workflow_run keeps the Cloudflare secrets out of the CI workflow, which also runs for pull requests. It only fires
+# from the copy of this file on main. workflow_dispatch redeploys the current main by hand (Actions tab).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a running deploy is never cancelled (a newer one queues behind it).
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      WRANGLER: npx --yes wrangler@4.151.1
+      WRANGLER_SEND_METRICS: "false"
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      APP_HOST: ${{ vars.APP_HOST }}
+      APP_NAME: ${{ vars.APP_NAME }}
+      MAIL_FROM: ${{ vars.MAIL_FROM }}
+      DEMO_NOTICE: ${{ vars.DEMO_NOTICE }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.13"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Check settings and that this commit is still the tip of main
+        run: |
+          missing=0
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID APP_HOST APP_NAME MAIL_FROM DEMO_NOTICE; do
+            if [ -z "${!v}" ]; then echo "::error::$v is not set (repo secret or variable, environment production)"; missing=1; fi
+          done
+          [ "$missing" = 0 ] || exit 1
+          tip=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)
+          if [ "$tip" != "$DEPLOY_SHA" ]; then
+            echo "::notice::main moved on ($tip); skipping $DEPLOY_SHA, the newer commit deploys after its own CI."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build (empty private/, OCR assets pinned and sha256-checked)
+        if: env.SKIP != '1'
+        run: |
+          test ! -e private/profiles && test ! -e public/records
+          node scripts/vendor-ocr.mjs   # fails the deploy if the OCR assets can't be fetched or verified
+          python3 build.py
+
+      - name: Previous version (rollback target)
+        if: env.SKIP != '1'
+        run: $WRANGLER deployments status
+
+      - name: Deploy
+        if: env.SKIP != '1'
+        run: |
+          # All four vars every time: the [vars] defaults in wrangler.toml would otherwise replace the live values.
+          $WRANGLER deploy --message "main ${DEPLOY_SHA:0:7}" \
+            --var "APP_HOST:$APP_HOST" --var "APP_NAME:$APP_NAME" \
+            --var "MAIL_FROM:$MAIL_FROM" --var "DEMO_NOTICE:$DEMO_NOTICE" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
+          version=$(grep -oE 'Current Version ID: [0-9a-f-]+' "$RUNNER_TEMP/deploy.log" | awk '{print $4}')
+          echo "New version: ${version:-unknown} (main ${DEPLOY_SHA})"
+          echo "### Deployed ${version:-unknown} from \`${DEPLOY_SHA:0:7}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test
+        if: env.SKIP != '1'
+        run: |
+          for path in / /login; do
+            ok=0
+            for i in 1 2 3 4 5; do
+              if curl -fsS -o /dev/null -w "$path %{http_code}\n" "https://$APP_HOST$path"; then ok=1; break; fi
+              sleep 5
+            done
+            if [ "$ok" != 1 ]; then echo "::error::https://$APP_HOST$path failed. Roll back: wrangler rollback <previous version above>"; exit 1; fi
+          done

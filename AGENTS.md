@@ -88,3 +88,5 @@ When a change affects cached assets, bump the cache version `V` in `public/sw.js
 - End every PR body with the line `MergeJudge-Actor: agent`. Merge only with the maintainer's OK, using
   `gh pr merge <N> --merge --body "MergeJudge-Actor: agent"`. Never force-push; merge `main` into a branch to update it.
 - A new test file goes into `package.json` and `.github/workflows/ci.yml`.
+- **Merging to `main` deploys to production** (`.github/workflows/deploy.yml`, after CI passes). Treat a merge as a
+  release; roll back as described in `docs/HANDOFF.md` (Deploy). Changes under `.github/` need the maintainer's OK.
