@@ -42,7 +42,9 @@ every instance keeps its health data in git-ignored folders on its own server. S
 - `scheduler.mjs`: all periodic jobs in one place (hourly purge of expired sessions, sign-in links and passkey
   challenges; medicine and appointment reminders via `push.tick`). Node calls `startScheduler()`; a Workers Cron
   Trigger calls `runScheduled(scheduledTime)`. Add new periodic work here, never as another `setInterval`.
-- `db.mjs` (SQLite connection, migrations runner, transactions), `migrations.mjs` (schema versions),
+- `db.mjs` (SQLite connection, migrations runner, transactions; `useDatabase` installs another backend),
+  `sqladapter.mjs` (the synchronous storage interface: node:sqlite and Durable Object backends, `$name` -> `?`),
+  `migrations.mjs` (schema versions),
   `store.mjs` (the member access check `forMember`, document tables, households and members),
   `importer.mjs` + `scripts/import-json.mjs` (one-time JSON `private/` to SQLite import, counts only).
 - `log.mjs`, `events.mjs` (episodes, entries, record inbox), `medicines.mjs`, `appointments.mjs`, `push.mjs`

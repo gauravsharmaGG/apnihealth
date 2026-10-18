@@ -159,7 +159,7 @@ See [docs/preview.md](docs/preview.md).
 ## Tests
 
 ```bash
-node test-theme.mjs && node test-db.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-datarights.mjs && node test-blobs.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
+node test-theme.mjs && node test-db.mjs && node test-sqladapter.mjs && node test-import.mjs && node test-labs.mjs && node test-mailer.mjs && node test-auth.mjs && node test-signup.mjs && node test-consent.mjs && node test-onboarding.mjs && node test-datarights.mjs && node test-blobs.mjs && node test-passkeys.mjs && node test-households.mjs && node test-ingest-push.mjs
 NO_PUSH=1 node test-members.mjs && node test-medicines.mjs && node test-push.mjs && node test-scheduler.mjs && node test-appointments.mjs
 node test-access.mjs && node test-ahparse.mjs && node test-preview.mjs && node test-demo.mjs && node test-module-load.mjs
 python3 test-build-index.py
