@@ -166,7 +166,7 @@ export function parseRow(line,{locale='en',ocr=false}={}){
 const MONTHS={jan:1,feb:2,mar:3,mrz:3,mär:3,apr:4,may:5,mai:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,okt:10,nov:11,dec:12,dez:12};
 export function parseDate(s){
  let m=/\b(\d{4})-(\d{2})-(\d{2})\b/.exec(s);if(m)return iso(+m[1],+m[2],+m[3]);
- m=/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/.exec(s);if(m)return iso(m[3].length===2?2000+ +m[3]:+m[3],+m[2],+m[1]);
+ m=/\b(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})\b/.exec(s);if(m){const y=m[3].length===2?2000+ +m[3]:+m[3],a=+m[1],b=+m[2];return b>12&&a<=12?iso(y,a,b):iso(y,b,a)} // day first, unless only month-first (US) fits
  m=/\b(\d{1,2})[\s./-]*([A-Za-zä]{3,9})\.?[\s,./-]*(\d{4})\b/.exec(s);if(m){const mo=MONTHS[m[2].toLowerCase().slice(0,m[2].toLowerCase().startsWith('sept')?4:3)];if(mo)return iso(+m[3],mo,+m[1])}
  return null;
 }
