@@ -125,21 +125,46 @@ fictional data only.
 - Never commit health or personal data, secrets, account ids or private infrastructure details (this repo is public).
 - Be exact in PR descriptions about what you actually tested.
 
-## Deploy (Cloudflare Workers, generic)
+## Deploy (Cloudflare Workers)
 
-Deploys need the maintainer's OK each time.
+**Merges to `main` deploy automatically.** `.github/workflows/deploy.yml` runs when the `CI` workflow finishes
+successfully for a push to `main` (`workflow_run`), checks out that exact commit, builds it and runs
+`wrangler@4.151.1 deploy`. It skips a commit that is no longer the tip of `main` (the newer one deploys after its own
+CI), runs one deploy at a time (concurrency group `deploy`, never cancelled) and can be re-run by hand from the
+Actions tab (`workflow_dispatch`, `main` only). So: merging is deploying. Only merge what is ready for users.
 
-1. Clean checkout of `main` in a separate deploy folder, empty `private/`, then `python3 build.py` (also vendors the
-   OCR assets). No `public/records/` or data files may exist in `public/`.
-2. `npx --yes wrangler@4.151.1 deploy --var APP_HOST:<host> --var APP_NAME:<name> --var MAIL_FROM:"<Name> <noreply@domain>" --var DEMO_NOTICE:"<notice>"`
-   - **Always pass all four `--var` values.** `--keep-vars` is not enough: the `[vars]` defaults in `wrangler.toml`
-     (demo name and demo notice) overwrite the live values.
-   - Secrets (`RESEND_API_KEY`, `VAPID_PRIVATE_JWK`) are already on the Worker and survive deploys; set new ones only
-     with `wrangler secret put`, never print them.
-   - If wrangler fails with `EACCES` on a cache dir, set `WRANGLER_CACHE_DIR` to a writable folder.
-3. Smoke test: `/` 200 (landing, notice), `/login` 200, assets 200, another host refused; `wrangler tail` for a minute
-   (cron runs, no exceptions). Report the new version id and the previous one.
-4. Rollback: `npx --yes wrangler@4.151.1 rollback <previous version id>`.
+What the workflow does:
+
+1. Fails early if a setting below is missing.
+2. `node scripts/vendor-ocr.mjs` (pinned, sha256-checked OCR assets) and `python3 build.py` on a clean checkout
+   with an empty `private/`.
+3. Prints the current deployment (the rollback target), then deploys with all four `--var` values. `--keep-vars` is
+   not enough: the `[vars]` defaults in `wrangler.toml` (demo name and notice) would replace the live values.
+4. Prints the new version id (also in the run summary) and smoke-tests `https://$APP_HOST/` and `/login`.
+
+What it needs (repository settings, environment `production`, limited to the `main` branch):
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Secret | `CLOUDFLARE_API_TOKEN` | a token scoped to this account: Workers Scripts Edit, Workers R2 Storage Edit (add more only if a deploy asks for it) |
+| Secret | `CLOUDFLARE_ACCOUNT_ID` | the Cloudflare account id |
+| Variable | `APP_HOST` | the public hostname (requests for other hosts are refused) |
+| Variable | `APP_NAME` | the product name shown in the app |
+| Variable | `MAIL_FROM` | `Name <noreply@domain>` on a domain verified in Resend |
+| Variable | `DEMO_NOTICE` | the banner text |
+
+Worker secrets (`RESEND_API_KEY`, `VAPID_PRIVATE_JWK`) live on the Worker, not in GitHub, and survive deploys; set
+new ones only with `wrangler secret put`, never print them. Changing a variable takes effect on the next deploy
+(re-run the workflow).
+
+**Roll back:** find the previous version id in the failed or newest run's "Previous version" step (or
+`npx --yes wrangler@4.151.1 deployments list`), then `npx --yes wrangler@4.151.1 rollback <version id>` with a
+token for the account. A rollback is undone by the next merge to `main`, so fix or revert on `main` too
+(a revert PR, never a force-push).
+
+Manual deploy (only if Actions is down): same steps from a clean checkout; if wrangler fails with `EACCES` on a cache
+dir, set `WRANGLER_CACHE_DIR` to a writable folder. After any deploy, `wrangler tail` for a minute (cron runs, no
+exceptions).
 
 Migrations run automatically in the DO constructor on the first request after a deploy; they must be additive.
 
@@ -160,8 +185,7 @@ fictional fixtures are tested); migration 10 on long-lived databases.
 
 ## Roadmap and open items
 
-- Backups of the Durable Object database to R2 and a tested restore (workers plan, PR 8); `docs/workers.md` and an
-  optional manual deploy job (PR 9).
+- Backups of the Durable Object database to R2 and a tested restore (workers plan, PR 8); `docs/workers.md`.
 - Lab views for children; CSV import.
 - Phase 2 of report reading (an outside AI model, opt-in): **not approved**; don't build it without a decision.
 - Docker image and self-hosting guide.
