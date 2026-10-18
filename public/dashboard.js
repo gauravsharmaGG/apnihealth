@@ -47,8 +47,9 @@ let entries=null,loading=null;
 function render(){
  const root=$('#home-cards');if(!root||$('#home')?.hidden)return;
  const p=window.PROFILES?.[window.PROFILE],today=day(Date.now());
- $('#home-greet').textContent=`Hello, ${p?.name||'there'}.`;$('#home-date').textContent=longDate();
+ $('#home-greet').textContent=`Hello, ${(p?.name||'').trim().split(/\s+/)[0]||'there'}.`;$('#home-date').textContent=longDate();
  if(!entries){root.innerHTML='<p class="muted">Loading your numbers…</p>';return}
+ window.AH.figure?.(entries,today,{daily,weekTrend,trendText,rel,META});
  const keys=tracked().filter(k=>META[k]);
  if(!entries.length){root.innerHTML=`<div class="glass empty-state home-empty"><h3>Welcome. Your dashboard fills in as you add numbers.</h3><p class="muted">Type a reading in Vitals, or connect Apple Health so steps, sleep and heart rate arrive by themselves. Episodes, medicines and appointments show up below as soon as you add them.</p><div class="row-actions"><a class="button-link" href="#log">Add a reading</a><a class="text-button" href="#integrations">Connect Apple Health →</a></div></div>`;return}
  root.innerHTML=keys.length?`<div class="metric-grid">${keys.map(k=>card(k,entries,today)).join('')}</div>`:`<div class="glass empty-state"><h3>No measurements switched on</h3><p class="muted">Choose what to track in Settings.</p><a class="text-button" href="#settings">Open settings →</a></div>`;
@@ -61,5 +62,7 @@ document.addEventListener('logchange',e=>{if(e.detail?.profile===window.PROFILE&
 addEventListener('profilechange',()=>{if(document.querySelector('#home'))load()});
 window.addEventListener('hashchange',()=>{if(location.hash==='#home'||!location.hash)render()});
 window.AH.homeEntries=()=>entries;
+// the figure script loads after this one: draw again once it is there
+addEventListener('load',()=>render());
 load();
 })();
