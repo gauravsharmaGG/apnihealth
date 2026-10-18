@@ -35,6 +35,9 @@ emergency, call your local emergency number.
 - **Technical data:** server logs with IP addresses and request paths, kept for [N days] for security.
 - **Push notification subscriptions** for devices on which you turn notifications on.
 
+- **Lab reports you choose to read in the app** are read on your device (in your browser). Only the values you
+  confirm are saved; the text read from the report is not sent to us or to anyone else.
+
 ### Why, and on what legal basis
 
 - To provide the service you signed up for (GDPR Art. 6(1)(b)).

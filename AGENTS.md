@@ -55,6 +55,17 @@ every instance keeps its health data in git-ignored folders on its own server. S
   (uploaded files go through `blobs.mjs`, on disk under `private/profiles/<id>/uploads/`).
 - `labs.mjs`: lab reports per member, the marker catalog (`config/markers.default.json` + `private/markers.json`)
   and the explorer series served by `/api/labs`; `public/labs.js` is the "Add results" form.
+- Reading lab reports (plan: `docs/plans/report-ocr.md`): `public/labunits.mjs` (unit spellings and conversions),
+  `public/labmap.mjs` (positioned text -> rows -> markers, confidence; pure, tested in Node), `public/report-extract.mjs`
+  (pdf.js text / tesseract.js OCR in the browser), `public/report-review.mjs` (the review screen). They run on
+  the device only; the server receives confirmed values (`POST /api/labs` with `uploadId`, `method`, `learn`).
+  Household custom markers and aliases live in `lab_markers`. Third-party files are pinned in
+  `public/ocr-assets.mjs` and fetched by `scripts/vendor-ocr.mjs` into gitignored `public/vendor/`; never commit
+  them, and upgrade only by changing the pins in a PR. `'wasm-unsafe-eval'` is allowed on the app page and
+  `/vendor/ocr/` only (`http.mjs` `appHeaders`); don't widen it. Report fixtures are generated at test time
+  (`scripts/make-report-fixtures.mjs`, fictional only, never committed); keep the accuracy gates in
+  `test-browser-ocr.mjs`, and never print OCR text in tests or logs. Sending report contents to an outside
+  service needs explicit approval (phase 2 of the plan).
 - `redesign.py` (`build.py`): generates `public/reports-data.js`,
   `public/data-child.js` and `public/index.html` from `templates/index.template.html` and `private/`.
 - `public/`: the PWA (vanilla JS/CSS, service worker, manifest, icons). Views declare which members they are

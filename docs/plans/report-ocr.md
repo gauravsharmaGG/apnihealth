@@ -1,6 +1,8 @@
 # Plan: reading values from uploaded lab reports (on-device OCR + mapping), with an optional AI path later
 
-Status (Oct 18, 2026): **plan only.** No code, no dependencies added, no services set up. Base: `main` at `de33c1d`.
+Status (Oct 18, 2026): **phase 1 built** as PRs 1–8 (#34–#41, stacked; merge in order). Phase 2 (AI) not
+started and not approved. Measured accuracy and what is untested (real iPhone, real photos) are in PRs 6 and 7.
+Original status line: **plan only.** No code, no dependencies added, no services set up.
 Built with Grok only (no claude/codex/claude-glm CLIs). Runs on both targets: Node (`node:sqlite`) and Cloudflare
 Workers + SQLite in a Durable Object (apni.health).
 
